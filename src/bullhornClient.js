@@ -1,5 +1,22 @@
 const axios = require("axios");
 
+function redactUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    const sensitiveKeys = ["password", "client_secret", "access_token", "code"];
+
+    for (const key of sensitiveKeys) {
+      if (url.searchParams.has(key)) {
+        url.searchParams.set(key, "***REDACTED***");
+      }
+    }
+
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 class BullhornClient {
   constructor({ config, logger }) {
     this.config = config;
@@ -7,8 +24,7 @@ class BullhornClient {
   }
 
   async getAuthorizationCode() {
-    const url = `${this.config.BULLHORN_AUTH_BASE_URL}/oauth/authorize`;
-    const params = {
+    const params = new URLSearchParams({
       client_id: this.config.BULLHORN_CLIENT_ID,
       response_type: "code",
       username: this.config.BULLHORN_USERNAME,
@@ -16,26 +32,55 @@ class BullhornClient {
       state: "workflow",
       redirect_uri: this.config.BULLHORN_REDIRECT_URI,
       action: "Login",
-    };
-
-    const response = await axios.get(url, {
-      params,
-      maxRedirects: 0,
-      validateStatus: (status) => status >= 200 && status < 400,
     });
 
-    const location = response.headers.location;
-    if (!location) {
-      throw new Error("Bullhorn authorize response did not include a redirect location");
+    let currentUrl = `${this.config.BULLHORN_AUTH_BASE_URL}/oauth/authorize?${params.toString()}`;
+    const maxHops = 10;
+
+    for (let hop = 0; hop < maxHops; hop += 1) {
+      const response = await axios.get(currentUrl, {
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400,
+      });
+
+      const currentParsed = new URL(currentUrl);
+      const code = currentParsed.searchParams.get("code");
+      if (code) return code;
+
+      const oauthError = currentParsed.searchParams.get("error");
+      const oauthErrorDescription = currentParsed.searchParams.get("error_description");
+      if (oauthError || oauthErrorDescription) {
+        const details = [
+          "Bullhorn authorize redirect returned OAuth error",
+          `url: ${redactUrl(currentUrl)}`,
+        ];
+        if (oauthError) details.push(`error: ${oauthError}`);
+        if (oauthErrorDescription) details.push(`error_description: ${oauthErrorDescription}`);
+        throw new Error(details.join(" | "));
+      }
+
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.location;
+        if (!location) {
+          throw new Error(
+            `Bullhorn authorize response did not include redirect location (status: ${response.status}, url: ${redactUrl(currentUrl)})`,
+          );
+        }
+        currentUrl = new URL(location, currentUrl).toString();
+        continue;
+      }
+
+      const details = [
+        "Bullhorn authorize ended without authorization code",
+        `status: ${response.status}`,
+        `url: ${redactUrl(currentUrl)}`,
+      ];
+      throw new Error(details.join(" | "));
     }
 
-    const redirect = new URL(location);
-    const code = redirect.searchParams.get("code");
-    if (!code) {
-      throw new Error("Bullhorn authorize redirect did not include authorization code");
-    }
-
-    return code;
+    throw new Error(
+      `Bullhorn authorize exceeded redirect limit (${maxHops}) without authorization code`,
+    );
   }
 
   async getAccessToken(authCode) {
@@ -74,7 +119,13 @@ class BullhornClient {
     };
   }
 
-  async searchCandidates({ restUrl, bhRestToken, fromEpochSeconds, toEpochSeconds }) {
+  async searchCandidates({
+    restUrl,
+    bhRestToken,
+    fromEpochSeconds,
+    toEpochSeconds,
+    candidateId,
+  }) {
     const fields = [
       "id",
       "firstName",
@@ -83,7 +134,7 @@ class BullhornClient {
       "mobile",
       "phone2",
       "phone3",
-      "address(state)",
+      "address",
       "dateAdded",
     ].join(",");
 
@@ -91,12 +142,16 @@ class BullhornClient {
     const pageSize = 500;
     let start = 0;
     let total = 0;
+    const query =
+      candidateId && Number.isInteger(candidateId)
+        ? `id:${candidateId}`
+        : `dateAdded[${fromEpochSeconds} TO ${toEpochSeconds}]`;
 
     do {
       const response = await axios.get(`${restUrl}/search/Candidate`, {
         params: {
           BhRestToken: bhRestToken,
-          query: `dateAdded[${fromEpochSeconds} TO ${toEpochSeconds}]`,
+          query,
           fields,
           count: pageSize,
           start,
@@ -112,12 +167,12 @@ class BullhornClient {
     return all;
   }
 
-  async updateCandidateState({ restUrl, bhRestToken, candidateId, state }) {
+  async updateCandidateAddress({ restUrl, bhRestToken, candidateId, addressPatch }) {
     const url = `${restUrl}/entity/Candidate/${candidateId}`;
 
     await axios.post(
       url,
-      { address: { state } },
+      { address: addressPatch },
       { params: { BhRestToken: bhRestToken } },
     );
   }

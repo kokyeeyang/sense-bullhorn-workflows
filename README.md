@@ -7,8 +7,10 @@ Minimal Node.js workflow to:
 3. Read candidate phone numbers (`phone`, `mobile`, `phone2`, `phone3`).
 4. Infer region from phone number:
    - `+1` numbers use US area code (example: `515` -> `IA`).
-   - Non-`+1` numbers use international calling code (example: `+60` -> `MY`).
-5. Update `Candidate.address.state` in Bullhorn with the inferred code.
+   - Non-`+1` numbers use international calling code (example: `+60` -> `Malaysia`).
+5. Update Bullhorn candidate address:
+   - US number -> update `address.state`
+   - Non-US number -> update `address.countryName`
 
 ## Important security note
 
@@ -25,7 +27,9 @@ npm ci
 npm run run:workflow
 ```
 
-`DRY_RUN=true` logs intended updates without writing to Bullhorn.
+`DRY_RUN=true` logs intended updates without writing to Bullhorn, including a simulated post-update candidate object preview.
+`TEST_CANDIDATE_ID=2923234` restricts the run to exactly one candidate by id.
+Each run writes `reports/changes-report-<timestamp>.json` with all affected candidates and field-level changes.
 
 ## Required environment variables
 
@@ -42,6 +46,7 @@ Optional:
 - `BULLHORN_API_VERSION` (default: `*`)
 - `LOOKBACK_HOURS` (default: `60`)
 - `DRY_RUN` (default: `true`)
+- `TEST_CANDIDATE_ID` (optional; when set, query uses `id:<value>` instead of `dateAdded`)
 
 ## GitHub Actions
 
@@ -49,6 +54,7 @@ Workflow file: `.github/workflows/bullhorn-state-sync.yml`
 
 - Scheduled daily at `02:00 UTC` (10:00 AM Malaysia time, UTC+8).
 - Can also run manually with `workflow_dispatch`.
+- Uploads `reports/*.json` as a workflow artifact (`bullhorn-changes-report`).
 
 Add repository secrets with the same names as the env vars above.
 
@@ -58,4 +64,4 @@ Add repository secrets with the same names as the env vars above.
 - `src/bullhornClient.js`: Bullhorn auth/search/update calls.
 - `src/phoneUtils.js`: Phone parsing and mapping logic.
 - `src/areaCodeToState.js`: Area-code -> state map.
-- `src/callingCodeToRegion.js`: International calling-code -> region map.
+- `src/callingCodeToRegion.js`: International calling-code -> country name map.

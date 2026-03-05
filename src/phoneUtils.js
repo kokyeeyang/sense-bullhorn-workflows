@@ -1,5 +1,9 @@
 const { areaCodeToState } = require("./areaCodeToState");
-const { callingCodeToRegion } = require("./callingCodeToRegion");
+const {
+  callingCodeToCountryName,
+  callingCodeToCountryCode,
+  callingCodeToCountryId,
+} = require("./callingCodeToRegion");
 
 function extractAreaCode(value) {
   if (!value || typeof value !== "string") return null;
@@ -24,7 +28,21 @@ function parsePhone(value) {
   if (hasIntlPrefix) {
     for (let len = 3; len >= 1; len -= 1) {
       const code = Number(digits.slice(0, len));
-      if (callingCodeToRegion[code] || code === 1) {
+      if (callingCodeToCountryName[code] || code === 1) {
+        return {
+          digits,
+          countryCallingCode: code,
+          nationalDigits: digits.slice(len),
+        };
+      }
+    }
+  }
+
+  // Some records store international numbers without '+'.
+  if (digits.length >= 8) {
+    for (let len = 3; len >= 1; len -= 1) {
+      const code = Number(digits.slice(0, len));
+      if (callingCodeToCountryName[code]) {
         return {
           digits,
           countryCallingCode: code,
@@ -45,7 +63,7 @@ function parsePhone(value) {
   return null;
 }
 
-function inferStateFromCandidate(candidate) {
+function inferAddressUpdateFromCandidate(candidate) {
   const phoneFields = [candidate.phone, candidate.mobile, candidate.phone2, candidate.phone3];
 
   for (const phone of phoneFields) {
@@ -57,15 +75,26 @@ function inferStateFromCandidate(candidate) {
       const areaCode = parsed.nationalDigits.slice(0, 3);
       const state = areaCodeToState[areaCode];
       if (state) {
-        return { state, areaCode, phoneUsed: phone, mappingType: "us-area-code" };
+        return {
+          addressPatch: { state },
+          areaCode,
+          phoneUsed: phone,
+          mappingType: "us-area-code",
+        };
       }
       continue;
     }
 
-    const region = callingCodeToRegion[parsed.countryCallingCode];
-    if (region) {
+    const countryName = callingCodeToCountryName[parsed.countryCallingCode];
+    if (countryName) {
+      const countryCode = callingCodeToCountryCode[parsed.countryCallingCode] || null;
+      const countryId = callingCodeToCountryId[parsed.countryCallingCode] || null;
+      const addressPatch = { countryName };
+      if (countryCode) addressPatch.countryCode = countryCode;
+      if (countryId) addressPatch.countryID = countryId;
+
       return {
-        state: region,
+        addressPatch,
         callingCode: String(parsed.countryCallingCode),
         phoneUsed: phone,
         mappingType: "country-calling-code",
@@ -76,4 +105,4 @@ function inferStateFromCandidate(candidate) {
   return null;
 }
 
-module.exports = { extractAreaCode, parsePhone, inferStateFromCandidate };
+module.exports = { extractAreaCode, parsePhone, inferAddressUpdateFromCandidate };

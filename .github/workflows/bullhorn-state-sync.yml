@@ -36,4 +36,13 @@ jobs:
           BULLHORN_API_VERSION: ${{ secrets.BULLHORN_API_VERSION }}
           LOOKBACK_HOURS: ${{ secrets.LOOKBACK_HOURS }}
           DRY_RUN: ${{ secrets.DRY_RUN }}
+          TEST_CANDIDATE_ID: ${{ secrets.TEST_CANDIDATE_ID }}
         run: npm run run:workflow
+
+      - name: Upload changes report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bullhorn-changes-report
+          path: reports/*.json
+          if-no-files-found: warn

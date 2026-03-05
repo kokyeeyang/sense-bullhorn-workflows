@@ -1,12 +1,36 @@
 require("dotenv").config();
+const fs = require("node:fs/promises");
+const path = require("node:path");
 
 const { loadConfig } = require("./config");
 const { logger } = require("./logger");
 const { BullhornClient } = require("./bullhornClient");
-const { inferStateFromCandidate } = require("./phoneUtils");
+const { inferAddressUpdateFromCandidate } = require("./phoneUtils");
 
 function epochSecondsFromDate(date) {
   return Math.floor(date.getTime() / 1000);
+}
+
+function getAddressChanges(currentAddress, addressPatch) {
+  const changes = [];
+  for (const [field, newValue] of Object.entries(addressPatch)) {
+    const oldValue = currentAddress?.[field] ?? null;
+    if (oldValue !== newValue) {
+      changes.push({ field, oldValue, newValue });
+    }
+  }
+  return changes;
+}
+
+async function writeChangesReport({ report }) {
+  const reportsDir = path.resolve(process.cwd(), "reports");
+  await fs.mkdir(reportsDir, { recursive: true });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const reportPath = path.join(reportsDir, `changes-report-${timestamp}.json`);
+  await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+
+  return reportPath;
 }
 
 async function run() {
@@ -24,6 +48,7 @@ async function run() {
       toEpoch,
       lookbackHours: config.LOOKBACK_HOURS,
       dryRun: config.DRY_RUN,
+      testCandidateId: config.TEST_CANDIDATE_ID || null,
     },
     "Starting candidate state sync",
   );
@@ -37,6 +62,7 @@ async function run() {
     bhRestToken: session.bhRestToken,
     fromEpochSeconds: fromEpoch,
     toEpochSeconds: toEpoch,
+    candidateId: config.TEST_CANDIDATE_ID,
   });
 
   logger.info({ candidateCount: candidates.length }, "Fetched candidates");
@@ -44,54 +70,93 @@ async function run() {
   let updated = 0;
   let skippedNoMapping = 0;
   let skippedNoChange = 0;
+  const affectedCandidates = [];
 
   for (const candidate of candidates) {
-    const mapped = inferStateFromCandidate(candidate);
+    const mapped = inferAddressUpdateFromCandidate(candidate);
     if (!mapped) {
+      if (config.DRY_RUN) {
+        logger.info(
+          {
+            candidateId: candidate.id,
+            phone: candidate.phone || null,
+            mobile: candidate.mobile || null,
+            phone2: candidate.phone2 || null,
+            phone3: candidate.phone3 || null,
+            candidate,
+          },
+          "DRY_RUN: no mapping found for candidate",
+        );
+      }
       skippedNoMapping += 1;
       continue;
     }
 
-    const currentState = candidate.address?.state || null;
-    if (currentState === mapped.state) {
+    const changes = getAddressChanges(candidate.address, mapped.addressPatch);
+    if (changes.length === 0) {
       skippedNoChange += 1;
       continue;
     }
 
+    const candidatePreview = {
+      ...candidate,
+      address: {
+        ...(candidate.address || {}),
+        ...mapped.addressPatch,
+      },
+    };
+
     if (config.DRY_RUN) {
+      affectedCandidates.push({
+        candidateId: candidate.id,
+        mode: "dry-run",
+        mappingType: mapped.mappingType,
+        areaCode: mapped.areaCode || null,
+        callingCode: mapped.callingCode || null,
+        changes,
+      });
+
       logger.info(
         {
           candidateId: candidate.id,
-          oldState: currentState,
-          newState: mapped.state,
+          changes,
           areaCode: mapped.areaCode,
           callingCode: mapped.callingCode,
           mappingType: mapped.mappingType,
+          candidatePreview,
         },
-        "DRY_RUN: candidate state would be updated",
+        "DRY_RUN: candidate would be updated",
       );
       updated += 1;
       continue;
     }
 
-    await bullhorn.updateCandidateState({
+    await bullhorn.updateCandidateAddress({
       restUrl: session.restUrl,
       bhRestToken: session.bhRestToken,
       candidateId: candidate.id,
-      state: mapped.state,
+      addressPatch: mapped.addressPatch,
+    });
+
+    affectedCandidates.push({
+      candidateId: candidate.id,
+      mode: "updated",
+      mappingType: mapped.mappingType,
+      areaCode: mapped.areaCode || null,
+      callingCode: mapped.callingCode || null,
+      changes,
     });
 
     updated += 1;
     logger.info(
       {
         candidateId: candidate.id,
-        oldState: currentState,
-        newState: mapped.state,
+        changes,
         areaCode: mapped.areaCode,
         callingCode: mapped.callingCode,
         mappingType: mapped.mappingType,
       },
-      "Candidate state updated",
+      "Candidate updated",
     );
   }
 
@@ -99,6 +164,28 @@ async function run() {
     { updated, skippedNoMapping, skippedNoChange, totalCandidates: candidates.length },
     "Candidate state sync finished",
   );
+
+  const report = {
+    generatedAt: new Date().toISOString(),
+    dryRun: config.DRY_RUN,
+    testCandidateId: config.TEST_CANDIDATE_ID || null,
+    window: {
+      fromEpoch,
+      toEpoch,
+      lookbackHours: config.LOOKBACK_HOURS,
+    },
+    totals: {
+      totalCandidates: candidates.length,
+      affectedCandidates: affectedCandidates.length,
+      updated,
+      skippedNoMapping,
+      skippedNoChange,
+    },
+    affectedCandidates,
+  };
+
+  const reportPath = await writeChangesReport({ report });
+  logger.info({ reportPath }, "Changes report written");
 }
 
 run().catch((error) => {
