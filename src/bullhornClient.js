@@ -17,10 +17,56 @@ function redactUrl(rawUrl) {
   }
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 class BullhornClient {
   constructor({ config, logger }) {
     this.config = config;
     this.logger = logger;
+  }
+
+  shouldRetry(error) {
+    const status = error?.response?.status;
+    if (!status) return true;
+    return status === 429 || status >= 500;
+  }
+
+  async requestWithRetry({ label, fn }) {
+    const maxAttempts = this.config.RETRY_MAX_ATTEMPTS;
+    let attempt = 1;
+
+    while (attempt <= maxAttempts) {
+      try {
+        return await fn();
+      } catch (error) {
+        const retryable = this.shouldRetry(error);
+        const isLastAttempt = attempt === maxAttempts;
+
+        if (!retryable || isLastAttempt) {
+          throw error;
+        }
+
+        const jitterMs = Math.floor(Math.random() * 100);
+        const delayMs =
+          this.config.RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1) + jitterMs;
+
+        this.logger.warn(
+          {
+            label,
+            attempt,
+            maxAttempts,
+            delayMs,
+            status: error?.response?.status || null,
+          },
+          "Retrying Bullhorn API call",
+        );
+
+        await sleep(delayMs);
+        attempt += 1;
+      }
+    }
   }
 
   async getAuthorizationCode() {
@@ -38,9 +84,13 @@ class BullhornClient {
     const maxHops = 10;
 
     for (let hop = 0; hop < maxHops; hop += 1) {
-      const response = await axios.get(currentUrl, {
-        maxRedirects: 0,
-        validateStatus: (status) => status >= 200 && status < 400,
+      const response = await this.requestWithRetry({
+        label: "oauth_authorize_hop",
+        fn: () =>
+          axios.get(currentUrl, {
+            maxRedirects: 0,
+            validateStatus: (status) => status >= 200 && status < 400,
+          }),
       });
 
       const currentParsed = new URL(currentUrl);
@@ -85,19 +135,23 @@ class BullhornClient {
 
   async getAccessToken(authCode) {
     const url = `${this.config.BULLHORN_AUTH_BASE_URL}/oauth/token`;
-    const response = await axios.post(
-      url,
-      null,
-      {
-        params: {
-          grant_type: "authorization_code",
-          code: authCode,
-          client_id: this.config.BULLHORN_CLIENT_ID,
-          client_secret: this.config.BULLHORN_CLIENT_SECRET,
-          redirect_uri: this.config.BULLHORN_REDIRECT_URI,
-        },
-      },
-    );
+    const response = await this.requestWithRetry({
+      label: "oauth_token",
+      fn: () =>
+        axios.post(
+          url,
+          null,
+          {
+            params: {
+              grant_type: "authorization_code",
+              code: authCode,
+              client_id: this.config.BULLHORN_CLIENT_ID,
+              client_secret: this.config.BULLHORN_CLIENT_SECRET,
+              redirect_uri: this.config.BULLHORN_REDIRECT_URI,
+            },
+          },
+        ),
+    });
 
     return response.data.access_token;
   }
@@ -106,11 +160,15 @@ class BullhornClient {
     const loginBase = this.config.BULLHORN_API_BASE_URL || this.config.BULLHORN_AUTH_BASE_URL;
     const url = `${loginBase}/rest-services/login`;
 
-    const response = await axios.get(url, {
-      params: {
-        access_token: accessToken,
-        version: this.config.BULLHORN_API_VERSION,
-      },
+    const response = await this.requestWithRetry({
+      label: "rest_login",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            access_token: accessToken,
+            version: this.config.BULLHORN_API_VERSION,
+          },
+        }),
     });
 
     return {
@@ -148,14 +206,18 @@ class BullhornClient {
         : `dateAdded[${fromEpochSeconds} TO ${toEpochSeconds}]`;
 
     do {
-      const response = await axios.get(`${restUrl}/search/Candidate`, {
-        params: {
-          BhRestToken: bhRestToken,
-          query,
-          fields,
-          count: pageSize,
-          start,
-        },
+      const response = await this.requestWithRetry({
+        label: "search_candidates",
+        fn: () =>
+          axios.get(`${restUrl}/search/Candidate`, {
+            params: {
+              BhRestToken: bhRestToken,
+              query,
+              fields,
+              count: pageSize,
+              start,
+            },
+          }),
       });
 
       const { data = [], total: reportedTotal = 0 } = response.data;
@@ -170,11 +232,15 @@ class BullhornClient {
   async updateCandidateAddress({ restUrl, bhRestToken, candidateId, addressPatch }) {
     const url = `${restUrl}/entity/Candidate/${candidateId}`;
 
-    await axios.post(
-      url,
-      { address: addressPatch },
-      { params: { BhRestToken: bhRestToken } },
-    );
+    await this.requestWithRetry({
+      label: "update_candidate_address",
+      fn: () =>
+        axios.post(
+          url,
+          { address: addressPatch },
+          { params: { BhRestToken: bhRestToken } },
+        ),
+    });
   }
 }
 

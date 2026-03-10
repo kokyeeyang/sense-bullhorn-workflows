@@ -37,6 +37,9 @@ jobs:
           LOOKBACK_HOURS: ${{ secrets.LOOKBACK_HOURS }}
           DRY_RUN: ${{ secrets.DRY_RUN }}
           TEST_CANDIDATE_ID: ${{ secrets.TEST_CANDIDATE_ID }}
+          RETRY_MAX_ATTEMPTS: ${{ secrets.RETRY_MAX_ATTEMPTS }}
+          RETRY_BASE_DELAY_MS: ${{ secrets.RETRY_BASE_DELAY_MS }}
+          UPDATE_DELAY_MS: ${{ secrets.UPDATE_DELAY_MS }}
         run: npm run run:workflow
 
       - name: Upload changes report

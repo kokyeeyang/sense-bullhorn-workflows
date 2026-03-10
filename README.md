@@ -7,10 +7,10 @@ Minimal Node.js workflow to:
 3. Read candidate phone numbers (`phone`, `mobile`, `phone2`, `phone3`).
 4. Infer region from phone number:
    - `+1` numbers use US area code (example: `515` -> `IA`).
-   - Non-`+1` numbers use international calling code (example: `+60` -> `Malaysia`).
+   - Non-US normalization uses `address.countryID` mapping (example: `2291` -> `MY` / `Malaysia`).
 5. Update Bullhorn candidate address:
    - US number -> update `address.state`
-   - Non-US number -> update `address.countryName`
+   - Non-US candidate -> update `address.countryCode` and `address.countryName` from `address.countryID`
 
 ## Important security note
 
@@ -47,6 +47,9 @@ Optional:
 - `LOOKBACK_HOURS` (default: `60`)
 - `DRY_RUN` (default: `true`)
 - `TEST_CANDIDATE_ID` (optional; when set, query uses `id:<value>` instead of `dateAdded`)
+- `RETRY_MAX_ATTEMPTS` (default: `4`; retries on `429` and `5xx`)
+- `RETRY_BASE_DELAY_MS` (default: `500`; exponential backoff base delay)
+- `UPDATE_DELAY_MS` (default: `150`; delay between live update calls)
 
 ## GitHub Actions
 
@@ -64,4 +67,4 @@ Add repository secrets with the same names as the env vars above.
 - `src/bullhornClient.js`: Bullhorn auth/search/update calls.
 - `src/phoneUtils.js`: Phone parsing and mapping logic.
 - `src/areaCodeToState.js`: Area-code -> state map.
-- `src/callingCodeToRegion.js`: International calling-code -> country name map.
+- `src/countryIdToCountry.js`: CountryID -> `{ countryCode, countryName }` map.

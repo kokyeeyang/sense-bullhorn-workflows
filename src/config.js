@@ -23,6 +23,9 @@ const configSchema = z.object({
   LOOKBACK_HOURS: z.coerce.number().int().positive().default(60),
   DRY_RUN: envBoolean,
   TEST_CANDIDATE_ID: z.coerce.number().int().positive().optional(),
+  RETRY_MAX_ATTEMPTS: z.coerce.number().int().positive().default(4),
+  RETRY_BASE_DELAY_MS: z.coerce.number().int().positive().default(500),
+  UPDATE_DELAY_MS: z.coerce.number().int().min(0).default(150),
 });
 
 function loadConfig() {

@@ -1,9 +1,5 @@
-const { areaCodeToState } = require("./areaCodeToState");
-const {
-  callingCodeToCountryName,
-  callingCodeToCountryCode,
-  callingCodeToCountryId,
-} = require("./callingCodeToRegion");
+﻿const { areaCodeToState } = require("./areaCodeToState");
+const { countryIdToCountry } = require("./countryIdToCountry");
 
 function extractAreaCode(value) {
   if (!value || typeof value !== "string") return null;
@@ -26,38 +22,38 @@ function parsePhone(value) {
   const hasIntlPrefix = value.trim().startsWith("+") || value.trim().startsWith("00");
 
   if (hasIntlPrefix) {
-    for (let len = 3; len >= 1; len -= 1) {
-      const code = Number(digits.slice(0, len));
-      if (callingCodeToCountryName[code] || code === 1) {
-        return {
-          digits,
-          countryCallingCode: code,
-          nationalDigits: digits.slice(len),
-        };
-      }
+    if (digits.startsWith("1") && digits.length >= 11) {
+      return {
+        digits,
+        countryCallingCode: 1,
+        nationalDigits: digits.slice(1),
+      };
     }
+
+    return {
+      digits,
+      countryCallingCode: null,
+      nationalDigits: digits,
+    };
   }
 
-  // Some records store international numbers without '+'.
-  if (digits.length >= 8) {
-    for (let len = 3; len >= 1; len -= 1) {
-      const code = Number(digits.slice(0, len));
-      if (callingCodeToCountryName[code]) {
-        return {
-          digits,
-          countryCallingCode: code,
-          nationalDigits: digits.slice(len),
-        };
-      }
-    }
-  }
-
-  // Fallback for local formatting without explicit +1.
   if (digits.length === 10) {
     return { digits, countryCallingCode: 1, nationalDigits: digits };
   }
   if (digits.length === 11 && digits.startsWith("1")) {
     return { digits, countryCallingCode: 1, nationalDigits: digits.slice(1) };
+  }
+
+  if (/^04\d{8}$/.test(digits)) {
+    return { digits, countryCallingCode: null, nationalDigits: digits };
+  }
+
+  if (digits.length >= 11) {
+    return {
+      digits,
+      countryCallingCode: null,
+      nationalDigits: digits,
+    };
   }
 
   return null;
@@ -82,24 +78,20 @@ function inferAddressUpdateFromCandidate(candidate) {
           mappingType: "us-area-code",
         };
       }
-      continue;
     }
+  }
 
-    const countryName = callingCodeToCountryName[parsed.countryCallingCode];
-    if (countryName) {
-      const countryCode = callingCodeToCountryCode[parsed.countryCallingCode] || null;
-      const countryId = callingCodeToCountryId[parsed.countryCallingCode] || null;
-      const addressPatch = { countryName };
-      if (countryCode) addressPatch.countryCode = countryCode;
-      if (countryId) addressPatch.countryID = countryId;
-
-      return {
-        addressPatch,
-        callingCode: String(parsed.countryCallingCode),
-        phoneUsed: phone,
-        mappingType: "country-calling-code",
-      };
-    }
+  const countryId = Number(candidate.address?.countryID || 0);
+  const mappedCountry = countryIdToCountry[countryId];
+  if (mappedCountry && mappedCountry.countryCode !== "US") {
+    return {
+      addressPatch: {
+        countryID: countryId,
+        countryCode: mappedCountry.countryCode,
+        countryName: mappedCountry.countryName,
+      },
+      mappingType: "country-id",
+    };
   }
 
   return null;

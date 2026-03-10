@@ -11,6 +11,10 @@ function epochSecondsFromDate(date) {
   return Math.floor(date.getTime() / 1000);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function getAddressChanges(currentAddress, addressPatch) {
   const changes = [];
   for (const [field, newValue] of Object.entries(addressPatch)) {
@@ -49,6 +53,9 @@ async function run() {
       lookbackHours: config.LOOKBACK_HOURS,
       dryRun: config.DRY_RUN,
       testCandidateId: config.TEST_CANDIDATE_ID || null,
+      retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
+      retryBaseDelayMs: config.RETRY_BASE_DELAY_MS,
+      updateDelayMs: config.UPDATE_DELAY_MS,
     },
     "Starting candidate state sync",
   );
@@ -158,6 +165,10 @@ async function run() {
       },
       "Candidate updated",
     );
+
+    if (config.UPDATE_DELAY_MS > 0) {
+      await sleep(config.UPDATE_DELAY_MS);
+    }
   }
 
   logger.info(

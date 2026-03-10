@@ -15,18 +15,34 @@ test("maps US +1 number by area code", () => {
   assert.equal(result.mappingType, "us-area-code");
 });
 
-test("maps international number by country calling code", () => {
+test("maps non-US by countryID", () => {
   const result = inferAddressUpdateFromCandidate({
-    phone: "+60 12-345 6789",
+    phone: null,
     mobile: null,
     phone2: null,
     phone3: null,
+    address: { countryID: 2291 },
   });
 
   assert.equal(result.addressPatch.countryName, "Malaysia");
   assert.equal(result.addressPatch.countryCode, "MY");
   assert.equal(result.addressPatch.countryID, 2291);
-  assert.equal(result.mappingType, "country-calling-code");
+  assert.equal(result.mappingType, "country-id");
+});
+
+test("maps AU local mobile format with countryID to Australia", () => {
+  const result = inferAddressUpdateFromCandidate({
+    phone: "0401000000",
+    mobile: null,
+    phone2: null,
+    phone3: null,
+    address: { countryID: 2194 },
+  });
+
+  assert.equal(result.addressPatch.countryName, "Australia");
+  assert.equal(result.addressPatch.countryCode, "AU");
+  assert.equal(result.addressPatch.countryID, 2194);
+  assert.equal(result.mappingType, "country-id");
 });
 
 test("returns null if no mapping found", () => {
