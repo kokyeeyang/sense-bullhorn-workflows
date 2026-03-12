@@ -25,14 +25,14 @@ jobs:
         run: npm ci
 
       - name: Run workflow
-       env:
-           BULLHORN_CLIENT_ID: ${{ secrets.BULLHORN_CLIENT_ID }}
-           BULLHORN_CLIENT_SECRET: ${{ secrets.BULLHORN_CLIENT_SECRET }}
-           BULLHORN_USERNAME: ${{ secrets.BULLHORN_USERNAME }}
-           BULLHORN_PASSWORD: ${{ secrets.BULLHORN_PASSWORD }}
-           BULLHORN_REDIRECT_URI: ${{ secrets.BULLHORN_REDIRECT_URI }}
-           DRY_RUN: ${{ secrets.DRY_RUN }}
-         run: npm run run:workflow
+        env:
+          BULLHORN_CLIENT_ID: ${{ secrets.BULLHORN_CLIENT_ID }}
+          BULLHORN_CLIENT_SECRET: ${{ secrets.BULLHORN_CLIENT_SECRET }}
+          BULLHORN_USERNAME: ${{ secrets.BULLHORN_USERNAME }}
+          BULLHORN_PASSWORD: ${{ secrets.BULLHORN_PASSWORD }}
+          BULLHORN_REDIRECT_URI: ${{ secrets.BULLHORN_REDIRECT_URI }}
+          DRY_RUN: ${{ secrets.DRY_RUN }}
+        run: npm run run:workflow
 
       - name: Upload changes report
         if: always()
