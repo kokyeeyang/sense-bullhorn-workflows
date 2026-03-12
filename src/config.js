@@ -1,5 +1,12 @@
 const { z } = require("zod");
 
+function emptyStringToUndefined(value) {
+  if (typeof value === "string" && value.trim() === "") {
+    return undefined;
+  }
+  return value;
+}
+
 const envBoolean = z.preprocess((value) => {
   if (value === undefined || value === null || value === "") return true;
   if (typeof value === "boolean") return value;
@@ -11,21 +18,40 @@ const envBoolean = z.preprocess((value) => {
   return value;
 }, z.boolean());
 
+const optionalPositiveInt = z.preprocess(
+  emptyStringToUndefined,
+  z.coerce.number().int().positive().optional(),
+);
+
+const optionalUrl = z.preprocess(emptyStringToUndefined, z.string().url().optional());
+
+const urlWithDefault = (defaultValue) =>
+  z.preprocess(emptyStringToUndefined, z.string().url().default(defaultValue));
+
+const stringWithDefault = (defaultValue) =>
+  z.preprocess(emptyStringToUndefined, z.string().default(defaultValue));
+
+const positiveIntWithDefault = (defaultValue) =>
+  z.preprocess(emptyStringToUndefined, z.coerce.number().int().positive().default(defaultValue));
+
+const nonNegativeIntWithDefault = (defaultValue) =>
+  z.preprocess(emptyStringToUndefined, z.coerce.number().int().min(0).default(defaultValue));
+
 const configSchema = z.object({
   BULLHORN_CLIENT_ID: z.string().min(1),
   BULLHORN_CLIENT_SECRET: z.string().min(1),
   BULLHORN_USERNAME: z.string().min(1),
   BULLHORN_PASSWORD: z.string().min(1),
-  BULLHORN_AUTH_BASE_URL: z.string().url().default("https://rest.bullhornstaffing.com"),
-  BULLHORN_API_BASE_URL: z.string().url().optional(),
+  BULLHORN_AUTH_BASE_URL: urlWithDefault("https://rest.bullhornstaffing.com"),
+  BULLHORN_API_BASE_URL: optionalUrl,
   BULLHORN_REDIRECT_URI: z.string().url(),
-  BULLHORN_API_VERSION: z.string().default("*"),
-  LOOKBACK_HOURS: z.coerce.number().int().positive().default(60),
+  BULLHORN_API_VERSION: stringWithDefault("*"),
+  LOOKBACK_HOURS: positiveIntWithDefault(60),
   DRY_RUN: envBoolean,
-  TEST_CANDIDATE_ID: z.coerce.number().int().positive().optional(),
-  RETRY_MAX_ATTEMPTS: z.coerce.number().int().positive().default(4),
-  RETRY_BASE_DELAY_MS: z.coerce.number().int().positive().default(500),
-  UPDATE_DELAY_MS: z.coerce.number().int().min(0).default(150),
+  TEST_CANDIDATE_ID: optionalPositiveInt,
+  RETRY_MAX_ATTEMPTS: positiveIntWithDefault(4),
+  RETRY_BASE_DELAY_MS: positiveIntWithDefault(500),
+  UPDATE_DELAY_MS: nonNegativeIntWithDefault(150),
 });
 
 function loadConfig() {

@@ -1,6 +1,3 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
-
 const { inferAddressUpdateFromCandidate } = require("../src/phoneUtils");
 
 test("maps US +1 number by area code", () => {
@@ -11,8 +8,8 @@ test("maps US +1 number by area code", () => {
     phone3: null,
   });
 
-  assert.equal(result.addressPatch.state, "IA");
-  assert.equal(result.mappingType, "us-area-code");
+  expect(result.addressPatch.state).toBe("IA");
+  expect(result.mappingType).toBe("us-area-code");
 });
 
 test("maps non-US by countryID", () => {
@@ -24,10 +21,10 @@ test("maps non-US by countryID", () => {
     address: { countryID: 2291 },
   });
 
-  assert.equal(result.addressPatch.countryName, "Malaysia");
-  assert.equal(result.addressPatch.countryCode, "MY");
-  assert.equal(result.addressPatch.countryID, 2291);
-  assert.equal(result.mappingType, "country-id");
+  expect(result.addressPatch.countryName).toBe("Malaysia");
+  expect(result.addressPatch.countryCode).toBe("MY");
+  expect(result.addressPatch.countryID).toBe(2291);
+  expect(result.mappingType).toBe("country-id");
 });
 
 test("maps AU local mobile format with countryID to Australia", () => {
@@ -39,10 +36,10 @@ test("maps AU local mobile format with countryID to Australia", () => {
     address: { countryID: 2194 },
   });
 
-  assert.equal(result.addressPatch.countryName, "Australia");
-  assert.equal(result.addressPatch.countryCode, "AU");
-  assert.equal(result.addressPatch.countryID, 2194);
-  assert.equal(result.mappingType, "country-id");
+  expect(result.addressPatch.countryName).toBe("Australia");
+  expect(result.addressPatch.countryCode).toBe("AU");
+  expect(result.addressPatch.countryID).toBe(2194);
+  expect(result.mappingType).toBe("country-id");
 });
 
 test("returns null if no mapping found", () => {
@@ -53,5 +50,5 @@ test("returns null if no mapping found", () => {
     phone3: null,
   });
 
-  assert.equal(result, null);
+  expect(result).toBeNull();
 });

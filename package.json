@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "run:workflow": "node src/index.js",
-    "test": "node --test"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "eslint": "^10.0.2",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.14"
   }
 }
