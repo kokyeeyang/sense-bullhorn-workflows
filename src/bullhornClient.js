@@ -177,6 +177,56 @@ class BullhornClient {
     };
   }
 
+  async upsertEventSubscription({
+    restUrl,
+    bhRestToken,
+    subscriptionId,
+    entityName,
+    eventType = "UPDATED",
+  }) {
+    const url = `${restUrl}/event/subscription/${subscriptionId}`;
+
+    const response = await this.requestWithRetry({
+      label: "upsert_event_subscription",
+      fn: () =>
+        axios.put(
+          url,
+          null,
+          {
+            params: {
+              BhRestToken: bhRestToken,
+              type: eventType,
+              names: entityName,
+            },
+          },
+        ),
+    });
+
+    return response.data;
+  }
+
+  async consumeEvents({
+    restUrl,
+    bhRestToken,
+    subscriptionId,
+    maxEvents,
+  }) {
+    const url = `${restUrl}/event/subscription/${subscriptionId}`;
+
+    const response = await this.requestWithRetry({
+      label: "consume_events",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            maxEvents,
+          },
+        }),
+    });
+
+    return response.data;
+  }
+
   async searchCandidates({
     restUrl,
     bhRestToken,
@@ -238,6 +288,75 @@ class BullhornClient {
         axios.post(
           url,
           { address: addressPatch },
+          { params: { BhRestToken: bhRestToken } },
+        ),
+    });
+  }
+
+  async getPlacement({ restUrl, bhRestToken, placementId }) {
+    const url = `${restUrl}/entity/Placement/${placementId}`;
+
+    const response = await this.requestWithRetry({
+      label: "get_placement",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            fields: [
+              "id",
+              "status",
+              "payRate",
+              "dateEnd",
+              "candidate(id,companyName,occupation,status,dateAvailable,hourlyRateLow)",
+              "clientCorporation(name)",
+              "jobOrder(title)",
+            ].join(","),
+          },
+        }),
+    });
+
+    return response.data.data;
+  }
+
+  async getPlacementStatusChange({ restUrl, bhRestToken, transactionId }) {
+    const url = `${restUrl}/query/PlacementEditHistory`;
+
+    const response = await this.requestWithRetry({
+      label: "get_placement_status_change",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            where: `transactionID='${transactionId}'`,
+            fields: "transactionID,fieldChanges(columnName,oldValue,newValue)",
+            count: 10,
+          },
+        }),
+    });
+
+    const records = response.data.data || [];
+    for (const record of records) {
+      const fieldChanges = record.fieldChanges || [];
+      const statusChange = fieldChanges.find(
+        (change) => (change.columnName || change.fieldName) === "status",
+      );
+      if (statusChange) {
+        return statusChange;
+      }
+    }
+
+    return null;
+  }
+
+  async updateCandidate({ restUrl, bhRestToken, candidateId, patch }) {
+    const url = `${restUrl}/entity/Candidate/${candidateId}`;
+
+    await this.requestWithRetry({
+      label: "update_candidate",
+      fn: () =>
+        axios.post(
+          url,
+          patch,
           { params: { BhRestToken: bhRestToken } },
         ),
     });

@@ -12,6 +12,18 @@ Minimal Node.js workflow to:
    - US number -> update `address.state`
    - Non-US candidate -> update `address.countryCode` and `address.countryName` from `address.countryID`
 
+This repo also includes a second automation for placement status transitions:
+
+1. Subscribe to Bullhorn `Placement` update events.
+2. Consume recent events from Bullhorn event subscriptions.
+3. Confirm the exact status transition was `qc approved -> approved`.
+4. Update the related candidate:
+   - `companyName` -> placement `clientCorporation.name`
+   - `occupation` -> placement `jobOrder.title`
+   - `status` -> `Placed by us`
+   - `dateAvailable` -> `dateEnd + 1 day`
+   - `hourlyRateLow` -> placement `payRate`
+
 ## Important security note
 
 The credentials shared in chat should be treated as compromised. Rotate all Bullhorn `client_secret`, user password, access tokens, and any related secrets before using this in production.
@@ -25,6 +37,7 @@ The credentials shared in chat should be treated as compromised. Rotate all Bull
 ```bash
 npm ci
 npm run run:workflow
+npm run run:placement-status-sync
 ```
 
 `DRY_RUN=true` logs intended updates without writing to Bullhorn, including a simulated post-update candidate object preview.
@@ -47,6 +60,8 @@ Optional:
 - `LOOKBACK_HOURS` (default: `60`)
 - `DRY_RUN` (default: `true`)
 - `TEST_CANDIDATE_ID` (optional; when set, query uses `id:<value>` instead of `dateAdded`)
+- `PLACEMENT_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-status-sync`)
+- `PLACEMENT_EVENT_MAX_EVENTS` (default: `100`)
 - `RETRY_MAX_ATTEMPTS` (default: `4`; retries on `429` and `5xx`)
 - `RETRY_BASE_DELAY_MS` (default: `500`; exponential backoff base delay)
 - `UPDATE_DELAY_MS` (default: `150`; delay between live update calls)
@@ -59,12 +74,22 @@ Workflow file: `.github/workflows/bullhorn-state-sync.yml`
 - Can also run manually with `workflow_dispatch`.
 - Uploads `reports/*.json` as a workflow artifact (`bullhorn-changes-report`).
 
+Workflow file: `.github/workflows/bullhorn-placement-status-sync.yml`
+
+- Scheduled every 5 minutes.
+- Can also run manually with `workflow_dispatch`.
+- Uses Bullhorn event subscriptions for `Placement UPDATED`.
+- Uploads `reports/placement-status-report-*.json` as a workflow artifact (`bullhorn-placement-status-report`).
+
 Add repository secrets with the same names as the env vars above.
 
 ## Files
 
 - `src/index.js`: Main runner.
+- `src/placementStatusSync.js`: Placement status transition runner.
 - `src/bullhornClient.js`: Bullhorn auth/search/update calls.
 - `src/phoneUtils.js`: Phone parsing and mapping logic.
+- `src/placementUtils.js`: Placement transition mapping helpers.
 - `src/areaCodeToState.js`: Area-code -> state map.
+- `src/callingCodeToCountryId.js`: Calling-code -> countryID map.
 - `src/countryIdToCountry.js`: CountryID -> `{ countryCode, countryName }` map.

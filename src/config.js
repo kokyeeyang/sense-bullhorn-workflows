@@ -49,6 +49,8 @@ const configSchema = z.object({
   LOOKBACK_HOURS: positiveIntWithDefault(60),
   DRY_RUN: envBoolean,
   TEST_CANDIDATE_ID: optionalPositiveInt,
+  PLACEMENT_EVENT_SUBSCRIPTION_ID: stringWithDefault("sense-placement-status-sync"),
+  PLACEMENT_EVENT_MAX_EVENTS: positiveIntWithDefault(100),
   RETRY_MAX_ATTEMPTS: positiveIntWithDefault(4),
   RETRY_BASE_DELAY_MS: positiveIntWithDefault(500),
   UPDATE_DELAY_MS: nonNegativeIntWithDefault(150),

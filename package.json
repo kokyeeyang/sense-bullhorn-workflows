@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "run:workflow": "node src/index.js",
+    "run:placement-status-sync": "node src/placementStatusSync.js",
     "test": "jest"
   },
   "repository": {
