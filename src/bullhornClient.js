@@ -195,8 +195,9 @@ class BullhornClient {
           {
             params: {
               BhRestToken: bhRestToken,
-              type: eventType,
+              type: "entity",
               names: entityName,
+              eventTypes: eventType,
             },
           },
         ),
