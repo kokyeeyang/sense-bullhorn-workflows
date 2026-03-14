@@ -185,23 +185,36 @@ class BullhornClient {
     eventType = "UPDATED",
   }) {
     const url = `${restUrl}/event/subscription/${subscriptionId}`;
-
-    const response = await this.requestWithRetry({
-      label: "upsert_event_subscription",
-      fn: () =>
-        axios.put(
-          url,
-          null,
-          {
-            params: {
-              BhRestToken: bhRestToken,
-              type: "entity",
-              names: entityName,
-              eventTypes: eventType,
+    let response;
+    try {
+      response = await this.requestWithRetry({
+        label: "upsert_event_subscription",
+        fn: () =>
+          axios.put(
+            url,
+            null,
+            {
+              params: {
+                BhRestToken: bhRestToken,
+                type: "entity",
+                names: entityName,
+                eventTypes: eventType,
+              },
             },
-          },
-        ),
-    });
+          ),
+      });
+    } catch (error) {
+      const status = error?.response?.status;
+      const errorMessage = error?.response?.data?.errorMessage || "";
+      if (status === 400 && /already exists/i.test(errorMessage)) {
+        this.logger.info(
+          { subscriptionId, entityName, eventType },
+          "Bullhorn event subscription already exists; reusing subscription",
+        );
+        return { alreadyExists: true, subscriptionId };
+      }
+      throw error;
+    }
 
     return response.data;
   }
