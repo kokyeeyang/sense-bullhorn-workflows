@@ -24,6 +24,14 @@ This repo also includes a second automation for placement status transitions:
    - `dateAvailable` -> `dateEnd + 1 day`
    - `hourlyRateLow` -> placement `payRate`
 
+It also includes a client corporation cleanup automation:
+
+1. Search `ClientCorporation` records added on or after a cutoff date.
+2. Wait until at least 24 hours have passed since `dateAdded`.
+3. Keep only records where `customText7` is empty or null.
+4. Exclude records whose `name` starts with a blocked prefix list.
+5. Update `customText7` to `360`.
+
 ## Important security note
 
 The credentials shared in chat should be treated as compromised. Rotate all Bullhorn `client_secret`, user password, access tokens, and any related secrets before using this in production.
@@ -38,6 +46,7 @@ The credentials shared in chat should be treated as compromised. Rotate all Bull
 npm ci
 npm run run:workflow
 npm run run:placement-status-sync
+npm run run:client-corporation-360-sync
 ```
 
 `DRY_RUN=true` logs intended updates without writing to Bullhorn, including a simulated post-update candidate object preview.
@@ -58,8 +67,11 @@ Optional:
 - `BULLHORN_API_BASE_URL` (if your login endpoint differs)
 - `BULLHORN_API_VERSION` (default: `*`)
 - `LOOKBACK_HOURS` (default: `60`)
+- `CLIENT_CORPORATION_360_CUTOFF_DATE` (default: `2023-12-01`)
+- `CLIENT_CORPORATION_360_DELAY_HOURS` (default: `24`)
 - `DRY_RUN` (default: `true`)
 - `TEST_CANDIDATE_ID` (optional; when set, query uses `id:<value>` instead of `dateAdded`)
+- `TEST_CLIENT_CORPORATION_ID` (optional; when set, query uses `id:<value>` instead of the cutoff date search)
 - `PLACEMENT_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-status-sync`)
 - `PLACEMENT_EVENT_MAX_EVENTS` (default: `100`)
 - `RETRY_MAX_ATTEMPTS` (default: `4`; retries on `429` and `5xx`)
@@ -80,6 +92,12 @@ Workflow file: `.github/workflows/bullhorn-placement-status-sync.yml`
 - Can also run manually with `workflow_dispatch`.
 - Uses Bullhorn event subscriptions for `Placement UPDATED`.
 - Uploads `reports/placement-status-report-*.json` as a workflow artifact (`bullhorn-placement-status-report`).
+
+Workflow file: `.github/workflows/bullhorn-client-corporation-360-sync.yml`
+
+- Scheduled every 5 minutes.
+- Can also run manually with `workflow_dispatch`.
+- Uploads `reports/client-corporation-360-report-*.json` as a workflow artifact (`bullhorn-client-corporation-360-report`).
 
 Add repository secrets with the same names as the env vars above.
 
@@ -119,10 +137,12 @@ Notes:
 
 - `src/index.js`: Main runner.
 - `src/placementStatusSync.js`: Placement status transition runner.
+- `src/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
 - `functionApp.js`: Azure Functions timer entrypoints.
 - `src/bullhornClient.js`: Bullhorn auth/search/update calls.
 - `src/phoneUtils.js`: Phone parsing and mapping logic.
 - `src/placementUtils.js`: Placement transition mapping helpers.
+- `src/clientCorporation360Utils.js`: Client corporation cleanup filters and patch helpers.
 - `src/areaCodeToState.js`: Area-code -> state map.
 - `src/callingCodeToCountryId.js`: Calling-code -> countryID map.
 - `src/countryIdToCountry.js`: CountryID -> `{ countryCode, countryName }` map.
