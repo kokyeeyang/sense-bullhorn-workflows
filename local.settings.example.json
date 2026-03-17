@@ -1,0 +1,25 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AZURE_CANDIDATE_SYNC_SCHEDULE": "0 0 2 * * *",
+    "AZURE_PLACEMENT_STATUS_SYNC_SCHEDULE": "0 */5 * * * *",
+    "BULLHORN_CLIENT_ID": "",
+    "BULLHORN_CLIENT_SECRET": "",
+    "BULLHORN_USERNAME": "",
+    "BULLHORN_PASSWORD": "",
+    "BULLHORN_AUTH_BASE_URL": "https://rest.bullhornstaffing.com",
+    "BULLHORN_API_BASE_URL": "",
+    "BULLHORN_REDIRECT_URI": "",
+    "BULLHORN_API_VERSION": "*",
+    "LOOKBACK_HOURS": "60",
+    "DRY_RUN": "true",
+    "TEST_CANDIDATE_ID": "",
+    "PLACEMENT_EVENT_SUBSCRIPTION_ID": "sense-placement-status-sync",
+    "PLACEMENT_EVENT_MAX_EVENTS": "100",
+    "RETRY_MAX_ATTEMPTS": "4",
+    "RETRY_BASE_DELAY_MS": "500",
+    "UPDATE_DELAY_MS": "150"
+  }
+}

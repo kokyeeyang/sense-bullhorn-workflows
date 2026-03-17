@@ -83,10 +83,43 @@ Workflow file: `.github/workflows/bullhorn-placement-status-sync.yml`
 
 Add repository secrets with the same names as the env vars above.
 
+## Azure Functions
+
+Cheapest practical setup:
+
+- 1 Azure Function App on the `Consumption` plan
+- 1 Storage Account
+- 1 Application Insights resource with conservative retention
+
+This repo supports Azure Functions and GitHub Actions side by side:
+
+- GitHub Actions continues using `npm run run:workflow` and `npm run run:placement-status-sync`
+- Azure Functions uses `functionApp.js` timer triggers that call the same exported `run()` functions
+
+Azure schedules:
+
+- `AZURE_CANDIDATE_SYNC_SCHEDULE` default: `0 0 2 * * *`
+- `AZURE_PLACEMENT_STATUS_SYNC_SCHEDULE` default: `0 */5 * * * *`
+
+Azure local/dev setup:
+
+1. Copy `local.settings.example.json` to `local.settings.json`
+2. Fill in Bullhorn settings
+3. Install Azure Functions Core Tools locally
+4. Run `npm ci`
+5. Run `npm run start:azure`
+
+Notes:
+
+- Azure timer schedules use NCRONTAB with a seconds field
+- `AzureWebJobsStorage` is required by Azure Functions even though your workflow logic is external to Azure
+- Reports still write to the local `reports/` folder for GitHub Actions and local runs; on Azure that filesystem is temporary, so rely on logs unless you later add Blob Storage output
+
 ## Files
 
 - `src/index.js`: Main runner.
 - `src/placementStatusSync.js`: Placement status transition runner.
+- `functionApp.js`: Azure Functions timer entrypoints.
 - `src/bullhornClient.js`: Bullhorn auth/search/update calls.
 - `src/phoneUtils.js`: Phone parsing and mapping logic.
 - `src/placementUtils.js`: Placement transition mapping helpers.

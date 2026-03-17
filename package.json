@@ -7,6 +7,7 @@
     "start": "node src/index.js",
     "run:workflow": "node src/index.js",
     "run:placement-status-sync": "node src/placementStatusSync.js",
+    "start:azure": "func start",
     "test": "jest"
   },
   "repository": {
@@ -21,6 +22,7 @@
   },
   "homepage": "https://github.com/kokyeeyang/sense-bullhorn-workflows#readme",
   "dependencies": {
+    "@azure/functions": "^4.8.0",
     "axios": "^1.13.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",

@@ -199,15 +199,19 @@ async function run() {
   logger.info({ reportPath }, "Changes report written");
 }
 
-run().catch((error) => {
-  logger.error(
-    {
-      message: error.message,
-      stack: error.stack,
-      responseStatus: error.response?.status,
-      responseData: error.response?.data,
-    },
-    "Candidate state sync failed",
-  );
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  run().catch((error) => {
+    logger.error(
+      {
+        message: error.message,
+        stack: error.stack,
+        responseStatus: error.response?.status,
+        responseData: error.response?.data,
+      },
+      "Candidate state sync failed",
+    );
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { run };
