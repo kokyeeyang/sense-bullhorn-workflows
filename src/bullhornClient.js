@@ -279,6 +279,46 @@ class BullhornClient {
     return all;
   }
 
+  async searchClientCorporations({
+    restUrl,
+    bhRestToken,
+    fromEpochSeconds,
+    clientCorporationId,
+  }) {
+    const fields = ["id", "name", "dateAdded", "customText7"].join(",");
+    const all = [];
+    const pageSize = 500;
+    let start = 0;
+    let total = 0;
+    const query =
+      clientCorporationId && Number.isInteger(clientCorporationId)
+        ? `id:${clientCorporationId}`
+        : `dateAdded[${fromEpochSeconds} TO *]`;
+
+    do {
+      const response = await this.requestWithRetry({
+        label: "search_client_corporations",
+        fn: () =>
+          axios.get(`${restUrl}/search/ClientCorporation`, {
+            params: {
+              BhRestToken: bhRestToken,
+              query,
+              fields,
+              count: pageSize,
+              start,
+            },
+          }),
+      });
+
+      const { data = [], total: reportedTotal = 0 } = response.data;
+      total = reportedTotal;
+      all.push(...data);
+      start += data.length;
+    } while (start < total);
+
+    return all;
+  }
+
   async updateCandidateAddress({ restUrl, bhRestToken, candidateId, addressPatch }) {
     const url = `${restUrl}/entity/Candidate/${candidateId}`;
 
@@ -353,6 +393,20 @@ class BullhornClient {
 
     await this.requestWithRetry({
       label: "update_candidate",
+      fn: () =>
+        axios.post(
+          url,
+          patch,
+          { params: { BhRestToken: bhRestToken } },
+        ),
+    });
+  }
+
+  async updateClientCorporation({ restUrl, bhRestToken, clientCorporationId, patch }) {
+    const url = `${restUrl}/entity/ClientCorporation/${clientCorporationId}`;
+
+    await this.requestWithRetry({
+      label: "update_client_corporation",
       fn: () =>
         axios.post(
           url,
