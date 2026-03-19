@@ -49,6 +49,8 @@ const configSchema = z.object({
   LOOKBACK_HOURS: positiveIntWithDefault(60),
   CLIENT_CORPORATION_360_CUTOFF_DATE: stringWithDefault("2023-12-01"),
   CLIENT_CORPORATION_360_DELAY_HOURS: positiveIntWithDefault(24),
+  CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE: stringWithDefault("2024-01-01"),
+  CLIENT_CORPORATION_KEY_ACCOUNT_DELAY_HOURS: positiveIntWithDefault(24),
   DRY_RUN: envBoolean,
   TEST_CANDIDATE_ID: optionalPositiveInt,
   TEST_CLIENT_CORPORATION_ID: optionalPositiveInt,

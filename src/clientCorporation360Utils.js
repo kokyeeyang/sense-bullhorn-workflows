@@ -121,13 +121,17 @@ function isEmptyCustomText7(value) {
   return value === null || value === undefined || normalizeValue(value) === "";
 }
 
-function isExcludedClientCorporationName(name) {
+function isListedClientCorporationName(name) {
   const normalizedName = normalizeValue(name);
   if (!normalizedName) return false;
 
   return EXCLUDED_CLIENT_CORPORATION_PREFIXES.some((prefix) =>
     normalizedName.startsWith(prefix),
   );
+}
+
+function isExcludedClientCorporationName(name) {
+  return isListedClientCorporationName(name);
 }
 
 function hasClientCorporationDelayPassed(clientCorporation, delayHours, now = Date.now()) {
@@ -143,7 +147,7 @@ function inferClientCorporation360Patch(clientCorporation, { delayHours = 24, no
     return null;
   }
 
-  if (isExcludedClientCorporationName(clientCorporation?.name)) {
+  if (isListedClientCorporationName(clientCorporation?.name)) {
     return null;
   }
 
@@ -176,4 +180,5 @@ module.exports = {
   inferClientCorporation360Patch,
   isEmptyCustomText7,
   isExcludedClientCorporationName,
+  isListedClientCorporationName,
 };
