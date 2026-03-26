@@ -40,6 +40,14 @@ It also includes a client corporation key account cleanup automation:
 4. Include only records whose `name` starts with the listed prefix list.
 5. Update `customText7` to `Key Account`.
 
+It also includes a placement start reminder automation:
+
+1. Query `Placement` records where `dateBegin` falls on the UTC day exactly N days ahead.
+2. Extract each placement's `candidate.id`.
+3. Fetch the candidate to get `owner.id`.
+4. Fetch the owner `CorporateUser` to get the email address.
+5. Build a report grouped by owner email, ready to map into a SparkPost transmission later.
+
 ## Important security note
 
 The credentials shared in chat should be treated as compromised. Rotate all Bullhorn `client_secret`, user password, access tokens, and any related secrets before using this in production.
@@ -54,6 +62,7 @@ The credentials shared in chat should be treated as compromised. Rotate all Bull
 npm ci
 npm run run:workflow
 npm run run:placement-status-sync
+npm run run:placement-start-reminder-sync
 npm run run:client-corporation-360-sync
 npm run run:client-corporation-key-account-sync
 ```
@@ -85,6 +94,10 @@ Optional:
 - `TEST_CLIENT_CORPORATION_ID` (optional; when set, query uses `id:<value>` instead of the cutoff date search)
 - `PLACEMENT_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-status-sync`)
 - `PLACEMENT_EVENT_MAX_EVENTS` (default: `100`)
+- `PLACEMENT_START_REMINDER_DAYS_AHEAD` (default: `4`)
+- `PLACEMENT_START_REMINDER_QUERY_COUNT` (default: `200`)
+- `PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (default: `0`; expands the query window backward for testing)
+- `PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS` (default: `0`; expands the query window forward for testing)
 - `RETRY_MAX_ATTEMPTS` (default: `4`; retries on `429` and `5xx`)
 - `RETRY_BASE_DELAY_MS` (default: `500`; exponential backoff base delay)
 - `UPDATE_DELAY_MS` (default: `150`; delay between live update calls)
@@ -115,6 +128,12 @@ Workflow file: `.github/workflows/bullhorn-client-corporation-key-account-sync.y
 - Scheduled every 5 minutes.
 - Can also run manually with `workflow_dispatch`.
 - Uploads `reports/client-corporation-key-account-report-*.json` as a workflow artifact (`bullhorn-client-corporation-key-account-report`).
+
+Workflow file: `.github/workflows/bullhorn-placement-start-reminder-sync.yml`
+
+- Scheduled daily at `00:00 UTC`.
+- Can also run manually with `workflow_dispatch`.
+- Uploads `reports/placement-start-reminder-report-*.json` as a workflow artifact (`bullhorn-placement-start-reminder-report`).
 
 Add repository secrets with the same names as the env vars above.
 
@@ -154,6 +173,7 @@ Notes:
 
 - `src/index.js`: Main runner.
 - `src/placementStatusSync.js`: Placement status transition runner.
+- `src/placementStartReminderSync.js`: Placement start reminder enrichment runner.
 - `src/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
 - `src/clientCorporationKeyAccountSync.js`: Client corporation `customText7 -> Key Account` cleanup runner.
 - `functionApp.js`: Azure Functions timer entrypoints.

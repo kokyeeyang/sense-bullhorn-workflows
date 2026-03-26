@@ -1,0 +1,47 @@
+name: Bullhorn Placement Start Reminder Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run placement start reminder sync
+        env:
+          BULLHORN_CLIENT_ID: ${{ secrets.BULLHORN_CLIENT_ID }}
+          BULLHORN_CLIENT_SECRET: ${{ secrets.BULLHORN_CLIENT_SECRET }}
+          BULLHORN_USERNAME: ${{ secrets.BULLHORN_USERNAME }}
+          BULLHORN_PASSWORD: ${{ secrets.BULLHORN_PASSWORD }}
+          BULLHORN_REDIRECT_URI: ${{ secrets.BULLHORN_REDIRECT_URI }}
+          DRY_RUN: ${{ secrets.DRY_RUN }}
+          PLACEMENT_START_REMINDER_DAYS_AHEAD: ${{ secrets.PLACEMENT_START_REMINDER_DAYS_AHEAD }}
+          PLACEMENT_START_REMINDER_QUERY_COUNT: ${{ secrets.PLACEMENT_START_REMINDER_QUERY_COUNT }}
+          PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS: ${{ secrets.PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS }}
+          PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS: ${{ secrets.PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS }}
+        run: npm run run:placement-start-reminder-sync
+
+      - name: Upload placement start reminder report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bullhorn-placement-start-reminder-report
+          path: reports/placement-start-reminder-report-*.json
+          if-no-files-found: warn

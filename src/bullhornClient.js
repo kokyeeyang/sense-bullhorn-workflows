@@ -402,6 +402,91 @@ class BullhornClient {
     return null;
   }
 
+  async queryPlacementsByDateBeginRange({
+    restUrl,
+    bhRestToken,
+    startMs,
+    endMs,
+    count = 200,
+  }) {
+    const fields = [
+      "id",
+      "dateBegin",
+      "candidate(id,firstName,lastName)",
+      "clientCorporation(id,name)",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "query_placements_by_date_begin_range",
+        fn: () =>
+          axios.get(`${restUrl}/query/Placement`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `dateBegin>=${startMs} AND dateBegin<${endMs}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
+  async getCandidate({ restUrl, bhRestToken, candidateId }) {
+    const url = `${restUrl}/entity/Candidate/${candidateId}`;
+
+    const response = await this.requestWithRetry({
+      label: "get_candidate",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            fields: [
+              "id",
+              "firstName",
+              "lastName",
+              "email",
+              "dateAdded",
+              "owner(id,firstName,lastName)",
+            ].join(","),
+          },
+        }),
+    });
+
+    return response.data.data;
+  }
+
+  async getCorporateUser({ restUrl, bhRestToken, corporateUserId }) {
+    const url = `${restUrl}/entity/CorporateUser/${corporateUserId}`;
+
+    const response = await this.requestWithRetry({
+      label: "get_corporate_user",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            fields: "id,firstName,lastName,email",
+          },
+        }),
+    });
+
+    return response.data.data;
+  }
+
   async updateCandidate({ restUrl, bhRestToken, candidateId, patch }) {
     const url = `${restUrl}/entity/Candidate/${candidateId}`;
 

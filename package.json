@@ -9,6 +9,7 @@
     "run:client-corporation-360-sync": "node src/clientCorporation360Sync.js",
     "run:client-corporation-key-account-sync": "node src/clientCorporationKeyAccountSync.js",
     "run:placement-status-sync": "node src/placementStatusSync.js",
+    "run:placement-start-reminder-sync": "node src/placementStartReminderSync.js",
     "start:azure": "func start",
     "test": "jest"
   },
