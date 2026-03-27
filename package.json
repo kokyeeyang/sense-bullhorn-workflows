@@ -10,6 +10,8 @@
     "run:client-corporation-key-account-sync": "node src/clientCorporationKeyAccountSync.js",
     "run:placement-status-sync": "node src/placementStatusSync.js",
     "run:placement-start-reminder-sync": "node src/placementStartReminderSync.js",
+    "run:placement-start-reminder-test-send": "node src/placementStartReminderTestSend.js",
+    "run:check-sparkpost-template": "node src/checkSparkPostTemplate.js",
     "start:azure": "func start",
     "test": "jest"
   },

@@ -5,6 +5,8 @@ const path = require("node:path");
 const { loadConfig } = require("./config");
 const { logger } = require("./logger");
 const { BullhornClient } = require("./bullhornClient");
+const { SparkPostClient } = require("./sparkPostClient");
+const { buildSparkPostRecipient } = require("./placementStartReminderUtils");
 
 function buildUtcDayWindow({
   baseDate = new Date(),
@@ -42,9 +44,39 @@ async function writeChangesReport({ report }) {
   return reportPath;
 }
 
+async function writeSparkPostPayloadReport({ payload }) {
+  const reportsDir = path.resolve(process.cwd(), "reports");
+  await fs.mkdir(reportsDir, { recursive: true });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const reportPath = path.join(
+    reportsDir,
+    `placement-start-reminder-sparkpost-payload-${timestamp}.json`,
+  );
+  await fs.writeFile(reportPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+
+  return reportPath;
+}
+
+function validateSparkPostConfig(config) {
+  if (config.DRY_RUN) {
+    return;
+  }
+
+  const missing = [];
+  if (!config.SPARKPOST_API_KEY) missing.push("SPARKPOST_API_KEY");
+  if (!config.SPARKPOST_TEMPLATE_ID) missing.push("SPARKPOST_TEMPLATE_ID");
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required SparkPost config: ${missing.join(", ")}`);
+  }
+}
+
 async function run() {
   const config = loadConfig();
+  validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
+  const sparkPost = new SparkPostClient({ config, logger });
   const window = buildUtcDayWindow({
     daysAhead: config.PLACEMENT_START_REMINDER_DAYS_AHEAD,
     windowBeforeDays: config.PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS,
@@ -61,6 +93,7 @@ async function run() {
       startMs: window.startMs,
       endMs: window.endMs,
       queryCount: config.PLACEMENT_START_REMINDER_QUERY_COUNT,
+      sparkPostTemplateId: config.SPARKPOST_TEMPLATE_ID || null,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
       retryBaseDelayMs: config.RETRY_BASE_DELAY_MS,
     },
@@ -84,8 +117,8 @@ async function run() {
   let skippedMissingCandidateId = 0;
   let skippedMissingOwnerId = 0;
   let skippedMissingOwnerEmail = 0;
-  const placementsWithOwners = [];
-  const recipientMap = new Map();
+  const transformedPlacements = [];
+  const sparkPostRecipients = [];
   const candidateCache = new Map();
   const ownerCache = new Map();
 
@@ -127,59 +160,83 @@ async function run() {
       continue;
     }
 
+    const sparkPostRecipient = buildSparkPostRecipient({
+      placement,
+      recipientEmail: owner.email,
+    });
+
     const reminderItem = {
       placementId: placement.id,
       dateBegin: placement.dateBegin,
-      candidate: {
-        id: candidate.id,
-        firstName: candidate.firstName || null,
-        lastName: candidate.lastName || null,
-        email: candidate.email || null,
-        dateAdded: candidate.dateAdded || null,
-      },
-      clientCorporation: {
-        id: placement?.clientCorporation?.id || null,
-        name: placement?.clientCorporation?.name || null,
-      },
       owner: {
         id: owner.id,
         firstName: owner.firstName || null,
         lastName: owner.lastName || null,
         email: owner.email,
       },
+      sparkPostRecipient,
+      placement: {
+        id: placement.id,
+        dateBegin: placement.dateBegin,
+        candidate: {
+          id: placement?.candidate?.id || candidate.id,
+          firstName: placement?.candidate?.firstName || candidate.firstName || null,
+          lastName: placement?.candidate?.lastName || candidate.lastName || null,
+          email: candidate.email || null,
+          dateAdded: candidate.dateAdded || null,
+        },
+        clientCorporation: {
+          id: placement?.clientCorporation?.id || null,
+          name: placement?.clientCorporation?.name || null,
+          customText10: placement?.clientCorporation?.customText10 || null,
+          customText2: placement?.clientCorporation?.customText2 || null,
+          customText11: placement?.clientCorporation?.customText11 || null,
+        },
+        customText8: placement?.customText8 || null,
+        customText18: placement?.customText18 || null,
+        customText60: placement?.customText60 || null,
+        billingClientContact: {
+          id: placement?.billingClientContact?.id || null,
+          firstName: placement?.billingClientContact?.firstName || null,
+          lastName: placement?.billingClientContact?.lastName || null,
+          customText3: placement?.billingClientContact?.customText3 || null,
+          address: placement?.billingClientContact?.address || null,
+        },
+        jobOrder: {
+          id: placement?.jobOrder?.id || null,
+          owner: placement?.jobOrder?.owner || null,
+        },
+      },
     };
 
-    placementsWithOwners.push(reminderItem);
-
-    if (!recipientMap.has(owner.email)) {
-      recipientMap.set(owner.email, {
-        owner: reminderItem.owner,
-        placements: [],
-      });
-    }
-
-    recipientMap.get(owner.email).placements.push({
-      placementId: reminderItem.placementId,
-      dateBegin: reminderItem.dateBegin,
-      candidate: reminderItem.candidate,
-      clientCorporation: reminderItem.clientCorporation,
-    });
+    transformedPlacements.push(reminderItem);
+    sparkPostRecipients.push(sparkPostRecipient);
   }
 
-  const recipients = Array.from(recipientMap.values()).map((entry) => ({
-    owner: entry.owner,
-    placementCount: entry.placements.length,
-    placements: entry.placements,
-  }));
+  let transmission = null;
+  const sparkPostPayload = {
+    content: {
+      template_id: config.SPARKPOST_TEMPLATE_ID || null,
+    },
+    recipients: sparkPostRecipients,
+  };
+
+  if (!config.DRY_RUN && sparkPostRecipients.length > 0) {
+    transmission = await sparkPost.sendTransmission({
+      templateId: config.SPARKPOST_TEMPLATE_ID,
+      recipients: sparkPostRecipients,
+    });
+  }
 
   logger.info(
     {
       placementCount: placements.length,
-      matchedPlacements: placementsWithOwners.length,
-      recipientCount: recipients.length,
+      matchedPlacements: transformedPlacements.length,
+      recipientCount: sparkPostRecipients.length,
       skippedMissingCandidateId,
       skippedMissingOwnerId,
       skippedMissingOwnerEmail,
+      sparkPostSent: !config.DRY_RUN && sparkPostRecipients.length > 0,
     },
     "Placement start reminder sync finished",
   );
@@ -197,18 +254,29 @@ async function run() {
     },
     totals: {
       totalPlacements: placements.length,
-      matchedPlacements: placementsWithOwners.length,
-      recipients: recipients.length,
+      matchedPlacements: transformedPlacements.length,
+      recipients: sparkPostRecipients.length,
       skippedMissingCandidateId,
       skippedMissingOwnerId,
       skippedMissingOwnerEmail,
     },
-    recipients,
-    placementsWithOwners,
+    sparkPost: {
+      templateId: config.SPARKPOST_TEMPLATE_ID || null,
+      recipientCount: sparkPostRecipients.length,
+      sent: !config.DRY_RUN && sparkPostRecipients.length > 0,
+      transmission,
+      payload: sparkPostPayload,
+    },
+    recipients: sparkPostRecipients,
+    placements: transformedPlacements,
   };
 
   const reportPath = await writeChangesReport({ report });
+  const sparkPostPayloadReportPath = await writeSparkPostPayloadReport({
+    payload: sparkPostPayload,
+  });
   logger.info({ reportPath }, "Placement start reminder report written");
+  logger.info({ sparkPostPayloadReportPath }, "Placement start reminder SparkPost payload report written");
 
   return report;
 }
@@ -228,4 +296,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { buildUtcDayWindow, run };
+module.exports = { buildUtcDayWindow, run, writeSparkPostPayloadReport };

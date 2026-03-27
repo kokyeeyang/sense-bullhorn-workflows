@@ -23,6 +23,8 @@ const optionalPositiveInt = z.preprocess(
   z.coerce.number().int().positive().optional(),
 );
 
+const optionalString = z.preprocess(emptyStringToUndefined, z.string().min(1).optional());
+
 const optionalUrl = z.preprocess(emptyStringToUndefined, z.string().url().optional());
 
 const urlWithDefault = (defaultValue) =>
@@ -60,13 +62,21 @@ const configSchema = z.object({
   PLACEMENT_START_REMINDER_QUERY_COUNT: positiveIntWithDefault(200),
   PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS: nonNegativeIntWithDefault(0),
   PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS: nonNegativeIntWithDefault(0),
+  SPARKPOST_API_BASE_URL: urlWithDefault("https://api.sparkpost.com"),
+  SPARKPOST_API_KEY: optionalString,
+  SPARKPOST_TEMPLATE_ID: optionalString,
   RETRY_MAX_ATTEMPTS: positiveIntWithDefault(4),
   RETRY_BASE_DELAY_MS: positiveIntWithDefault(500),
   UPDATE_DELAY_MS: nonNegativeIntWithDefault(150),
 });
 
 function loadConfig() {
-  const parsed = configSchema.safeParse(process.env);
+  const env = { ...process.env };
+  if (!env.SPARKPOST_API_KEY && env.BULLHORN_WORKFLOW) {
+    env.SPARKPOST_API_KEY = env.BULLHORN_WORKFLOW;
+  }
+
+  const parsed = configSchema.safeParse(env);
 
   if (!parsed.success) {
     const details = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);

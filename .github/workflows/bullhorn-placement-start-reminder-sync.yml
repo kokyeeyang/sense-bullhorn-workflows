@@ -36,12 +36,16 @@ jobs:
           PLACEMENT_START_REMINDER_QUERY_COUNT: ${{ secrets.PLACEMENT_START_REMINDER_QUERY_COUNT }}
           PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS: ${{ secrets.PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS }}
           PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS: ${{ secrets.PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS }}
+          SPARKPOST_API_KEY: ${{ secrets.SPARKPOST_API_KEY }}
+          SPARKPOST_TEMPLATE_ID: ${{ secrets.SPARKPOST_TEMPLATE_ID }}
         run: npm run run:placement-start-reminder-sync
 
-      - name: Upload placement start reminder report
+      - name: Upload placement start reminder reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bullhorn-placement-start-reminder-report
-          path: reports/placement-start-reminder-report-*.json
+          name: bullhorn-placement-start-reminder-reports
+          path: |
+            reports/placement-start-reminder-report-*.json
+            reports/placement-start-reminder-sparkpost-payload-*.json
           if-no-files-found: warn

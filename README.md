@@ -43,10 +43,11 @@ It also includes a client corporation key account cleanup automation:
 It also includes a placement start reminder automation:
 
 1. Query `Placement` records where `dateBegin` falls on the UTC day exactly N days ahead.
-2. Extract each placement's `candidate.id`.
+2. Expand nested placement fields for candidate, client corporation, billing contact, and job order owner.
 3. Fetch the candidate to get `owner.id`.
-4. Fetch the owner `CorporateUser` to get the email address.
-5. Build a report grouped by owner email, ready to map into a SparkPost transmission later.
+4. Fetch the owner `CorporateUser` to get the recipient email address.
+5. Transform each placement into one SparkPost recipient with template substitution data.
+6. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
 
 ## Important security note
 
@@ -70,6 +71,7 @@ npm run run:client-corporation-key-account-sync
 `DRY_RUN=true` logs intended updates without writing to Bullhorn, including a simulated post-update candidate object preview.
 `TEST_CANDIDATE_ID=2923234` restricts the run to exactly one candidate by id.
 Each run writes `reports/changes-report-<timestamp>.json` with all affected candidates and field-level changes.
+Placement start reminder runs write both `reports/placement-start-reminder-report-<timestamp>.json` and `reports/placement-start-reminder-sparkpost-payload-<timestamp>.json`.
 
 ## Required environment variables
 
@@ -98,6 +100,9 @@ Optional:
 - `PLACEMENT_START_REMINDER_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (default: `0`; expands the query window backward for testing)
 - `PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS` (default: `0`; expands the query window forward for testing)
+- `SPARKPOST_API_BASE_URL` (default: `https://api.sparkpost.com`)
+- `SPARKPOST_API_KEY` (required when `DRY_RUN=false`)
+- `SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
 - `RETRY_MAX_ATTEMPTS` (default: `4`; retries on `429` and `5xx`)
 - `RETRY_BASE_DELAY_MS` (default: `500`; exponential backoff base delay)
 - `UPDATE_DELAY_MS` (default: `150`; delay between live update calls)
@@ -133,7 +138,7 @@ Workflow file: `.github/workflows/bullhorn-placement-start-reminder-sync.yml`
 
 - Scheduled daily at `00:00 UTC`.
 - Can also run manually with `workflow_dispatch`.
-- Uploads `reports/placement-start-reminder-report-*.json` as a workflow artifact (`bullhorn-placement-start-reminder-report`).
+- Uploads both `reports/placement-start-reminder-report-*.json` and `reports/placement-start-reminder-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-start-reminder-reports`).
 
 Add repository secrets with the same names as the env vars above.
 
@@ -174,6 +179,8 @@ Notes:
 - `src/index.js`: Main runner.
 - `src/placementStatusSync.js`: Placement status transition runner.
 - `src/placementStartReminderSync.js`: Placement start reminder enrichment runner.
+- `src/placementStartReminderUtils.js`: Placement reminder substitution and formatting helpers.
+- `src/sparkPostClient.js`: SparkPost transmission client.
 - `src/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
 - `src/clientCorporationKeyAccountSync.js`: Client corporation `customText7 -> Key Account` cleanup runner.
 - `functionApp.js`: Azure Functions timer entrypoints.
