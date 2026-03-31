@@ -3,10 +3,13 @@ require("dotenv").config();
 const { app } = require("@azure/functions");
 const { run: runCandidateStateSync } = require("./src/index");
 const { run: runPlacementStatusSync } = require("./src/placementStatusSync");
+const { run: runPlacementTerminationEmailSync } = require("./src/placementTerminationEmailSync");
 const { run: runClientCorporation360Sync } = require("./src/clientCorporation360Sync");
 
 const candidateSchedule = process.env.AZURE_CANDIDATE_SYNC_SCHEDULE || "0 0 2 * * *";
 const placementSchedule = process.env.AZURE_PLACEMENT_STATUS_SYNC_SCHEDULE || "0 */5 * * * *";
+const placementTerminationEmailSchedule =
+  process.env.AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE || "0 */5 * * * *";
 const keyAccount360Schedule = process.env.AZURE_CORPORATION_360_SYNC_SCHEDULE || "0 */5 * * * *";
 
 app.timer("candidateStateSync", {
@@ -22,6 +25,14 @@ app.timer("placementStatusSync", {
   handler: async (_timer, context) => {
     context.log("Running placement status sync");
     await runPlacementStatusSync();
+  },
+});
+
+app.timer("placementTerminationEmailSync", {
+  schedule: placementTerminationEmailSchedule,
+  handler: async (_timer, context) => {
+    context.log("Running placement termination email sync");
+    await runPlacementTerminationEmailSync();
   },
 });
 
