@@ -1,0 +1,49 @@
+name: Bullhorn Placement Termination Email Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run placement termination email sync
+        env:
+          BULLHORN_CLIENT_ID: ${{ secrets.BULLHORN_CLIENT_ID }}
+          BULLHORN_CLIENT_SECRET: ${{ secrets.BULLHORN_CLIENT_SECRET }}
+          BULLHORN_USERNAME: ${{ secrets.BULLHORN_USERNAME }}
+          BULLHORN_PASSWORD: ${{ secrets.BULLHORN_PASSWORD }}
+          BULLHORN_REDIRECT_URI: ${{ secrets.BULLHORN_REDIRECT_URI }}
+          DRY_RUN: ${{ secrets.DRY_RUN }}
+          PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID: ${{ secrets.PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID }}
+          PLACEMENT_TERMINATION_EVENT_MAX_EVENTS: ${{ secrets.PLACEMENT_TERMINATION_EVENT_MAX_EVENTS }}
+          SPARKPOST_API_KEY: ${{ secrets.SPARKPOST_API_KEY }}
+          PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID: ${{ secrets.PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID }}
+        run: npm run run:placement-termination-email-sync
+
+      - name: Upload placement termination email reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bullhorn-placement-termination-email-reports
+          path: |
+            reports/placement-termination-email-report-*.json
+            reports/placement-termination-email-sparkpost-payload-*.json
+          if-no-files-found: warn

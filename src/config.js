@@ -40,6 +40,7 @@ const nonNegativeIntWithDefault = (defaultValue) =>
   z.preprocess(emptyStringToUndefined, z.coerce.number().int().min(0).default(defaultValue));
 
 const configSchema = z.object({
+  BULLHORN_ENV: z.enum(["staging", "production"]).default("production"),
   BULLHORN_CLIENT_ID: z.string().min(1),
   BULLHORN_CLIENT_SECRET: z.string().min(1),
   BULLHORN_USERNAME: z.string().min(1),
@@ -58,6 +59,10 @@ const configSchema = z.object({
   TEST_CLIENT_CORPORATION_ID: optionalPositiveInt,
   PLACEMENT_EVENT_SUBSCRIPTION_ID: stringWithDefault("sense-placement-status-sync"),
   PLACEMENT_EVENT_MAX_EVENTS: positiveIntWithDefault(100),
+  PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID: stringWithDefault(
+    "sense-placement-termination-email",
+  ),
+  PLACEMENT_TERMINATION_EVENT_MAX_EVENTS: positiveIntWithDefault(100),
   PLACEMENT_START_REMINDER_DAYS_AHEAD: positiveIntWithDefault(4),
   PLACEMENT_START_REMINDER_QUERY_COUNT: positiveIntWithDefault(200),
   PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS: nonNegativeIntWithDefault(0),
@@ -65,13 +70,64 @@ const configSchema = z.object({
   SPARKPOST_API_BASE_URL: urlWithDefault("https://api.sparkpost.com"),
   SPARKPOST_API_KEY: optionalString,
   SPARKPOST_TEMPLATE_ID: optionalString,
+  PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID: optionalString,
+  PLACEMENT_TERMINATION_TEST_RECIPIENT_EMAIL: optionalString,
+  PLACEMENT_TERMINATION_TEST_OWNER_FIRST_NAME: optionalString,
+  PLACEMENT_TERMINATION_TEST_OWNER_LAST_NAME: optionalString,
+  PLACEMENT_TERMINATION_TEST_CANDIDATE_NAME: optionalString,
+  PLACEMENT_TERMINATION_TEST_PLACEMENT_ID: optionalString,
+  PLACEMENT_TERMINATION_TEST_CLIENT_COMPANY_NAME: optionalString,
+  PLACEMENT_TERMINATION_TEST_JOB_TITLE: optionalString,
+  PLACEMENT_TERMINATION_TEST_DATE_BEGIN: optionalString,
+  PLACEMENT_TERMINATION_TEST_DATE_END: optionalString,
   RETRY_MAX_ATTEMPTS: positiveIntWithDefault(4),
   RETRY_BASE_DELAY_MS: positiveIntWithDefault(500),
   UPDATE_DELAY_MS: nonNegativeIntWithDefault(150),
 });
 
+function applyBullhornEnvironment(env) {
+  const selectedEnvironment = (env.BULLHORN_ENV || "production").trim().toUpperCase();
+  const prefix = `BULLHORN_${selectedEnvironment}_`;
+  const mappedEnv = { ...env };
+
+  const environmentSpecificFieldNames = [
+    "CLIENT_ID",
+    "CLIENT_SECRET",
+    "USERNAME",
+    "PASSWORD",
+    "API_BASE_URL",
+    "API_VERSION",
+  ];
+
+  for (const fieldName of environmentSpecificFieldNames) {
+    const prefixedKey = `${prefix}${fieldName}`;
+    const baseKey = `BULLHORN_${fieldName}`;
+    if (mappedEnv[prefixedKey] !== undefined && mappedEnv[prefixedKey] !== "") {
+      mappedEnv[baseKey] = mappedEnv[prefixedKey];
+    }
+  }
+
+  if (
+    (mappedEnv.BULLHORN_AUTH_BASE_URL === undefined || mappedEnv.BULLHORN_AUTH_BASE_URL === "") &&
+    mappedEnv[`${prefix}AUTH_BASE_URL`] !== undefined &&
+    mappedEnv[`${prefix}AUTH_BASE_URL`] !== ""
+  ) {
+    mappedEnv.BULLHORN_AUTH_BASE_URL = mappedEnv[`${prefix}AUTH_BASE_URL`];
+  }
+
+  if (
+    (mappedEnv.BULLHORN_REDIRECT_URI === undefined || mappedEnv.BULLHORN_REDIRECT_URI === "") &&
+    mappedEnv[`${prefix}REDIRECT_URI`] !== undefined &&
+    mappedEnv[`${prefix}REDIRECT_URI`] !== ""
+  ) {
+    mappedEnv.BULLHORN_REDIRECT_URI = mappedEnv[`${prefix}REDIRECT_URI`];
+  }
+
+  return mappedEnv;
+}
+
 function loadConfig() {
-  const env = { ...process.env };
+  const env = applyBullhornEnvironment({ ...process.env });
   if (!env.SPARKPOST_API_KEY && env.BULLHORN_WORKFLOW) {
     env.SPARKPOST_API_KEY = env.BULLHORN_WORKFLOW;
   }
@@ -86,4 +142,4 @@ function loadConfig() {
   return parsed.data;
 }
 
-module.exports = { loadConfig };
+module.exports = { applyBullhornEnvironment, loadConfig };
