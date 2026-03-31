@@ -123,6 +123,20 @@ function applyBullhornEnvironment(env) {
     mappedEnv.BULLHORN_REDIRECT_URI = mappedEnv[`${prefix}REDIRECT_URI`];
   }
 
+  const sharedEnvironmentOverrides = [
+    "PLACEMENT_START_REMINDER_DAYS_AHEAD",
+    "PLACEMENT_START_REMINDER_QUERY_COUNT",
+    "PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS",
+    "PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS",
+  ];
+
+  for (const key of sharedEnvironmentOverrides) {
+    const prefixedKey = `${prefix}${key}`;
+    if (mappedEnv[prefixedKey] !== undefined && mappedEnv[prefixedKey] !== "") {
+      mappedEnv[key] = mappedEnv[prefixedKey];
+    }
+  }
+
   return mappedEnv;
 }
 

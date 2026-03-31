@@ -114,6 +114,10 @@ Optional:
 - `PLACEMENT_START_REMINDER_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (default: `0`; expands the query window backward for testing)
 - `PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS` (default: `0`; expands the query window forward for testing)
+- `BULLHORN_<ENV>_PLACEMENT_START_REMINDER_DAYS_AHEAD` (optional env-specific override)
+- `BULLHORN_<ENV>_PLACEMENT_START_REMINDER_QUERY_COUNT` (optional env-specific override)
+- `BULLHORN_<ENV>_PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (optional env-specific override)
+- `BULLHORN_<ENV>_PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS` (optional env-specific override)
 - `SPARKPOST_API_BASE_URL` (default: `https://api.sparkpost.com`)
 - `SPARKPOST_API_KEY` (required when `DRY_RUN=false`)
 - `SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
@@ -186,9 +190,16 @@ BULLHORN_PRODUCTION_USERNAME=your-production-username
 BULLHORN_PRODUCTION_PASSWORD=your-production-password
 BULLHORN_PRODUCTION_API_BASE_URL=
 BULLHORN_PRODUCTION_API_VERSION=*
+
+BULLHORN_STAGING_PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS=730
+BULLHORN_STAGING_PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS=730
+BULLHORN_PRODUCTION_PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS=0
+BULLHORN_PRODUCTION_PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS=0
 ```
 
 `BULLHORN_AUTH_BASE_URL` and `BULLHORN_REDIRECT_URI` can stay shared across environments. If you ever need to override them per environment later, the prefixed fallback keys still work.
+
+The placement start reminder settings can also be overridden per environment. A common setup is broad windows in staging for limited data and `0/0` in production so reminders only send for placements starting exactly the configured number of days ahead.
 
 All workflows call the same `loadConfig()` function, so switching `BULLHORN_ENV` changes the active Bullhorn environment everywhere without further code changes.
 

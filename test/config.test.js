@@ -87,4 +87,19 @@ describe("config environment selection", () => {
       BULLHORN_REDIRECT_URI: "https://base.example.com/callback",
     });
   });
+
+  test("uses environment-specific placement start reminder windows", () => {
+    expect(
+      applyBullhornEnvironment({
+        BULLHORN_ENV: "staging",
+        PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS: "0",
+        PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS: "0",
+        BULLHORN_STAGING_PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS: "730",
+        BULLHORN_STAGING_PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS: "730",
+      }),
+    ).toMatchObject({
+      PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS: "730",
+      PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS: "730",
+    });
+  });
 });
