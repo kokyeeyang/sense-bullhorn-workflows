@@ -1,12 +1,11 @@
 require("dotenv").config();
-const fs = require("node:fs/promises");
-const path = require("node:path");
 
 const { loadConfig } = require("./config");
 const { logger } = require("./logger");
 const { BullhornClient } = require("./bullhornClient");
 const { SparkPostClient } = require("./sparkPostClient");
 const { buildSparkPostRecipient } = require("./placementStartReminderUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
 function buildUtcDayWindow({
   baseDate = new Date(),
@@ -34,28 +33,14 @@ function buildUtcDayWindow({
 }
 
 async function writeChangesReport({ report }) {
-  const reportsDir = path.resolve(process.cwd(), "reports");
-  await fs.mkdir(reportsDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const reportPath = path.join(reportsDir, `placement-start-reminder-report-${timestamp}.json`);
-  await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-
-  return reportPath;
+  return writeJsonArtifact({ filePrefix: "placement-start-reminder-report", payload: report });
 }
 
 async function writeSparkPostPayloadReport({ payload }) {
-  const reportsDir = path.resolve(process.cwd(), "reports");
-  await fs.mkdir(reportsDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const reportPath = path.join(
-    reportsDir,
-    `placement-start-reminder-sparkpost-payload-${timestamp}.json`,
-  );
-  await fs.writeFile(reportPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-
-  return reportPath;
+  return writeJsonArtifact({
+    filePrefix: "placement-start-reminder-sparkpost-payload",
+    payload,
+  });
 }
 
 function validateSparkPostConfig(config) {
@@ -278,20 +263,19 @@ async function run() {
   logger.info({ reportPath }, "Placement start reminder report written");
   logger.info({ sparkPostPayloadReportPath }, "Placement start reminder SparkPost payload report written");
 
-  return report;
+  return buildWorkflowResult({
+    workflowName: "placement-start-reminder-sync",
+    report,
+    artifacts: {
+      reportPath,
+      sparkPostPayloadReportPath,
+    },
+  });
 }
 
 if (require.main === module) {
   run().catch((error) => {
-    logger.error(
-      {
-        message: error.message,
-        stack: error.stack,
-        responseStatus: error.response?.status,
-        responseData: error.response?.data,
-      },
-      "Placement start reminder sync failed",
-    );
+    logger.error(serializeError(error), "Placement start reminder sync failed");
     process.exitCode = 1;
   });
 }

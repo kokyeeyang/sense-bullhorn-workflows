@@ -221,6 +221,110 @@ Azure schedules:
 - `AZURE_CANDIDATE_SYNC_SCHEDULE` default: `0 0 2 * * *`
 - `AZURE_PLACEMENT_STATUS_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
+- `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
+- `AZURE_CLIENT_CORPORATION_360_SYNC_SCHEDULE` default: `0 */5 * * * *`
+- `AZURE_CLIENT_CORPORATION_KEY_ACCOUNT_SYNC_SCHEDULE` default: `0 */5 * * * *`
+
+## Azure Functions + Logic Apps
+
+Recommended split for this repo:
+
+- Azure Functions owns the Bullhorn workflow logic and SparkPost integrations.
+- Logic Apps calls HTTP-triggered Functions for orchestration, visibility, approvals, and notifications.
+
+The same workflow can now be run three ways:
+
+- locally through `npm run ...`
+- on a schedule through Azure timer-triggered Functions
+- from Logic Apps through HTTP-triggered Functions
+
+### Logic App call pattern
+
+Each workflow has an HTTP-triggered Function with `authLevel: "function"`, so Logic Apps should call it with `POST` and include the Function key.
+
+Routes:
+
+- `POST /api/workflows/candidate-state-sync`
+- `POST /api/workflows/placement-status-sync`
+- `POST /api/workflows/placement-termination-email-sync`
+- `POST /api/workflows/placement-start-reminder-sync`
+- `POST /api/workflows/client-corporation-360-sync`
+- `POST /api/workflows/client-corporation-key-account-sync`
+
+Example full URL:
+
+```text
+https://<your-function-app>.azurewebsites.net/api/workflows/client-corporation-360-sync?code=<function-key>
+```
+
+Logic Apps does not need to know how to run `npm` scripts. It only needs the correct Function endpoint for the workflow it wants to invoke.
+
+### HTTP response shape
+
+Each HTTP-triggered Function returns a structured JSON response that Logic Apps can use for run history, notifications, and branching.
+
+Success example:
+
+```json
+{
+  "workflow": "client-corporation-360-sync",
+  "status": "success",
+  "trigger": "http",
+  "startedAt": "2026-04-01T02:00:00.000Z",
+  "finishedAt": "2026-04-01T02:00:07.000Z",
+  "dryRun": true,
+  "totals": {
+    "totalClientCorporations": 42,
+    "affectedClientCorporations": 5,
+    "updated": 5,
+    "skippedExcludedName": 20,
+    "skippedDelayNotMet": 10,
+    "skippedNoPatch": 4,
+    "skippedNoChange": 3
+  },
+  "artifacts": {
+    "reportPath": "/home/site/wwwroot/reports/client-corporation-360-report-2026-04-01T02-00-07-000Z.json"
+  },
+  "report": {
+    "generatedAt": "2026-04-01T02:00:07.000Z",
+    "dryRun": true,
+    "totals": {
+      "totalClientCorporations": 42,
+      "affectedClientCorporations": 5,
+      "updated": 5,
+      "skippedExcludedName": 20,
+      "skippedDelayNotMet": 10,
+      "skippedNoPatch": 4,
+      "skippedNoChange": 3
+    }
+  }
+}
+```
+
+Error example:
+
+```json
+{
+  "workflow": "client-corporation-360-sync",
+  "status": "error",
+  "trigger": "http",
+  "startedAt": "2026-04-01T02:00:00.000Z",
+  "finishedAt": "2026-04-01T02:00:02.000Z",
+  "error": {
+    "message": "Invalid environment config",
+    "stack": "...",
+    "responseStatus": null,
+    "responseData": null
+  }
+}
+```
+
+### Reporting guidance
+
+- Local runs and GitHub Actions can keep using the `reports/` folder as they do today.
+- Azure Functions can still write to `reports/`, but that filesystem is temporary.
+- For Logic Apps, treat the HTTP response as the primary summary.
+- If you later need durable reports in Azure, store them in Blob Storage and return the blob URL in the Function response.
 
 Azure local/dev setup:
 
@@ -234,7 +338,7 @@ Notes:
 
 - Azure timer schedules use NCRONTAB with a seconds field
 - `AzureWebJobsStorage` is required by Azure Functions even though your workflow logic is external to Azure
-- Reports still write to the local `reports/` folder for GitHub Actions and local runs; on Azure that filesystem is temporary, so rely on logs unless you later add Blob Storage output
+- Reports still write to the local `reports/` folder for GitHub Actions and local runs; on Azure that filesystem is temporary, so prefer the HTTP summary response for Logic Apps and add Blob Storage later if you need durable report artifacts
 
 ## Files
 
@@ -247,7 +351,8 @@ Notes:
 - `src/sparkPostClient.js`: SparkPost transmission client.
 - `src/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
 - `src/clientCorporationKeyAccountSync.js`: Client corporation `customText7 -> Key Account` cleanup runner.
-- `functionApp.js`: Azure Functions timer entrypoints.
+- `functionApp.js`: Azure Functions timer and HTTP entrypoints.
+- `src/workflowRuntime.js`: Shared workflow result, HTTP response, and JSON artifact helpers.
 - `src/bullhornClient.js`: Bullhorn auth/search/update calls.
 - `src/phoneUtils.js`: Phone parsing and mapping logic.
 - `src/placementUtils.js`: Placement transition mapping helpers.

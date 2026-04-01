@@ -1,6 +1,4 @@
 require("dotenv").config();
-const fs = require("node:fs/promises");
-const path = require("node:path");
 
 const { loadConfig } = require("./config");
 const { logger } = require("./logger");
@@ -10,20 +8,14 @@ const {
   getFieldChanges,
   isTargetPlacementStatusChange,
 } = require("./placementUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function writeChangesReport({ report }) {
-  const reportsDir = path.resolve(process.cwd(), "reports");
-  await fs.mkdir(reportsDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const reportPath = path.join(reportsDir, `placement-status-report-${timestamp}.json`);
-  await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-
-  return reportPath;
+  return writeJsonArtifact({ filePrefix: "placement-status-report", payload: report });
 }
 
 async function run() {
@@ -202,19 +194,19 @@ async function run() {
 
   const reportPath = await writeChangesReport({ report });
   logger.info({ reportPath }, "Placement changes report written");
+
+  return buildWorkflowResult({
+    workflowName: "placement-status-sync",
+    report,
+    artifacts: {
+      reportPath,
+    },
+  });
 }
 
 if (require.main === module) {
   run().catch((error) => {
-    logger.error(
-      {
-        message: error.message,
-        stack: error.stack,
-        responseStatus: error.response?.status,
-        responseData: error.response?.data,
-      },
-      "Placement status sync failed",
-    );
+    logger.error(serializeError(error), "Placement status sync failed");
     process.exitCode = 1;
   });
 }

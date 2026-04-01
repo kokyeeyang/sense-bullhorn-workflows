@@ -1,6 +1,4 @@
 require("dotenv").config();
-const fs = require("node:fs/promises");
-const path = require("node:path");
 
 const { loadConfig } = require("./config");
 const { logger } = require("./logger");
@@ -11,6 +9,7 @@ const {
   inferClientCorporation360Patch,
   isExcludedClientCorporationName,
 } = require("./clientCorporation360Utils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -26,14 +25,7 @@ function epochSecondsFromDateString(value) {
 }
 
 async function writeChangesReport({ report }) {
-  const reportsDir = path.resolve(process.cwd(), "reports");
-  await fs.mkdir(reportsDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const reportPath = path.join(reportsDir, `client-corporation-360-report-${timestamp}.json`);
-  await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-
-  return reportPath;
+  return writeJsonArtifact({ filePrefix: "client-corporation-360-report", payload: report });
 }
 
 async function run() {
@@ -188,19 +180,19 @@ async function run() {
 
   const reportPath = await writeChangesReport({ report });
   logger.info({ reportPath }, "Client corporation changes report written");
+
+  return buildWorkflowResult({
+    workflowName: "client-corporation-360-sync",
+    report,
+    artifacts: {
+      reportPath,
+    },
+  });
 }
 
 if (require.main === module) {
   run().catch((error) => {
-    logger.error(
-      {
-        message: error.message,
-        stack: error.stack,
-        responseStatus: error.response?.status,
-        responseData: error.response?.data,
-      },
-      "Client corporation 360 cleanup failed",
-    );
+    logger.error(serializeError(error), "Client corporation 360 cleanup failed");
     process.exitCode = 1;
   });
 }

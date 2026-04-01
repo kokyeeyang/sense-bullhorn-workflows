@@ -1,6 +1,4 @@
 require("dotenv").config();
-const fs = require("node:fs/promises");
-const path = require("node:path");
 
 const { loadConfig } = require("./config");
 const { logger } = require("./logger");
@@ -10,6 +8,7 @@ const {
   buildPlacementTerminationRecipient,
   isTerminatedPlacementStatusChange,
 } = require("./placementTerminationEmailUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
 function getTemplateId(config) {
   return config.PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID || config.SPARKPOST_TEMPLATE_ID || null;
@@ -32,31 +31,17 @@ function validateSparkPostConfig(config) {
 }
 
 async function writeChangesReport({ report }) {
-  const reportsDir = path.resolve(process.cwd(), "reports");
-  await fs.mkdir(reportsDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const reportPath = path.join(
-    reportsDir,
-    `placement-termination-email-report-${timestamp}.json`,
-  );
-  await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-
-  return reportPath;
+  return writeJsonArtifact({
+    filePrefix: "placement-termination-email-report",
+    payload: report,
+  });
 }
 
 async function writeSparkPostPayloadReport({ payload }) {
-  const reportsDir = path.resolve(process.cwd(), "reports");
-  await fs.mkdir(reportsDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const reportPath = path.join(
-    reportsDir,
-    `placement-termination-email-sparkpost-payload-${timestamp}.json`,
-  );
-  await fs.writeFile(reportPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-
-  return reportPath;
+  return writeJsonArtifact({
+    filePrefix: "placement-termination-email-sparkpost-payload",
+    payload,
+  });
 }
 
 async function run() {
@@ -286,20 +271,19 @@ async function run() {
     "Placement termination email SparkPost payload report written",
   );
 
-  return report;
+  return buildWorkflowResult({
+    workflowName: "placement-termination-email-sync",
+    report,
+    artifacts: {
+      reportPath,
+      sparkPostPayloadReportPath,
+    },
+  });
 }
 
 if (require.main === module) {
   run().catch((error) => {
-    logger.error(
-      {
-        message: error.message,
-        stack: error.stack,
-        responseStatus: error.response?.status,
-        responseData: error.response?.data,
-      },
-      "Placement termination email sync failed",
-    );
+    logger.error(serializeError(error), "Placement termination email sync failed");
     process.exitCode = 1;
   });
 }

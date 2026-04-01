@@ -1,11 +1,10 @@
 require("dotenv").config();
-const fs = require("node:fs/promises");
-const path = require("node:path");
 
 const { loadConfig } = require("./config");
 const { logger } = require("./logger");
 const { BullhornClient } = require("./bullhornClient");
 const { inferAddressUpdateFromCandidate } = require("./phoneUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
 function epochSecondsFromDate(date) {
   return Math.floor(date.getTime() / 1000);
@@ -27,14 +26,7 @@ function getAddressChanges(currentAddress, addressPatch) {
 }
 
 async function writeChangesReport({ report }) {
-  const reportsDir = path.resolve(process.cwd(), "reports");
-  await fs.mkdir(reportsDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const reportPath = path.join(reportsDir, `changes-report-${timestamp}.json`);
-  await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-
-  return reportPath;
+  return writeJsonArtifact({ filePrefix: "changes-report", payload: report });
 }
 
 async function run() {
@@ -197,19 +189,19 @@ async function run() {
 
   const reportPath = await writeChangesReport({ report });
   logger.info({ reportPath }, "Changes report written");
+
+  return buildWorkflowResult({
+    workflowName: "candidate-state-sync",
+    report,
+    artifacts: {
+      reportPath,
+    },
+  });
 }
 
 if (require.main === module) {
   run().catch((error) => {
-    logger.error(
-      {
-        message: error.message,
-        stack: error.stack,
-        responseStatus: error.response?.status,
-        responseData: error.response?.data,
-      },
-      "Candidate state sync failed",
-    );
+    logger.error(serializeError(error), "Candidate state sync failed");
     process.exitCode = 1;
   });
 }
