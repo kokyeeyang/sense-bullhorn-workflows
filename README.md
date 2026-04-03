@@ -58,6 +58,15 @@ It also includes a placement termination email automation:
 5. Transform each matched placement into one SparkPost recipient for the owner.
 6. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
 
+It also includes an Illinois interview notification automation:
+
+1. Subscribe to Bullhorn `Appointment` insert events with a dedicated subscription queue.
+2. Consume recent appointment events from Bullhorn on a schedule.
+3. Keep only appointments where `type = Interview`.
+4. Filter the related `jobOrder` to `address.state = Illinois`, `dateAdded = 2024-05-01`, and `employmentType = contract`.
+5. Fetch the job order owner and send one SparkPost email per matching interview.
+6. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
+
 ## Important security note
 
 The credentials shared in chat should be treated as compromised. Rotate all Bullhorn `client_secret`, user password, access tokens, and any related secrets before using this in production.
@@ -73,6 +82,8 @@ npm ci
 npm run run:workflow
 npm run run:placement-status-sync
 npm run run:placement-termination-email-sync
+npm run run:interview-illinois-email-test-send
+npm run run:interview-illinois-email-sync
 npm run run:placement-start-reminder-sync
 npm run run:client-corporation-360-sync
 npm run run:client-corporation-key-account-sync
@@ -83,6 +94,8 @@ npm run run:client-corporation-key-account-sync
 Each run writes `reports/changes-report-<timestamp>.json` with all affected candidates and field-level changes.
 Placement start reminder runs write both `reports/placement-start-reminder-report-<timestamp>.json` and `reports/placement-start-reminder-sparkpost-payload-<timestamp>.json`.
 Placement termination email runs write both `reports/placement-termination-email-report-<timestamp>.json` and `reports/placement-termination-email-sparkpost-payload-<timestamp>.json`.
+Illinois interview email runs write both `reports/interview-illinois-email-report-<timestamp>.json` and `reports/interview-illinois-email-sparkpost-payload-<timestamp>.json`.
+Illinois interview test sends write `reports/interview-illinois-email-sparkpost-test-payload-<timestamp>.json`.
 
 ## Required environment variables
 
@@ -110,6 +123,11 @@ Optional:
 - `PLACEMENT_EVENT_MAX_EVENTS` (default: `100`)
 - `PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-termination-email`)
 - `PLACEMENT_TERMINATION_EVENT_MAX_EVENTS` (default: `100`)
+- `INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID` (default: `sense-interview-illinois-email`)
+- `INTERVIEW_ILLINOIS_EVENT_MAX_EVENTS` (default: `100`)
+- `INTERVIEW_ILLINOIS_JOB_ORDER_STATE` (default: `Illinois`)
+- `INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED` (default: `2024-05-01`)
+- `INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE` (default: `contract`)
 - `PLACEMENT_START_REMINDER_DAYS_AHEAD` (default: `4`)
 - `PLACEMENT_START_REMINDER_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (default: `0`; expands the query window backward for testing)
@@ -121,6 +139,7 @@ Optional:
 - `SPARKPOST_API_BASE_URL` (default: `https://api.sparkpost.com`)
 - `SPARKPOST_API_KEY` (required when `DRY_RUN=false`)
 - `SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
+- `INTERVIEW_ILLINOIS_SPARKPOST_TEMPLATE_ID` (optional; falls back to `SPARKPOST_TEMPLATE_ID`)
 - `PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID` (optional; falls back to `SPARKPOST_TEMPLATE_ID`)
 - `RETRY_MAX_ATTEMPTS` (default: `4`; retries on `429` and `5xx`)
 - `RETRY_BASE_DELAY_MS` (default: `500`; exponential backoff base delay)
@@ -148,6 +167,14 @@ Workflow file: `.github/workflows/bullhorn-placement-termination-email-sync.yml`
 - Uses a dedicated Bullhorn event subscription queue for `Placement UPDATED`.
 - Filters the consumed events to status changes where the new value is `terminated`.
 - Uploads both `reports/placement-termination-email-report-*.json` and `reports/placement-termination-email-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-termination-email-reports`).
+
+Workflow file: `.github/workflows/bullhorn-interview-illinois-email-sync.yml`
+
+- Scheduled every 5 minutes.
+- Can also run manually with `workflow_dispatch`.
+- Uses a dedicated Bullhorn event subscription queue for `Appointment INSERTED`.
+- Filters the consumed appointments to `type = Interview` and the configured Illinois job order conditions.
+- Uploads both `reports/interview-illinois-email-report-*.json` and `reports/interview-illinois-email-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-interview-illinois-email-reports`).
 
 Workflow file: `.github/workflows/bullhorn-client-corporation-360-sync.yml`
 
@@ -221,6 +248,7 @@ Azure schedules:
 - `AZURE_CANDIDATE_SYNC_SCHEDULE` default: `0 0 2 * * *`
 - `AZURE_PLACEMENT_STATUS_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
+- `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
 - `AZURE_CLIENT_CORPORATION_360_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_CLIENT_CORPORATION_KEY_ACCOUNT_SYNC_SCHEDULE` default: `0 */5 * * * *`
@@ -247,6 +275,7 @@ Routes:
 - `POST /api/workflows/candidate-state-sync`
 - `POST /api/workflows/placement-status-sync`
 - `POST /api/workflows/placement-termination-email-sync`
+- `POST /api/workflows/interview-illinois-email-sync`
 - `POST /api/workflows/placement-start-reminder-sync`
 - `POST /api/workflows/client-corporation-360-sync`
 - `POST /api/workflows/client-corporation-key-account-sync`
@@ -345,9 +374,11 @@ Notes:
 - `src/index.js`: Main runner.
 - `src/placementStatusSync.js`: Placement status transition runner.
 - `src/placementTerminationEmailSync.js`: Placement termination email runner.
+- `src/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
 - `src/placementStartReminderSync.js`: Placement start reminder enrichment runner.
 - `src/placementStartReminderUtils.js`: Placement reminder substitution and formatting helpers.
 - `src/placementTerminationEmailUtils.js`: Placement termination email helpers.
+- `src/interviewIllinoisEmailUtils.js`: Illinois interview filter and substitution helpers.
 - `src/sparkPostClient.js`: SparkPost transmission client.
 - `src/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
 - `src/clientCorporationKeyAccountSync.js`: Client corporation `customText7 -> Key Account` cleanup runner.

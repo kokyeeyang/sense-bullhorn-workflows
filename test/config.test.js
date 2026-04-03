@@ -102,4 +102,30 @@ describe("config environment selection", () => {
       PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS: "730",
     });
   });
+
+  test("preserves blank Illinois interview filters so they can be disabled explicitly", () => {
+    const { loadConfig } = require("../src/config");
+
+    const originalEnv = process.env;
+    process.env = {
+      BULLHORN_ENV: "production",
+      BULLHORN_CLIENT_ID: "client-id",
+      BULLHORN_CLIENT_SECRET: "client-secret",
+      BULLHORN_USERNAME: "username",
+      BULLHORN_PASSWORD: "password",
+      BULLHORN_REDIRECT_URI: "https://example.com/callback",
+      INTERVIEW_ILLINOIS_JOB_ORDER_STATE: "",
+      INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED: "",
+      INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE: "",
+    };
+
+    try {
+      const config = loadConfig();
+      expect(config.INTERVIEW_ILLINOIS_JOB_ORDER_STATE).toBe("");
+      expect(config.INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED).toBe("");
+      expect(config.INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE).toBe("");
+    } finally {
+      process.env = originalEnv;
+    }
+  });
 });

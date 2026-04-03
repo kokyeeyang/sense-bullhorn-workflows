@@ -33,6 +33,8 @@ const urlWithDefault = (defaultValue) =>
 const stringWithDefault = (defaultValue) =>
   z.preprocess(emptyStringToUndefined, z.string().default(defaultValue));
 
+const stringWithDefaultPreserveBlank = (defaultValue) => z.string().default(defaultValue);
+
 const positiveIntWithDefault = (defaultValue) =>
   z.preprocess(emptyStringToUndefined, z.coerce.number().int().positive().default(defaultValue));
 
@@ -63,6 +65,11 @@ const configSchema = z.object({
     "sense-placement-termination-email",
   ),
   PLACEMENT_TERMINATION_EVENT_MAX_EVENTS: positiveIntWithDefault(100),
+  INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID: stringWithDefault("sense-interview-illinois-email"),
+  INTERVIEW_ILLINOIS_EVENT_MAX_EVENTS: positiveIntWithDefault(100),
+  INTERVIEW_ILLINOIS_JOB_ORDER_STATE: stringWithDefaultPreserveBlank("Illinois"),
+  INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED: stringWithDefaultPreserveBlank("2024-05-01"),
+  INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE: stringWithDefaultPreserveBlank("contract"),
   PLACEMENT_START_REMINDER_DAYS_AHEAD: positiveIntWithDefault(4),
   PLACEMENT_START_REMINDER_QUERY_COUNT: positiveIntWithDefault(200),
   PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS: nonNegativeIntWithDefault(0),
@@ -70,6 +77,7 @@ const configSchema = z.object({
   SPARKPOST_API_BASE_URL: urlWithDefault("https://api.sparkpost.com"),
   SPARKPOST_API_KEY: optionalString,
   SPARKPOST_TEMPLATE_ID: optionalString,
+  INTERVIEW_ILLINOIS_SPARKPOST_TEMPLATE_ID: optionalString,
   PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID: optionalString,
   PLACEMENT_TERMINATION_TEST_RECIPIENT_EMAIL: optionalString,
   PLACEMENT_TERMINATION_TEST_OWNER_FIRST_NAME: optionalString,

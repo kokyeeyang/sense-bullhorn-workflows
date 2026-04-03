@@ -373,6 +373,29 @@ class BullhornClient {
     return response.data.data;
   }
 
+  async getAppointment({ restUrl, bhRestToken, appointmentId }) {
+    const url = `${restUrl}/entity/Appointment/${appointmentId}`;
+
+    const response = await this.requestWithRetry({
+      label: "get_appointment",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            fields: [
+              "id",
+              "type",
+              "dateAdded",
+              "candidateReference(id,firstName,lastName,name)",
+              "jobOrder(id,dateAdded,employmentType,address(state),owner(id,firstName,lastName))",
+            ].join(","),
+          },
+        }),
+    });
+
+    return response.data.data;
+  }
+
   async getPlacementStatusChange({ restUrl, bhRestToken, transactionId }) {
     const url = `${restUrl}/query/PlacementEditHistory`;
 

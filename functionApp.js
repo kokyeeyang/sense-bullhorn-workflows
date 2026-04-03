@@ -4,6 +4,7 @@ const { app } = require("@azure/functions");
 const { run: runCandidateStateSync } = require("./src/index");
 const { run: runPlacementStatusSync } = require("./src/placementStatusSync");
 const { run: runPlacementTerminationEmailSync } = require("./src/placementTerminationEmailSync");
+const { run: runInterviewIllinoisEmailSync } = require("./src/interviewIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
 const { run: runClientCorporation360Sync } = require("./src/clientCorporation360Sync");
 const { run: runClientCorporationKeyAccountSync } = require("./src/clientCorporationKeyAccountSync");
@@ -49,6 +50,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 0 * * *",
     logLabel: "placement start reminder sync",
     run: runPlacementStartReminderSync,
+  },
+  {
+    functionName: "interviewIllinoisEmailSync",
+    workflowName: "interview-illinois-email-sync",
+    route: "workflows/interview-illinois-email-sync",
+    scheduleEnv: "AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE",
+    defaultSchedule: "0 */5 * * * *",
+    logLabel: "interview Illinois email sync",
+    run: runInterviewIllinoisEmailSync,
   },
   {
     functionName: "clientCorporation360Sync",
