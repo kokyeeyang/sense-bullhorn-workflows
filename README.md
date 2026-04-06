@@ -1,4 +1,12 @@
 # sense-bullhorn-workflows
+Completed Sense workflows:
+1. Data Cleanup Journeys
+2. Data Cleanup States
+3. Data Enrichment Automations
+4. New Jobs Illinois
+5. Placement End Date Reminder
+6. Placement Terminated Reminder
+7. Start Date reminders
 
 Minimal Node.js workflow to:
 
@@ -23,6 +31,20 @@ This repo also includes a second automation for placement status transitions:
    - `status` -> `Placed by us`
    - `dateAvailable` -> `dateEnd + 1 day`
    - `hourlyRateLow` -> placement `payRate`
+
+It also includes a placement database enrichment automation:
+
+1. Query `PlacementEditHistory` records created on the previous UTC day.
+2. Keep only status changes where `newValue = approved` and `oldValue` is `qc approved`, `submitted`, or null.
+3. Fetch each related placement once.
+4. For `employmentType` in `perm` or `contract to perm`, update the candidate only when `dateBegin` is today or later.
+5. For all other employment types, skip placements whose status is `terminated`, `rejected`, `fall out`, or `temporarily suspended`.
+6. Update the related candidate:
+   - `companyName` -> placement `clientCorporation.name`
+   - `occupation` -> placement `jobOrder.title`
+   - `status` -> `Placed by us`
+   - `dateAvailable` -> `dateEnd + 1 day` for non-perm placements
+   - `hourlyRateLow` -> placement `payRate` for non-perm placements
 
 It also includes a client corporation cleanup automation:
 
@@ -80,6 +102,7 @@ The credentials shared in chat should be treated as compromised. Rotate all Bull
 ```bash
 npm ci
 npm run run:workflow
+npm run run:placement-database-enrichment-sync
 npm run run:placement-status-sync
 npm run run:placement-termination-email-sync
 npm run run:interview-illinois-email-test-send
@@ -121,6 +144,8 @@ Optional:
 - `TEST_CLIENT_CORPORATION_ID` (optional; when set, query uses `id:<value>` instead of the cutoff date search)
 - `PLACEMENT_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-status-sync`)
 - `PLACEMENT_EVENT_MAX_EVENTS` (default: `100`)
+- `PLACEMENT_DATABASE_ENRICHMENT_QUERY_COUNT` (default: `200`)
+- `PLACEMENT_DATABASE_ENRICHMENT_DAYS_BACK` (default: `1`; previous UTC day by default)
 - `PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-termination-email`)
 - `PLACEMENT_TERMINATION_EVENT_MAX_EVENTS` (default: `100`)
 - `INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID` (default: `sense-interview-illinois-email`)
@@ -159,6 +184,13 @@ Workflow file: `.github/workflows/bullhorn-placement-status-sync.yml`
 - Can also run manually with `workflow_dispatch`.
 - Uses Bullhorn event subscriptions for `Placement UPDATED`.
 - Uploads `reports/placement-status-report-*.json` as a workflow artifact (`bullhorn-placement-status-report`).
+
+Workflow file: `.github/workflows/bullhorn-placement-database-enrichment-sync.yml`
+
+- Scheduled daily at `00:01 UTC`.
+- Can also run manually with `workflow_dispatch`.
+- Queries `PlacementEditHistory` for the previous UTC day instead of consuming live events.
+- Uploads `reports/placement-database-enrichment-report-*.json` as a workflow artifact (`bullhorn-placement-database-enrichment-report`).
 
 Workflow file: `.github/workflows/bullhorn-placement-termination-email-sync.yml`
 
@@ -241,11 +273,13 @@ Cheapest practical setup:
 This repo supports Azure Functions and GitHub Actions side by side:
 
 - GitHub Actions continues using `npm run run:workflow` and `npm run run:placement-status-sync`
+- GitHub Actions can also use `npm run run:placement-database-enrichment-sync`
 - Azure Functions uses `functionApp.js` timer triggers that call the same exported `run()` functions
 
 Azure schedules:
 
 - `AZURE_CANDIDATE_SYNC_SCHEDULE` default: `0 0 2 * * *`
+- `AZURE_PLACEMENT_DATABASE_ENRICHMENT_SYNC_SCHEDULE` default: `0 1 0 * * *`
 - `AZURE_PLACEMENT_STATUS_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
@@ -273,6 +307,7 @@ Each workflow has an HTTP-triggered Function with `authLevel: "function"`, so Lo
 Routes:
 
 - `POST /api/workflows/candidate-state-sync`
+- `POST /api/workflows/placement-database-enrichment-sync`
 - `POST /api/workflows/placement-status-sync`
 - `POST /api/workflows/placement-termination-email-sync`
 - `POST /api/workflows/interview-illinois-email-sync`
@@ -372,6 +407,7 @@ Notes:
 ## Files
 
 - `src/index.js`: Main runner.
+- `src/placementDatabaseEnrichmentSync.js`: Daily placement database enrichment runner.
 - `src/placementStatusSync.js`: Placement status transition runner.
 - `src/placementTerminationEmailSync.js`: Placement termination email runner.
 - `src/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
@@ -386,6 +422,7 @@ Notes:
 - `src/workflowRuntime.js`: Shared workflow result, HTTP response, and JSON artifact helpers.
 - `src/bullhornClient.js`: Bullhorn auth/search/update calls.
 - `src/phoneUtils.js`: Phone parsing and mapping logic.
+- `src/placementDatabaseEnrichmentUtils.js`: Placement database enrichment filters and patch helpers.
 - `src/placementUtils.js`: Placement transition mapping helpers.
 - `src/clientCorporation360Utils.js`: Client corporation cleanup filters and patch helpers.
 - `src/clientCorporationKeyAccountUtils.js`: Client corporation key account cleanup filters and patch helpers.

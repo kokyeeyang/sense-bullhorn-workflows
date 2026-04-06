@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const { app } = require("@azure/functions");
 const { run: runCandidateStateSync } = require("./src/index");
+const { run: runPlacementDatabaseEnrichmentSync } = require("./src/placementDatabaseEnrichmentSync");
 const { run: runPlacementStatusSync } = require("./src/placementStatusSync");
 const { run: runPlacementTerminationEmailSync } = require("./src/placementTerminationEmailSync");
 const { run: runInterviewIllinoisEmailSync } = require("./src/interviewIllinoisEmailSync");
@@ -23,6 +24,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 2 * * *",
     logLabel: "candidate state sync",
     run: runCandidateStateSync,
+  },
+  {
+    functionName: "placementDatabaseEnrichmentSync",
+    workflowName: "placement-database-enrichment-sync",
+    route: "workflows/placement-database-enrichment-sync",
+    scheduleEnv: "AZURE_PLACEMENT_DATABASE_ENRICHMENT_SYNC_SCHEDULE",
+    defaultSchedule: "0 1 0 * * *",
+    logLabel: "placement database enrichment sync",
+    run: runPlacementDatabaseEnrichmentSync,
   },
   {
     functionName: "placementStatusSync",

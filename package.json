@@ -8,6 +8,7 @@
     "run:workflow": "node src/index.js",
     "run:client-corporation-360-sync": "node src/clientCorporation360Sync.js",
     "run:client-corporation-key-account-sync": "node src/clientCorporationKeyAccountSync.js",
+    "run:placement-database-enrichment-sync": "node src/placementDatabaseEnrichmentSync.js",
     "run:placement-status-sync": "node src/placementStatusSync.js",
     "run:placement-termination-email-sync": "node src/placementTerminationEmailSync.js",
     "run:placement-termination-email-test-send": "node src/placementTerminationEmailTestSend.js",

@@ -359,18 +359,65 @@ class BullhornClient {
             fields: [
               "id",
               "status",
+              "dateLastModified",
               "payRate",
               "dateBegin",
               "dateEnd",
+              "employmentType",
               "candidate(id,firstName,lastName,email,companyName,occupation,status,dateAvailable,hourlyRateLow)",
               "clientCorporation(name)",
-              "jobOrder(title,owner(id,firstName,lastName))",
+              "jobOrder(title,employmentType,owner(id,firstName,lastName))",
             ].join(","),
           },
         }),
     });
 
     return response.data.data;
+  }
+
+  async queryPlacementEditHistoryByDateAddedRange({
+    restUrl,
+    bhRestToken,
+    startMs,
+    endMs,
+    count = 200,
+  }) {
+    const fields = [
+      "id",
+      "dateAdded",
+      "transactionID",
+      "targetEntity(id)",
+      "fieldChanges(columnName,oldValue,newValue)",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "query_placement_edit_history_by_date_added_range",
+        fn: () =>
+          axios.get(`${restUrl}/query/PlacementEditHistory`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `dateAdded>=${startMs} AND dateAdded<${endMs}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
   }
 
   async getAppointment({ restUrl, bhRestToken, appointmentId }) {
