@@ -7,6 +7,7 @@ Completed Sense workflows:
 5. Placement End Date Reminder
 6. Placement Terminated Reminder
 7. Start Date reminders
+8. Key Accounts
 
 Minimal Node.js workflow to:
 
@@ -45,6 +46,16 @@ It also includes a placement database enrichment automation:
    - `status` -> `Placed by us`
    - `dateAvailable` -> `dateEnd + 1 day` for non-perm placements
    - `hourlyRateLow` -> placement `payRate` for non-perm placements
+
+It also includes a client contact DNC automation:
+
+1. Search `ClientContact` records added on or after a cutoff date.
+2. Wait until at least 60 hours have passed since `contact.dateAdded` before enforcing the delayed new-contact rule.
+3. For delayed new contacts, update the contact only when the related `clientCorporation.status = do not contact`, the contact is not already `do not contact`, and the contact name does not start with `..` or `****`.
+4. Subscribe to `ClientCorporation` update events and consume status changes on a schedule.
+5. When `clientCorporation.status` changes from `do not contact -> active`, update related contacts to `massMailOptOut = No` and `status = Active`.
+6. When `clientCorporation.status` changes from blank -> `do not contact`, update related contacts to `massMailOptOut = Yes` and `status = do not contact`.
+7. Event-driven updates also skip blocked contact names (`..`, `****`), and reactivation only applies to contacts currently in `do not contact`.
 
 It also includes a client corporation cleanup automation:
 
@@ -102,6 +113,7 @@ The credentials shared in chat should be treated as compromised. Rotate all Bull
 ```bash
 npm ci
 npm run run:workflow
+npm run run:client-contact-dnc-sync
 npm run run:placement-database-enrichment-sync
 npm run run:placement-status-sync
 npm run run:placement-termination-email-sync
@@ -139,9 +151,16 @@ Optional:
 - `CLIENT_CORPORATION_360_DELAY_HOURS` (default: `24`)
 - `CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE` (default: `2024-01-01`)
 - `CLIENT_CORPORATION_KEY_ACCOUNT_DELAY_HOURS` (default: `24`)
+- `CLIENT_CONTACT_DNC_CUTOFF_DATE` (default: `2024-01-01`)
+- `CLIENT_CONTACT_DNC_DELAY_HOURS` (default: `60`)
+- `CLIENT_CONTACT_DNC_SCAN_WINDOW_HOURS` (default: `24`; how wide the rolling `contact.dateAdded` eligibility window is for the delayed scan)
+- `CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID` (default: `sense-client-contact-dnc-sync`)
+- `CLIENT_CONTACT_DNC_EVENT_MAX_EVENTS` (default: `100`)
+- `CLIENT_CONTACT_DNC_QUERY_COUNT` (default: `500`)
 - `DRY_RUN` (default: `true`)
 - `TEST_CANDIDATE_ID` (optional; when set, query uses `id:<value>` instead of `dateAdded`)
 - `TEST_CLIENT_CORPORATION_ID` (optional; when set, query uses `id:<value>` instead of the cutoff date search)
+- `TEST_CLIENT_CONTACT_ID` (optional; when set, query uses `id:<value>` instead of the contact `dateAdded` search)
 - `PLACEMENT_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-status-sync`)
 - `PLACEMENT_EVENT_MAX_EVENTS` (default: `100`)
 - `PLACEMENT_DATABASE_ENRICHMENT_QUERY_COUNT` (default: `200`)
@@ -191,6 +210,14 @@ Workflow file: `.github/workflows/bullhorn-placement-database-enrichment-sync.ym
 - Can also run manually with `workflow_dispatch`.
 - Queries `PlacementEditHistory` for the previous UTC day instead of consuming live events.
 - Uploads `reports/placement-database-enrichment-report-*.json` as a workflow artifact (`bullhorn-placement-database-enrichment-report`).
+
+Workflow file: `.github/workflows/bullhorn-client-contact-dnc-sync.yml`
+
+- Scheduled every 5 minutes.
+- Can also run manually with `workflow_dispatch`.
+- Combines a delayed `ClientContact.dateAdded` scan with `ClientCorporation` status event handling.
+- Interprets the 60-hour grace period as "do not enforce the delayed DNC rule until 60 hours after the contact was added."
+- Uploads `reports/client-contact-dnc-report-*.json` as a workflow artifact (`bullhorn-client-contact-dnc-report`).
 
 Workflow file: `.github/workflows/bullhorn-placement-termination-email-sync.yml`
 
@@ -274,11 +301,13 @@ This repo supports Azure Functions and GitHub Actions side by side:
 
 - GitHub Actions continues using `npm run run:workflow` and `npm run run:placement-status-sync`
 - GitHub Actions can also use `npm run run:placement-database-enrichment-sync`
+- GitHub Actions can also use `npm run run:client-contact-dnc-sync`
 - Azure Functions uses `functionApp.js` timer triggers that call the same exported `run()` functions
 
 Azure schedules:
 
 - `AZURE_CANDIDATE_SYNC_SCHEDULE` default: `0 0 2 * * *`
+- `AZURE_CLIENT_CONTACT_DNC_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_DATABASE_ENRICHMENT_SYNC_SCHEDULE` default: `0 1 0 * * *`
 - `AZURE_PLACEMENT_STATUS_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
@@ -307,6 +336,7 @@ Each workflow has an HTTP-triggered Function with `authLevel: "function"`, so Lo
 Routes:
 
 - `POST /api/workflows/candidate-state-sync`
+- `POST /api/workflows/client-contact-dnc-sync`
 - `POST /api/workflows/placement-database-enrichment-sync`
 - `POST /api/workflows/placement-status-sync`
 - `POST /api/workflows/placement-termination-email-sync`
@@ -407,6 +437,7 @@ Notes:
 ## Files
 
 - `src/index.js`: Main runner.
+- `src/clientContactDncSync.js`: Combined client contact DNC runner.
 - `src/placementDatabaseEnrichmentSync.js`: Daily placement database enrichment runner.
 - `src/placementStatusSync.js`: Placement status transition runner.
 - `src/placementTerminationEmailSync.js`: Placement termination email runner.
@@ -422,6 +453,7 @@ Notes:
 - `src/workflowRuntime.js`: Shared workflow result, HTTP response, and JSON artifact helpers.
 - `src/bullhornClient.js`: Bullhorn auth/search/update calls.
 - `src/phoneUtils.js`: Phone parsing and mapping logic.
+- `src/clientContactDncSyncUtils.js`: Client contact DNC filters, transition checks, and patch helpers.
 - `src/placementDatabaseEnrichmentUtils.js`: Placement database enrichment filters and patch helpers.
 - `src/placementUtils.js`: Placement transition mapping helpers.
 - `src/clientCorporation360Utils.js`: Client corporation cleanup filters and patch helpers.

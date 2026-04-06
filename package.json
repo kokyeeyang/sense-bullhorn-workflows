@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "run:workflow": "node src/index.js",
+    "run:client-contact-dnc-sync": "node src/clientContactDncSync.js",
     "run:client-corporation-360-sync": "node src/clientCorporation360Sync.js",
     "run:client-corporation-key-account-sync": "node src/clientCorporationKeyAccountSync.js",
     "run:placement-database-enrichment-sync": "node src/placementDatabaseEnrichmentSync.js",

@@ -1,0 +1,48 @@
+name: Bullhorn Client Contact DNC Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run client contact DNC sync
+        env:
+          BULLHORN_CLIENT_ID: ${{ secrets.BULLHORN_CLIENT_ID }}
+          BULLHORN_CLIENT_SECRET: ${{ secrets.BULLHORN_CLIENT_SECRET }}
+          BULLHORN_USERNAME: ${{ secrets.BULLHORN_USERNAME }}
+          BULLHORN_PASSWORD: ${{ secrets.BULLHORN_PASSWORD }}
+          BULLHORN_REDIRECT_URI: ${{ secrets.BULLHORN_REDIRECT_URI }}
+          DRY_RUN: ${{ secrets.DRY_RUN }}
+          CLIENT_CONTACT_DNC_CUTOFF_DATE: ${{ secrets.CLIENT_CONTACT_DNC_CUTOFF_DATE }}
+          CLIENT_CONTACT_DNC_DELAY_HOURS: ${{ secrets.CLIENT_CONTACT_DNC_DELAY_HOURS }}
+          CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID: ${{ secrets.CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID }}
+          CLIENT_CONTACT_DNC_EVENT_MAX_EVENTS: ${{ secrets.CLIENT_CONTACT_DNC_EVENT_MAX_EVENTS }}
+          CLIENT_CONTACT_DNC_QUERY_COUNT: ${{ secrets.CLIENT_CONTACT_DNC_QUERY_COUNT }}
+        run: npm run run:client-contact-dnc-sync
+
+      - name: Upload client contact DNC report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bullhorn-client-contact-dnc-report
+          path: reports/client-contact-dnc-report-*.json
+          if-no-files-found: warn

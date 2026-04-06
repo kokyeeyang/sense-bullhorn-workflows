@@ -21,6 +21,18 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function extractFieldChanges(fieldChanges) {
+  if (Array.isArray(fieldChanges)) {
+    return fieldChanges;
+  }
+
+  if (Array.isArray(fieldChanges?.data)) {
+    return fieldChanges.data;
+  }
+
+  return [];
+}
+
 class BullhornClient {
   constructor({ config, logger }) {
     this.config = config;
@@ -375,6 +387,52 @@ class BullhornClient {
     return response.data.data;
   }
 
+  async getClientCorporationContacts({
+    restUrl,
+    bhRestToken,
+    clientCorporationId,
+    count = 500,
+  }) {
+    const fields = [
+      "id",
+      "name",
+      "firstName",
+      "lastName",
+      "dateAdded",
+      "status",
+      "massMailOptOut",
+      "clientCorporation(id,name,status)",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "get_client_corporation_contacts",
+        fn: () =>
+          axios.get(`${restUrl}/entity/ClientCorporation/${clientCorporationId}/clientContacts`, {
+            params: {
+              BhRestToken: bhRestToken,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
   async queryPlacementEditHistoryByDateAddedRange({
     restUrl,
     bhRestToken,
@@ -420,6 +478,84 @@ class BullhornClient {
     return all;
   }
 
+  async searchClientContacts({
+    restUrl,
+    bhRestToken,
+    fromEpochSeconds,
+    toEpochSeconds,
+    clientContactId,
+    excludeStatus,
+  }) {
+    const fields = [
+      "id",
+      "name",
+      "firstName",
+      "lastName",
+      "dateAdded",
+      "status",
+      "massMailOptOut",
+      "clientCorporation(id,name,status)",
+    ].join(",");
+    const all = [];
+    const pageSize = 500;
+    let start = 0;
+    let total = 0;
+    let query;
+
+    if (clientContactId && Number.isInteger(clientContactId)) {
+      query = `id:${clientContactId}`;
+    } else {
+      query = `dateAdded:[${fromEpochSeconds} TO ${toEpochSeconds ?? "*"}]`;
+      if (excludeStatus) {
+        query += ` AND NOT status:"${excludeStatus}"`;
+      }
+    }
+
+    do {
+      this.logger.info(
+        {
+          start,
+          pageSize,
+          mode: clientContactId && Number.isInteger(clientContactId) ? "by-id" : "by-date-added",
+          fromEpochSeconds: clientContactId && Number.isInteger(clientContactId) ? null : fromEpochSeconds,
+          toEpochSeconds: clientContactId && Number.isInteger(clientContactId) ? null : (toEpochSeconds ?? null),
+          clientContactId: clientContactId || null,
+          excludeStatus: excludeStatus || null,
+        },
+        "Fetching client contact search page",
+      );
+
+      const response = await this.requestWithRetry({
+        label: "search_client_contacts",
+        fn: () =>
+          axios.get(`${restUrl}/search/ClientContact`, {
+            params: {
+              BhRestToken: bhRestToken,
+              query,
+              fields,
+              count: pageSize,
+              start,
+            },
+          }),
+      });
+
+      const { data = [], total: reportedTotal = 0 } = response.data;
+      total = reportedTotal;
+      all.push(...data);
+      this.logger.info(
+        {
+          fetchedThisPage: data.length,
+          accumulatedCount: all.length,
+          total,
+        },
+        "Fetched client contact search page",
+      );
+      start += data.length;
+    } while (start < total);
+
+    return all;
+  }
+
   async getAppointment({ restUrl, bhRestToken, appointmentId }) {
     const url = `${restUrl}/entity/Appointment/${appointmentId}`;
 
@@ -461,7 +597,37 @@ class BullhornClient {
 
     const records = response.data.data || [];
     for (const record of records) {
-      const fieldChanges = record.fieldChanges || [];
+      const fieldChanges = extractFieldChanges(record.fieldChanges);
+      const statusChange = fieldChanges.find(
+        (change) => (change.columnName || change.fieldName) === "status",
+      );
+      if (statusChange) {
+        return statusChange;
+      }
+    }
+
+    return null;
+  }
+
+  async getClientCorporationStatusChange({ restUrl, bhRestToken, transactionId }) {
+    const url = `${restUrl}/query/ClientCorporationEditHistory`;
+
+    const response = await this.requestWithRetry({
+      label: "get_client_corporation_status_change",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            where: `transactionID='${transactionId}'`,
+            fields: "transactionID,fieldChanges(columnName,oldValue,newValue)",
+            count: 10,
+          },
+        }),
+    });
+
+    const records = response.data.data || [];
+    for (const record of records) {
+      const fieldChanges = extractFieldChanges(record.fieldChanges);
       const statusChange = fieldChanges.find(
         (change) => (change.columnName || change.fieldName) === "status",
       );
@@ -568,6 +734,20 @@ class BullhornClient {
 
     await this.requestWithRetry({
       label: "update_candidate",
+      fn: () =>
+        axios.post(
+          url,
+          patch,
+          { params: { BhRestToken: bhRestToken } },
+        ),
+    });
+  }
+
+  async updateClientContact({ restUrl, bhRestToken, clientContactId, patch }) {
+    const url = `${restUrl}/entity/ClientContact/${clientContactId}`;
+
+    await this.requestWithRetry({
+      label: "update_client_contact",
       fn: () =>
         axios.post(
           url,
