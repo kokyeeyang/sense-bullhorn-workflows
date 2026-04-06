@@ -7,6 +7,7 @@ const { run: runPlacementStatusSync } = require("./src/placementStatusSync");
 const { run: runPlacementTerminationEmailSync } = require("./src/placementTerminationEmailSync");
 const { run: runInterviewIllinoisEmailSync } = require("./src/interviewIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
+const { run: runClientContactDncSync } = require("./src/clientContactDncSync");
 const { run: runClientCorporation360Sync } = require("./src/clientCorporation360Sync");
 const { run: runClientCorporationKeyAccountSync } = require("./src/clientCorporationKeyAccountSync");
 const {
@@ -69,6 +70,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 */5 * * * *",
     logLabel: "interview Illinois email sync",
     run: runInterviewIllinoisEmailSync,
+  },
+  {
+    functionName: "clientContactDncSync",
+    workflowName: "client-contact-dnc-sync",
+    route: "workflows/client-contact-dnc-sync",
+    scheduleEnv: "AZURE_CLIENT_CONTACT_DNC_SYNC_SCHEDULE",
+    defaultSchedule: "0 */5 * * * *",
+    logLabel: "client contact DNC sync",
+    run: runClientContactDncSync,
   },
   {
     functionName: "clientCorporation360Sync",
