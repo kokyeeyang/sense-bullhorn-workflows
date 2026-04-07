@@ -16,7 +16,9 @@
     "run:interview-illinois-email-sync": "node src/interviewIllinoisEmailSync.js",
     "run:interview-illinois-email-test-send": "node src/interviewIllinoisEmailTestSend.js",
     "run:placement-start-reminder-sync": "node src/placementStartReminderSync.js",
+    "run:placement-yearly-fee-increase-sync": "node src/placementYearlyFeeIncreaseSync.js",
     "run:placement-start-reminder-test-send": "node src/placementStartReminderTestSend.js",
+    "run:placement-yearly-fee-increase-test-send": "node src/placementYearlyFeeIncreaseTestSend.js",
     "run:check-sparkpost-template": "node src/checkSparkPostTemplate.js",
     "start:azure": "func start",
     "test": "jest"

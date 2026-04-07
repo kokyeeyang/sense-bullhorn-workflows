@@ -82,6 +82,14 @@ It also includes a placement start reminder automation:
 5. Transform each placement into one SparkPost recipient with template substitution data.
 6. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
 
+It also includes a placement yearly fee increase reminder automation:
+
+1. Query `Placement` records where `dateBegin` falls on the UTC day exactly 11 months before today.
+2. Keep only placements where `employmentType = contract`, `clientCorporation.customDate1` (`TOB Date`) is present, `clientCorporation.billingFrequency` (`Yearly Fee Increase`) is `1-10`, and `dateEnd` is after today.
+3. Fetch the `jobOrder.owner` and use that owner as the email recipient.
+4. Transform each matching placement into one SparkPost recipient with yearly-fee-increase substitution data.
+5. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
+
 It also includes a placement termination email automation:
 
 1. Subscribe to Bullhorn `Placement` update events with a dedicated subscription queue.
@@ -120,6 +128,8 @@ npm run run:placement-termination-email-sync
 npm run run:interview-illinois-email-test-send
 npm run run:interview-illinois-email-sync
 npm run run:placement-start-reminder-sync
+npm run run:placement-yearly-fee-increase-sync
+npm run run:placement-yearly-fee-increase-test-send
 npm run run:client-corporation-360-sync
 npm run run:client-corporation-key-account-sync
 ```
@@ -128,6 +138,8 @@ npm run run:client-corporation-key-account-sync
 `TEST_CANDIDATE_ID=2923234` restricts the run to exactly one candidate by id.
 Each run writes `reports/changes-report-<timestamp>.json` with all affected candidates and field-level changes.
 Placement start reminder runs write both `reports/placement-start-reminder-report-<timestamp>.json` and `reports/placement-start-reminder-sparkpost-payload-<timestamp>.json`.
+Placement yearly fee increase runs write both `reports/placement-yearly-fee-increase-report-<timestamp>.json` and `reports/placement-yearly-fee-increase-sparkpost-payload-<timestamp>.json`.
+Placement yearly fee increase test sends write `reports/placement-yearly-fee-increase-sparkpost-test-payload-<timestamp>.json`.
 Placement termination email runs write both `reports/placement-termination-email-report-<timestamp>.json` and `reports/placement-termination-email-sparkpost-payload-<timestamp>.json`.
 Illinois interview email runs write both `reports/interview-illinois-email-report-<timestamp>.json` and `reports/interview-illinois-email-sparkpost-payload-<timestamp>.json`.
 Illinois interview test sends write `reports/interview-illinois-email-sparkpost-test-payload-<timestamp>.json`.
@@ -176,6 +188,10 @@ Optional:
 - `PLACEMENT_START_REMINDER_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (default: `0`; expands the query window backward for testing)
 - `PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS` (default: `0`; expands the query window forward for testing)
+- `PLACEMENT_YEARLY_FEE_INCREASE_MONTH_OFFSET` (default: `11`)
+- `PLACEMENT_YEARLY_FEE_INCREASE_QUERY_COUNT` (default: `200`)
+- `PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS` (default: `0`)
+- `PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS` (default: `0`)
 - `BULLHORN_<ENV>_PLACEMENT_START_REMINDER_DAYS_AHEAD` (optional env-specific override)
 - `BULLHORN_<ENV>_PLACEMENT_START_REMINDER_QUERY_COUNT` (optional env-specific override)
 - `BULLHORN_<ENV>_PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (optional env-specific override)
@@ -184,6 +200,7 @@ Optional:
 - `SPARKPOST_API_KEY` (required when `DRY_RUN=false`)
 - `SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
 - `INTERVIEW_ILLINOIS_SPARKPOST_TEMPLATE_ID` (optional; falls back to `SPARKPOST_TEMPLATE_ID`)
+- `PLACEMENT_YEARLY_FEE_INCREASE_SPARKPOST_TEMPLATE_ID` (optional; falls back to `SPARKPOST_TEMPLATE_ID`)
 - `PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID` (optional; falls back to `SPARKPOST_TEMPLATE_ID`)
 - `RETRY_MAX_ATTEMPTS` (default: `4`; retries on `429` and `5xx`)
 - `RETRY_BASE_DELAY_MS` (default: `500`; exponential backoff base delay)
@@ -253,6 +270,13 @@ Workflow file: `.github/workflows/bullhorn-placement-start-reminder-sync.yml`
 - Can also run manually with `workflow_dispatch`.
 - Uploads both `reports/placement-start-reminder-report-*.json` and `reports/placement-start-reminder-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-start-reminder-reports`).
 
+Workflow file: `.github/workflows/bullhorn-placement-yearly-fee-increase-sync.yml`
+
+- Scheduled daily at `00:00 UTC`.
+- Can also run manually with `workflow_dispatch`.
+- Sends one reminder 11 months after `placement.dateBegin` for eligible contract placements.
+- Uploads both `reports/placement-yearly-fee-increase-report-*.json` and `reports/placement-yearly-fee-increase-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-yearly-fee-increase-reports`).
+
 Add repository secrets with the same names as the env vars above.
 
 Example `.env`:
@@ -313,6 +337,7 @@ Azure schedules:
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
+- `AZURE_PLACEMENT_YEARLY_FEE_INCREASE_SCHEDULE` default: `0 0 0 * * *`
 - `AZURE_CLIENT_CORPORATION_360_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_CLIENT_CORPORATION_KEY_ACCOUNT_SYNC_SCHEDULE` default: `0 */5 * * * *`
 
@@ -329,6 +354,28 @@ The same workflow can now be run three ways:
 - on a schedule through Azure timer-triggered Functions
 - from Logic Apps through HTTP-triggered Functions
 
+### Suggested SparkPost Template Copy
+
+For the placement yearly fee increase reminder, a SparkPost template body can use the substitution fields from this workflow like this:
+
+```html
+<p>Hello,</p>
+<p>
+  This is a reminder that <strong>{{client_company_name}}</strong> has agreed to an automatic
+  charge rate increase of <strong>{{yearly_fee_increase_percent}}%</strong> every 12 months.
+</p>
+<p>
+  Placement #<strong>{{placement_id}}</strong> for <strong>{{candidate_name}}</strong> started
+  11 months ago on <strong>{{placement_start_date}}</strong>. Please submit a change request
+  effective on the 1-year mark, with uplifted charge rates.
+</p>
+<p>
+  This is also a good time to inform your client in case they need to amend a purchase order
+  to accommodate the change.
+</p>
+<p>Best Regards,</p>
+```
+
 ### Logic App call pattern
 
 Each workflow has an HTTP-triggered Function with `authLevel: "function"`, so Logic Apps should call it with `POST` and include the Function key.
@@ -342,6 +389,7 @@ Routes:
 - `POST /api/workflows/placement-termination-email-sync`
 - `POST /api/workflows/interview-illinois-email-sync`
 - `POST /api/workflows/placement-start-reminder-sync`
+- `POST /api/workflows/placement-yearly-fee-increase-sync`
 - `POST /api/workflows/client-corporation-360-sync`
 - `POST /api/workflows/client-corporation-key-account-sync`
 
@@ -443,7 +491,9 @@ Notes:
 - `src/placementTerminationEmailSync.js`: Placement termination email runner.
 - `src/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
 - `src/placementStartReminderSync.js`: Placement start reminder enrichment runner.
+- `src/placementYearlyFeeIncreaseSync.js`: Placement yearly fee increase reminder runner.
 - `src/placementStartReminderUtils.js`: Placement reminder substitution and formatting helpers.
+- `src/placementYearlyFeeIncreaseUtils.js`: Placement yearly fee increase filters and SparkPost helpers.
 - `src/placementTerminationEmailUtils.js`: Placement termination email helpers.
 - `src/interviewIllinoisEmailUtils.js`: Illinois interview filter and substitution helpers.
 - `src/sparkPostClient.js`: SparkPost transmission client.

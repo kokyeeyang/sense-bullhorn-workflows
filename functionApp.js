@@ -7,6 +7,7 @@ const { run: runPlacementStatusSync } = require("./src/placementStatusSync");
 const { run: runPlacementTerminationEmailSync } = require("./src/placementTerminationEmailSync");
 const { run: runInterviewIllinoisEmailSync } = require("./src/interviewIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
+const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/placementYearlyFeeIncreaseSync");
 const { run: runClientContactDncSync } = require("./src/clientContactDncSync");
 const { run: runClientCorporation360Sync } = require("./src/clientCorporation360Sync");
 const { run: runClientCorporationKeyAccountSync } = require("./src/clientCorporationKeyAccountSync");
@@ -61,6 +62,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 0 * * *",
     logLabel: "placement start reminder sync",
     run: runPlacementStartReminderSync,
+  },
+  {
+    functionName: "placementYearlyFeeIncreaseSync",
+    workflowName: "placement-yearly-fee-increase-sync",
+    route: "workflows/placement-yearly-fee-increase-sync",
+    scheduleEnv: "AZURE_PLACEMENT_YEARLY_FEE_INCREASE_SCHEDULE",
+    defaultSchedule: "0 0 0 * * *",
+    logLabel: "placement yearly fee increase sync",
+    run: runPlacementYearlyFeeIncreaseSync,
   },
   {
     functionName: "interviewIllinoisEmailSync",

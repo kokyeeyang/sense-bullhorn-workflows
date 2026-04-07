@@ -649,13 +649,15 @@ class BullhornClient {
     const fields = [
       "id",
       "dateBegin",
+      "dateEnd",
+      "employmentType",
       "customText8",
       "customText18",
       "customText60",
       "candidate(id,firstName,lastName)",
-      "clientCorporation(id,name,customText2,customText10,customText11)",
+      "clientCorporation(id,name,customText2,customText10,customText11,customDate1,billingFrequency)",
       "billingClientContact(id,firstName,lastName,customText3,address)",
-      "jobOrder(id,owner(id,firstName,lastName))",
+      "jobOrder(id,title,owner(id,firstName,lastName))",
     ].join(",");
     const all = [];
     let start = 0;
