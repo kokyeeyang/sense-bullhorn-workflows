@@ -2,11 +2,17 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 function resolveReportsDir() {
-  if (process.env.WEBSITE_INSTANCE_ID) {
+  const currentWorkingDirectory = process.cwd();
+  const isAzureFunctionRuntime =
+    Boolean(process.env.WEBSITE_INSTANCE_ID) ||
+    Boolean(process.env.WEBSITE_SITE_NAME) ||
+    currentWorkingDirectory.startsWith("/home/site/wwwroot");
+
+  if (isAzureFunctionRuntime) {
     return path.resolve(process.env.TMPDIR || process.env.TEMP || "/tmp", "reports");
   }
 
-  return path.resolve(process.cwd(), "reports");
+  return path.resolve(currentWorkingDirectory, "reports");
 }
 
 async function writeJsonArtifact({ filePrefix, payload }) {
