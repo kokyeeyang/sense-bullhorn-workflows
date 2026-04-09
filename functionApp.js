@@ -8,6 +8,7 @@ const { run: runPlacementTerminationEmailSync } = require("./src/placementTermin
 const { run: runInterviewIllinoisEmailSync } = require("./src/interviewIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/placementYearlyFeeIncreaseSync");
+const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/placementYearlyFeeIncreaseTestSend");
 const { run: runClientContactDncSync } = require("./src/clientContactDncSync");
 const { run: runClientCorporation360Sync } = require("./src/clientCorporation360Sync");
 const { run: runClientCorporationKeyAccountSync } = require("./src/clientCorporationKeyAccountSync");
@@ -71,6 +72,14 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 0 * * *",
     logLabel: "placement yearly fee increase sync",
     run: runPlacementYearlyFeeIncreaseSync,
+  },
+  {
+    functionName: "placementYearlyFeeIncreaseTestSend",
+    workflowName: "placement-yearly-fee-increase-test-send",
+    route: "workflows/placement-yearly-fee-increase-test-send",
+    logLabel: "placement yearly fee increase test send",
+    run: runPlacementYearlyFeeIncreaseTestSend,
+    enableTimer: false,
   },
   {
     functionName: "interviewIllinoisEmailSync",
@@ -163,10 +172,12 @@ function createHttpHandler(definition) {
 }
 
 for (const definition of workflowDefinitions) {
-  app.timer(definition.functionName, {
-    schedule: process.env[definition.scheduleEnv] || definition.defaultSchedule,
-    handler: createTimerHandler(definition),
-  });
+  if (definition.enableTimer !== false) {
+    app.timer(definition.functionName, {
+      schedule: process.env[definition.scheduleEnv] || definition.defaultSchedule,
+      handler: createTimerHandler(definition),
+    });
+  }
 
   app.http(`${definition.functionName}Http`, {
     methods: ["POST"],
