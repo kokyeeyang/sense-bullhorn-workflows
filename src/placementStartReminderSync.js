@@ -5,12 +5,7 @@ const { logger } = require("./logger");
 const { BullhornClient } = require("./bullhornClient");
 const { SparkPostClient } = require("./sparkPostClient");
 const { buildSparkPostRecipient } = require("./placementStartReminderUtils");
-const { buildTestSparkPostPayload } = require("./placementStartReminderTestSend");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
-
-function isPlacementStartReminderDryRun(config) {
-  return config.PLACEMENT_START_REMINDER_DRY_RUN ?? config.DRY_RUN;
-}
 
 function buildUtcDayWindow({
   baseDate = new Date(),
@@ -49,7 +44,7 @@ async function writeSparkPostPayloadReport({ payload }) {
 }
 
 function validateSparkPostConfig(config) {
-  if (isPlacementStartReminderDryRun(config)) {
+  if (config.DRY_RUN) {
     return;
   }
 
@@ -64,8 +59,8 @@ function validateSparkPostConfig(config) {
 
 async function run() {
   const config = loadConfig();
-  const dryRun = isPlacementStartReminderDryRun(config);
   validateSparkPostConfig(config);
+  const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });
   const window = buildUtcDayWindow({
     daysAhead: config.PLACEMENT_START_REMINDER_DAYS_AHEAD,
@@ -73,61 +68,9 @@ async function run() {
     windowAfterDays: config.PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS,
   });
 
-  if (config.PLACEMENT_START_REMINDER_USE_TEST_PAYLOAD) {
-    const sparkPostPayload = buildTestSparkPostPayload(config);
-    let transmission = null;
-
-    if (!dryRun && sparkPostPayload.recipients.length > 0) {
-      transmission = await sparkPost.sendTransmission({
-        templateId: sparkPostPayload.content.template_id,
-        recipients: sparkPostPayload.recipients,
-      });
-    }
-
-    const report = {
-      generatedAt: new Date().toISOString(),
-      dryRun,
-      testMode: true,
-      totals: {
-        totalPlacements: sparkPostPayload.recipients.length,
-        matchedPlacements: sparkPostPayload.recipients.length,
-        recipients: sparkPostPayload.recipients.length,
-        skippedMissingCandidateId: 0,
-        skippedMissingOwnerId: 0,
-        skippedMissingOwnerEmail: 0,
-      },
-      sparkPost: {
-        templateId: sparkPostPayload.content.template_id,
-        recipientCount: sparkPostPayload.recipients.length,
-        sent: !dryRun && sparkPostPayload.recipients.length > 0,
-        transmission,
-        payload: sparkPostPayload,
-      },
-      recipients: sparkPostPayload.recipients,
-      placements: [],
-    };
-
-    const reportPath = await writeChangesReport({ report });
-    const sparkPostPayloadReportPath = await writeSparkPostPayloadReport({
-      payload: sparkPostPayload,
-    });
-
-    return buildWorkflowResult({
-      workflowName: "placement-start-reminder-sync",
-      report,
-      artifacts: {
-        reportPath,
-        sparkPostPayloadReportPath,
-      },
-    });
-  }
-
-  const bullhorn = new BullhornClient({ config, logger });
-
   logger.info(
     {
       dryRun: config.DRY_RUN,
-      workflowDryRun: dryRun,
       daysAhead: config.PLACEMENT_START_REMINDER_DAYS_AHEAD,
       windowBeforeDays: config.PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS,
       windowAfterDays: config.PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS,
@@ -263,7 +206,7 @@ async function run() {
     recipients: sparkPostRecipients,
   };
 
-  if (!dryRun && sparkPostRecipients.length > 0) {
+  if (!config.DRY_RUN && sparkPostRecipients.length > 0) {
     transmission = await sparkPost.sendTransmission({
       templateId: config.SPARKPOST_TEMPLATE_ID,
       recipients: sparkPostRecipients,
@@ -278,14 +221,14 @@ async function run() {
       skippedMissingCandidateId,
       skippedMissingOwnerId,
       skippedMissingOwnerEmail,
-      sparkPostSent: !dryRun && sparkPostRecipients.length > 0,
+      sparkPostSent: !config.DRY_RUN && sparkPostRecipients.length > 0,
     },
     "Placement start reminder sync finished",
   );
 
   const report = {
     generatedAt: new Date().toISOString(),
-    dryRun,
+    dryRun: config.DRY_RUN,
     window: {
       daysAhead: config.PLACEMENT_START_REMINDER_DAYS_AHEAD,
       windowBeforeDays: config.PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS,
@@ -305,7 +248,7 @@ async function run() {
     sparkPost: {
       templateId: config.SPARKPOST_TEMPLATE_ID || null,
       recipientCount: sparkPostRecipients.length,
-      sent: !dryRun && sparkPostRecipients.length > 0,
+      sent: !config.DRY_RUN && sparkPostRecipients.length > 0,
       transmission,
       payload: sparkPostPayload,
     },

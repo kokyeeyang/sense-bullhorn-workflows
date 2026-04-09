@@ -6,25 +6,7 @@ const { loadConfig } = require("./config");
 const { logger } = require("./logger");
 const { SparkPostClient } = require("./sparkPostClient");
 
-function resolveTestRecipientEmails(config) {
-  const configuredRecipients = config.PLACEMENT_START_REMINDER_TEST_RECIPIENTS
-    ?.split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  if (configuredRecipients && configuredRecipients.length > 0) {
-    return configuredRecipients;
-  }
-
-  return [
-    "yeeyang@spencer-ogden.com",
-    "yee_yang94@hotmail.com",
-  ];
-}
-
 function buildTestSparkPostPayload(config) {
-  const [primaryRecipient, secondaryRecipient] = resolveTestRecipientEmails(config);
-
   return {
     content: {
       template_id: config.SPARKPOST_TEMPLATE_ID || "test-yy",
@@ -32,7 +14,7 @@ function buildTestSparkPostPayload(config) {
     recipients: [
       {
         address: {
-          email: primaryRecipient,
+          email: "yeeyang.kok@spencer-ogden.com",
         },
         substitution_data: {
           placement_id: "123456",
@@ -54,7 +36,7 @@ function buildTestSparkPostPayload(config) {
       },
       {
         address: {
-          email: secondaryRecipient || primaryRecipient,
+          email: "yee_yang94@hotmail.com",
         },
         substitution_data: {
           placement_id: "432432423",
@@ -161,4 +143,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { buildTestSparkPostPayload, resolveTestRecipientEmails, run };
+module.exports = { buildTestSparkPostPayload, run };
