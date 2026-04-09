@@ -1,8 +1,16 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
+function resolveReportsDir() {
+  if (process.env.WEBSITE_INSTANCE_ID) {
+    return path.resolve(process.env.TMPDIR || process.env.TEMP || "/tmp", "reports");
+  }
+
+  return path.resolve(process.cwd(), "reports");
+}
+
 async function writeJsonArtifact({ filePrefix, payload }) {
-  const reportsDir = path.resolve(process.cwd(), "reports");
+  const reportsDir = resolveReportsDir();
   await fs.mkdir(reportsDir, { recursive: true });
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
