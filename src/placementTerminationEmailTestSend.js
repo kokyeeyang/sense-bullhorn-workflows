@@ -6,7 +6,25 @@ const { loadConfig } = require("./config");
 const { logger } = require("./logger");
 const { SparkPostClient } = require("./sparkPostClient");
 
+function resolveTestRecipientEmails(config) {
+  const configuredRecipients = config.PLACEMENT_TERMINATION_TEST_RECIPIENTS
+    ?.split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (configuredRecipients && configuredRecipients.length > 0) {
+    return configuredRecipients;
+  }
+
+  return [
+    "yeeyang@spencer-ogden.com",
+    "yee_yang94@hotmail.com",
+  ];
+}
+
 function buildTestSparkPostPayload(config) {
+  const [primaryRecipient, secondaryRecipient] = resolveTestRecipientEmails(config);
+
   return {
     content: {
       template_id: config.PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID || "placement-termination",
@@ -18,7 +36,7 @@ function buildTestSparkPostPayload(config) {
           status: "Terminated",
         },
         address: {
-          email: "yeeyang.kok@spencer-ogden.com",
+          email: primaryRecipient,
         },
         substitution_data: {
           owner_firstName: "Yee Yang",
@@ -38,7 +56,7 @@ function buildTestSparkPostPayload(config) {
           status: "Terminated",
         },
         address: {
-          email: "yee_yang94@hotmail.com",
+          email: secondaryRecipient || primaryRecipient,
         },
         substitution_data: {
           owner_firstName: "Yee Yang",
@@ -135,5 +153,6 @@ if (require.main === module) {
 
 module.exports = {
   buildTestSparkPostPayload,
+  resolveTestRecipientEmails,
   run,
 };

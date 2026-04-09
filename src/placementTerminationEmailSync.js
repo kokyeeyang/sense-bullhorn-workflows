@@ -4,6 +4,7 @@ const { loadConfig } = require("./config");
 const { logger } = require("./logger");
 const { BullhornClient } = require("./bullhornClient");
 const { SparkPostClient } = require("./sparkPostClient");
+const { buildTestSparkPostPayload } = require("./placementTerminationEmailTestSend");
 const {
   buildPlacementTerminationRecipient,
   isTerminatedPlacementStatusChange,
@@ -14,8 +15,12 @@ function getTemplateId(config) {
   return config.PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID || config.SPARKPOST_TEMPLATE_ID || null;
 }
 
+function isPlacementTerminationEmailDryRun(config) {
+  return config.PLACEMENT_TERMINATION_EMAIL_DRY_RUN ?? config.DRY_RUN;
+}
+
 function validateSparkPostConfig(config) {
-  if (config.DRY_RUN) {
+  if (isPlacementTerminationEmailDryRun(config)) {
     return;
   }
 
@@ -46,14 +51,71 @@ async function writeSparkPostPayloadReport({ payload }) {
 
 async function run() {
   const config = loadConfig();
+  const dryRun = isPlacementTerminationEmailDryRun(config);
   validateSparkPostConfig(config);
-  const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });
   const templateId = getTemplateId(config);
 
+  if (config.PLACEMENT_TERMINATION_EMAIL_USE_TEST_PAYLOAD) {
+    const sparkPostPayload = buildTestSparkPostPayload(config);
+    let transmission = null;
+
+    if (!dryRun && sparkPostPayload.recipients.length > 0) {
+      transmission = await sparkPost.sendTransmission({
+        templateId: sparkPostPayload.content.template_id,
+        recipients: sparkPostPayload.recipients,
+      });
+    }
+
+    const report = {
+      generatedAt: new Date().toISOString(),
+      dryRun,
+      subscriptionId: config.PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID,
+      testMode: true,
+      totals: {
+        totalEvents: sparkPostPayload.recipients.length,
+        matchedPlacements: sparkPostPayload.recipients.length,
+        recipients: sparkPostPayload.recipients.length,
+        skippedNoStatusChange: 0,
+        skippedWrongTransition: 0,
+        skippedMissingOwnerEmail: 0,
+        skippedDuplicatePlacement: 0,
+      },
+      sparkPost: {
+        templateId: sparkPostPayload.content.template_id,
+        recipientCount: sparkPostPayload.recipients.length,
+        sent: !dryRun && sparkPostPayload.recipients.length > 0,
+        transmission,
+        payload: sparkPostPayload,
+      },
+      recipients: sparkPostPayload.recipients,
+      placements: sparkPostPayload.recipients.map((recipient) => ({
+        placementId: recipient?.placement?.id || null,
+        placement: recipient?.placement || null,
+        sparkPostRecipient: recipient,
+      })),
+    };
+
+    const reportPath = await writeChangesReport({ report });
+    const sparkPostPayloadReportPath = await writeSparkPostPayloadReport({
+      payload: sparkPostPayload,
+    });
+
+    return buildWorkflowResult({
+      workflowName: "placement-termination-email-sync",
+      report,
+      artifacts: {
+        reportPath,
+        sparkPostPayloadReportPath,
+      },
+    });
+  }
+
+  const bullhorn = new BullhornClient({ config, logger });
+
   logger.info(
     {
-      dryRun: config.DRY_RUN,
+      dryRun,
       placementTerminationEventSubscriptionId: config.PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID,
       placementTerminationEventMaxEvents: config.PLACEMENT_TERMINATION_EVENT_MAX_EVENTS,
       sparkPostTemplateId: templateId,
@@ -216,7 +278,7 @@ async function run() {
     recipients: sparkPostRecipients,
   };
 
-  if (!config.DRY_RUN && sparkPostRecipients.length > 0) {
+  if (!dryRun && sparkPostRecipients.length > 0) {
     transmission = await sparkPost.sendTransmission({
       templateId,
       recipients: sparkPostRecipients,
@@ -232,14 +294,14 @@ async function run() {
       skippedWrongTransition,
       skippedMissingOwnerEmail,
       skippedDuplicatePlacement,
-      sparkPostSent: !config.DRY_RUN && sparkPostRecipients.length > 0,
+      sparkPostSent: !dryRun && sparkPostRecipients.length > 0,
     },
     "Placement termination email sync finished",
   );
 
   const report = {
     generatedAt: new Date().toISOString(),
-    dryRun: config.DRY_RUN,
+    dryRun,
     subscriptionId: config.PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID,
     totals: {
       totalEvents: events.length,
@@ -253,7 +315,7 @@ async function run() {
     sparkPost: {
       templateId,
       recipientCount: sparkPostRecipients.length,
-      sent: !config.DRY_RUN && sparkPostRecipients.length > 0,
+      sent: !dryRun && sparkPostRecipients.length > 0,
       transmission,
       payload: sparkPostPayload,
     },
