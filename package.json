@@ -2,7 +2,7 @@
   "name": "sense-bullhorn-workflows",
   "version": "1.0.0",
   "description": "Bullhorn workflow migration scripts",
-  "main": "src/index.js",
+  "main": "functionApp.js",
   "scripts": {
     "start": "node src/index.js",
     "run:workflow": "node src/index.js",

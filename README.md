@@ -8,6 +8,7 @@ Completed Sense workflows:
 6. Placement Terminated Reminder
 7. Start Date reminders
 8. Key Accounts
+9. Reminder for Yearly Fee Increase
 
 Minimal Node.js workflow to:
 
