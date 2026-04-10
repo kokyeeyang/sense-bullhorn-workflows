@@ -66,10 +66,6 @@ async function writePayloadReport({ payload }) {
 }
 
 function validateSparkPostConfig(config) {
-  if (config.DRY_RUN) {
-    return;
-  }
-
   const missing = [];
   if (!config.SPARKPOST_API_KEY) missing.push("SPARKPOST_API_KEY or BULLHORN_WORKFLOW");
 
@@ -87,6 +83,7 @@ async function run() {
   logger.info(
     {
       dryRun: config.DRY_RUN,
+      forcedSend: true,
       templateId: payload.content.template_id,
       recipientCount: payload.recipients.length,
     },
@@ -96,18 +93,16 @@ async function run() {
   const reportPath = await writePayloadReport({ payload });
   logger.info({ reportPath }, "Placement yearly fee increase SparkPost test payload report written");
 
-  let transmission = null;
-  if (!config.DRY_RUN) {
-    transmission = await sparkPost.sendTransmission({
-      templateId: payload.content.template_id,
-      recipients: payload.recipients,
-    });
+  const transmission = await sparkPost.sendTransmission({
+    templateId: payload.content.template_id,
+    recipients: payload.recipients,
+  });
 
-    logger.info({ transmission }, "Placement yearly fee increase SparkPost test transmission sent");
-  }
+  logger.info({ transmission }, "Placement yearly fee increase SparkPost test transmission sent");
 
   return {
     dryRun: config.DRY_RUN,
+    forcedSend: true,
     payload,
     transmission,
     reportPath,
