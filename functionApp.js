@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-// test
+// testsada
 const { app } = require("@azure/functions");
 const { run: runCandidateStateSync } = require("./src/index");
 const { run: runPlacementDatabaseEnrichmentSync } = require("./src/placementDatabaseEnrichmentSync");
