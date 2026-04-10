@@ -20,7 +20,7 @@ function validateSparkPostConfig(config) {
   }
 
   const missing = [];
-  if (!config.SPARKPOST_API_KEY) missing.push("SPARKPOST_API_KEY");
+  if (!config.SPARKPOST_API_KEY) missing.push("SPARKPOST_API_KEY or BULLHORN_WORKFLOW");
   if (!getTemplateId(config)) {
     missing.push("PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID or SPARKPOST_TEMPLATE_ID");
   }

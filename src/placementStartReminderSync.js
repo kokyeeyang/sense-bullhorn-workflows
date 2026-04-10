@@ -49,7 +49,7 @@ function validateSparkPostConfig(config) {
   }
 
   const missing = [];
-  if (!config.SPARKPOST_API_KEY) missing.push("SPARKPOST_API_KEY");
+  if (!config.SPARKPOST_API_KEY) missing.push("SPARKPOST_API_KEY or BULLHORN_WORKFLOW");
   if (!config.SPARKPOST_TEMPLATE_ID) missing.push("SPARKPOST_TEMPLATE_ID");
 
   if (missing.length > 0) {

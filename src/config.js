@@ -87,6 +87,7 @@ const configSchema = z.object({
   PLACEMENT_YEARLY_FEE_INCREASE_QUERY_COUNT: positiveIntWithDefault(200),
   PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS: nonNegativeIntWithDefault(0),
   PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS: nonNegativeIntWithDefault(0),
+  BULLHORN_WORKFLOW: optionalString,
   SPARKPOST_API_BASE_URL: urlWithDefault("https://api.sparkpost.com"),
   SPARKPOST_API_KEY: optionalString,
   SPARKPOST_TEMPLATE_ID: optionalString,
@@ -164,9 +165,7 @@ function applyBullhornEnvironment(env) {
 
 function loadConfig() {
   const env = applyBullhornEnvironment({ ...process.env });
-  if (!env.SPARKPOST_API_KEY && env.BULLHORN_WORKFLOW) {
-    env.SPARKPOST_API_KEY = env.BULLHORN_WORKFLOW;
-  }
+  env.SPARKPOST_API_KEY = env.SPARKPOST_API_KEY || env.BULLHORN_WORKFLOW;
 
   const parsed = configSchema.safeParse(env);
 
