@@ -1,10 +1,10 @@
 require("dotenv").config();
 const fs = require("node:fs/promises");
-const path = require("node:path");
 
 const { loadConfig } = require("./config");
 const { logger } = require("./logger");
 const { SparkPostClient } = require("./sparkPostClient");
+const { buildJsonArtifactPath } = require("./workflowRuntime");
 
 function buildTestSparkPostPayload(config) {
   return {
@@ -52,14 +52,10 @@ function buildTestSparkPostPayload(config) {
 }
 
 async function writePayloadReport({ payload }) {
-  const reportsDir = path.resolve(process.cwd(), "reports");
+  const { reportsDir, artifactPath: reportPath } = buildJsonArtifactPath({
+    filePrefix: "placement-yearly-fee-increase-sparkpost-test-payload",
+  });
   await fs.mkdir(reportsDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const reportPath = path.join(
-    reportsDir,
-    `placement-yearly-fee-increase-sparkpost-test-payload-${timestamp}.json`,
-  );
   await fs.writeFile(reportPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 
   return reportPath;

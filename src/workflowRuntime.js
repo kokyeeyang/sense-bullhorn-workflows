@@ -15,12 +15,19 @@ function resolveReportsDir() {
   return path.resolve(currentWorkingDirectory, "reports");
 }
 
-async function writeJsonArtifact({ filePrefix, payload }) {
+function buildJsonArtifactPath({ filePrefix }) {
   const reportsDir = resolveReportsDir();
-  await fs.mkdir(reportsDir, { recursive: true });
-
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const artifactPath = path.join(reportsDir, `${filePrefix}-${timestamp}.json`);
+
+  return {
+    reportsDir,
+    artifactPath: path.join(reportsDir, `${filePrefix}-${timestamp}.json`),
+  };
+}
+
+async function writeJsonArtifact({ filePrefix, payload }) {
+  const { reportsDir, artifactPath } = buildJsonArtifactPath({ filePrefix });
+  await fs.mkdir(reportsDir, { recursive: true });
   await fs.writeFile(artifactPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 
   return artifactPath;
@@ -87,6 +94,7 @@ function buildHttpErrorPayload({ workflowName, error, trigger, startedAt, finish
 module.exports = {
   buildHttpErrorPayload,
   buildHttpSuccessPayload,
+  buildJsonArtifactPath,
   buildWorkflowResult,
   serializeError,
   writeJsonArtifact,
