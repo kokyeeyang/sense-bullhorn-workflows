@@ -41,7 +41,7 @@ const workflowDefinitions = [
     workflowName: "placement-database-enrichment-sync",
     route: "workflows/placement-database-enrichment-sync",
     scheduleEnv: "AZURE_PLACEMENT_DATABASE_ENRICHMENT_SYNC_SCHEDULE",
-    defaultSchedule: "0 1 0 * * *",
+    defaultSchedule: "0 */5 * * * *",
     logLabel: "placement database enrichment sync",
     run: runPlacementDatabaseEnrichmentSync,
   },

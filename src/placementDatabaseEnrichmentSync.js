@@ -5,10 +5,8 @@ const { logger } = require("./logger");
 const { BullhornClient } = require("./bullhornClient");
 const {
   buildCandidatePatchFromPlacementForDatabaseEnrichment,
-  buildPreviousUtcDayWindow,
   getFieldChanges,
-  getStatusChangeFromEditHistory,
-  isTargetPlacementDatabaseEnrichmentStatusChange,
+  getPlacementDatabaseEnrichmentMatchReason,
 } = require("./placementDatabaseEnrichmentUtils");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
@@ -31,6 +29,7 @@ function buildAffectedCandidateRecord({ match, placement, candidateUpdate, chang
     candidateId: candidateUpdate.candidateId,
     mode,
     mappingType: "placement-database-enrichment",
+    matchReason: match.matchReason || null,
     ruleType: candidateUpdate.ruleType,
     transactionId: match.transactionId,
     statusChange: match.statusChange,
@@ -57,18 +56,14 @@ function buildAffectedCandidateRecord({ match, placement, candidateUpdate, chang
 async function run() {
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
-  const window = buildPreviousUtcDayWindow({
-    daysBack: config.PLACEMENT_DATABASE_ENRICHMENT_DAYS_BACK,
-  });
 
   logger.info(
     {
       dryRun: config.DRY_RUN,
-      daysBack: config.PLACEMENT_DATABASE_ENRICHMENT_DAYS_BACK,
-      targetDate: window.targetDate,
-      startMs: window.startMs,
-      endMs: window.endMs,
-      queryCount: config.PLACEMENT_DATABASE_ENRICHMENT_QUERY_COUNT,
+      placementDatabaseEnrichmentEventSubscriptionId:
+        config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID,
+      placementDatabaseEnrichmentEventMaxEvents:
+        config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
       retryBaseDelayMs: config.RETRY_BASE_DELAY_MS,
       updateDelayMs: config.UPDATE_DELAY_MS,
@@ -80,72 +75,101 @@ async function run() {
   const accessToken = await bullhorn.getAccessToken(code);
   const session = await bullhorn.login(accessToken);
 
-  const editHistories = await bullhorn.queryPlacementEditHistoryByDateAddedRange({
+  await bullhorn.upsertEventSubscription({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    startMs: window.startMs,
-    endMs: window.endMs,
-    count: config.PLACEMENT_DATABASE_ENRICHMENT_QUERY_COUNT,
+    subscriptionId: config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID,
+    entityName: "Placement",
   });
 
-  logger.info(
-    { editHistoryCount: editHistories.length },
-    "Fetched placement edit histories for enrichment window",
-  );
+  const eventResponse = await bullhorn.consumeEvents({
+    restUrl: session.restUrl,
+    bhRestToken: session.bhRestToken,
+    subscriptionId: config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID,
+    maxEvents: config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS,
+  });
+
+  const events = eventResponse.events || [];
+  logger.info({ eventCount: events.length }, "Fetched placement events for database enrichment");
 
   let skippedMissingPlacementId = 0;
-  let skippedWrongTransition = 0;
+  let skippedNotEligible = 0;
   let skippedDuplicatePlacement = 0;
   let skippedNoPatch = 0;
   let skippedNoChange = 0;
   let updated = 0;
-  const matchedTransitionsByPlacementId = new Map();
+  let skippedMissingTransactionId = 0;
+  const matchedPlacementsByPlacementId = new Map();
   const affectedCandidates = [];
-  const skippedTransitions = [];
+  const skippedPlacements = [];
 
-  for (const editHistory of editHistories) {
-    const placementId = Number(editHistory?.targetEntity?.id || 0);
+  for (const event of events) {
+    const placementId = Number(event.entityId || 0);
     if (!placementId) {
       skippedMissingPlacementId += 1;
       continue;
     }
 
-    const statusChange = getStatusChangeFromEditHistory(editHistory);
-    if (!isTargetPlacementDatabaseEnrichmentStatusChange(statusChange)) {
-      skippedWrongTransition += 1;
-      if (skippedTransitions.length < SKIPPED_TRANSITIONS_PREVIEW_LIMIT) {
-        skippedTransitions.push({
-          placementId,
-          editHistoryId: editHistory.id || null,
-          transactionId: editHistory.transactionID || null,
-          dateAdded: editHistory.dateAdded || null,
-          oldValue: statusChange?.oldValue ?? null,
-          newValue: statusChange?.newValue ?? null,
-          reason: statusChange ? "status-transition-not-targeted" : "missing-status-change",
-        });
-      }
+    if (matchedPlacementsByPlacementId.has(placementId)) {
+      skippedDuplicatePlacement += 1;
       continue;
     }
 
-    if (matchedTransitionsByPlacementId.has(placementId)) {
-      skippedDuplicatePlacement += 1;
-    }
-
-    matchedTransitionsByPlacementId.set(placementId, {
+    matchedPlacementsByPlacementId.set(placementId, {
       placementId,
-      editHistoryId: editHistory.id || null,
-      transactionId: editHistory.transactionID || null,
-      dateAdded: editHistory.dateAdded || null,
-      statusChange,
+      transactionId: event.entityEvent?.transactionID || event.transactionID || null,
+      updatedProperties: event.updatedProperties || [],
     });
   }
 
-  for (const match of matchedTransitionsByPlacementId.values()) {
+  for (const match of matchedPlacementsByPlacementId.values()) {
     const placement = await bullhorn.getPlacement({
       restUrl: session.restUrl,
       bhRestToken: session.bhRestToken,
       placementId: match.placementId,
     });
+
+    let statusChange = null;
+    if (match.updatedProperties.includes("status")) {
+      if (!match.transactionId) {
+        skippedMissingTransactionId += 1;
+        if (skippedPlacements.length < SKIPPED_TRANSITIONS_PREVIEW_LIMIT) {
+          skippedPlacements.push({
+            placementId: match.placementId,
+            transactionId: null,
+            updatedProperties: match.updatedProperties,
+            reason: "missing-transaction-id-for-status-change",
+          });
+        }
+        continue;
+      }
+
+      statusChange = await bullhorn.getPlacementStatusChange({
+        restUrl: session.restUrl,
+        bhRestToken: session.bhRestToken,
+        transactionId: match.transactionId,
+      });
+    }
+
+    const matchReason = getPlacementDatabaseEnrichmentMatchReason(placement, statusChange, {
+      baseDate: new Date(),
+    });
+    if (!matchReason) {
+      skippedNotEligible += 1;
+      if (skippedPlacements.length < SKIPPED_TRANSITIONS_PREVIEW_LIMIT) {
+        skippedPlacements.push({
+          placementId: match.placementId,
+          transactionId: match.transactionId,
+          updatedProperties: match.updatedProperties,
+          dateLastModified: placement?.dateLastModified ?? null,
+          employmentType: placement?.employmentType || placement?.jobOrder?.employmentType || null,
+          oldValue: statusChange?.oldValue ?? null,
+          newValue: statusChange?.newValue ?? null,
+          reason: "placement-not-eligible-for-database-enrichment",
+        });
+      }
+      continue;
+    }
 
     const candidateUpdate = buildCandidatePatchFromPlacementForDatabaseEnrichment(placement);
     if (!candidateUpdate) {
@@ -162,7 +186,11 @@ async function run() {
     if (config.DRY_RUN) {
       affectedCandidates.push(
         buildAffectedCandidateRecord({
-          match,
+          match: {
+            ...match,
+            statusChange,
+            matchReason,
+          },
           placement,
           candidateUpdate,
           changes,
@@ -175,7 +203,8 @@ async function run() {
           placementId: match.placementId,
           candidateId: candidateUpdate.candidateId,
           transactionId: match.transactionId,
-          statusChange: match.statusChange,
+          statusChange,
+          matchReason,
           ruleType: candidateUpdate.ruleType,
           changes,
           patch: candidateUpdate.patch,
@@ -196,7 +225,11 @@ async function run() {
 
     affectedCandidates.push(
       buildAffectedCandidateRecord({
-        match,
+        match: {
+          ...match,
+          statusChange,
+          matchReason,
+        },
         placement,
         candidateUpdate,
         changes,
@@ -210,7 +243,8 @@ async function run() {
         placementId: match.placementId,
         candidateId: candidateUpdate.candidateId,
         transactionId: match.transactionId,
-        statusChange: match.statusChange,
+        statusChange,
+        matchReason,
         ruleType: candidateUpdate.ruleType,
         changes,
       },
@@ -224,11 +258,12 @@ async function run() {
 
   logger.info(
     {
-      totalEditHistories: editHistories.length,
-      matchedTransitions: matchedTransitionsByPlacementId.size,
+      totalEvents: events.length,
+      matchedPlacements: matchedPlacementsByPlacementId.size,
       updated,
       skippedMissingPlacementId,
-      skippedWrongTransition,
+      skippedMissingTransactionId,
+      skippedNotEligible,
       skippedDuplicatePlacement,
       skippedNoPatch,
       skippedNoChange,
@@ -239,24 +274,20 @@ async function run() {
   const report = {
     generatedAt: new Date().toISOString(),
     dryRun: config.DRY_RUN,
-    window: {
-      daysBack: config.PLACEMENT_DATABASE_ENRICHMENT_DAYS_BACK,
-      targetDate: window.targetDate,
-      startMs: window.startMs,
-      endMs: window.endMs,
-    },
+    subscriptionId: config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID,
     totals: {
-      totalEditHistories: editHistories.length,
-      matchedTransitions: matchedTransitionsByPlacementId.size,
+      totalEvents: events.length,
+      matchedPlacements: matchedPlacementsByPlacementId.size,
       affectedCandidates: affectedCandidates.length,
       updated,
       skippedMissingPlacementId,
-      skippedWrongTransition,
+      skippedMissingTransactionId,
+      skippedNotEligible,
       skippedDuplicatePlacement,
       skippedNoPatch,
       skippedNoChange,
     },
-    skippedTransitions,
+    skippedPlacements,
     affectedCandidates,
   };
 

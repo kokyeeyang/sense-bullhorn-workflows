@@ -70,6 +70,10 @@ const configSchema = z.object({
   PLACEMENT_EVENT_MAX_EVENTS: positiveIntWithDefault(100),
   PLACEMENT_DATABASE_ENRICHMENT_QUERY_COUNT: positiveIntWithDefault(200),
   PLACEMENT_DATABASE_ENRICHMENT_DAYS_BACK: positiveIntWithDefault(1),
+  PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID: stringWithDefault(
+    "sense-placement-database-enrichment-sync",
+  ),
+  PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS: positiveIntWithDefault(100),
   PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID: stringWithDefault(
     "sense-placement-termination-email",
   ),

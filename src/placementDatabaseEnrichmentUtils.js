@@ -5,13 +5,15 @@ const EXCLUDED_PLACEMENT_STATUSES = new Set([
   "fall out",
   "temporarily suspended",
 ]);
-const ALLOWED_PREVIOUS_STATUSES = new Set(["", "qc approved", "submitted"]);
-
 function normalizeValue(value) {
   if (value === null || value === undefined) return "";
   if (typeof value !== "string") return String(value).trim().toLowerCase();
 
   return value.trim().toLowerCase();
+}
+
+function isPermEmploymentType(value) {
+  return PERM_EMPLOYMENT_TYPES.has(normalizeValue(value));
 }
 
 function addOneDay(value) {
@@ -26,26 +28,6 @@ function addOneDay(value) {
 
   parsed.setUTCDate(parsed.getUTCDate() + 1);
   return parsed.toISOString();
-}
-
-function buildPreviousUtcDayWindow({ baseDate = new Date(), daysBack = 1 } = {}) {
-  const currentDayStartMs = Date.UTC(
-    baseDate.getUTCFullYear(),
-    baseDate.getUTCMonth(),
-    baseDate.getUTCDate(),
-    0,
-    0,
-    0,
-    0,
-  );
-  const targetDayStartMs = currentDayStartMs - daysBack * 24 * 60 * 60 * 1000;
-
-  return {
-    startMs: targetDayStartMs,
-    endMs: targetDayStartMs + 24 * 60 * 60 * 1000,
-    targetDate: new Date(targetDayStartMs).toISOString().slice(0, 10),
-    daysBack,
-  };
 }
 
 function extractFieldChanges(fieldChanges) {
@@ -69,16 +51,89 @@ function getStatusChangeFromEditHistory(editHistory) {
   );
 }
 
-function isTargetPlacementDatabaseEnrichmentStatusChange(statusChange) {
+function isContractPlacementDatabaseEnrichmentStatusChange(statusChange) {
   if (!statusChange) return false;
 
   const oldValue = normalizeValue(statusChange.oldValue);
   const newValue = normalizeValue(statusChange.newValue);
 
+  return newValue === "approved" && new Set(["", "qc approved", "submitted"]).has(oldValue);
+}
+
+function isPermPlacementDatabaseEnrichmentStatusChange(statusChange) {
+  if (!statusChange) return false;
+
   return (
-    newValue === "approved" &&
-    ALLOWED_PREVIOUS_STATUSES.has(oldValue)
+    normalizeValue(statusChange.oldValue) === "" &&
+    normalizeValue(statusChange.newValue) === "approved"
   );
+}
+
+function getTimestampOffsetMinutes(value) {
+  if (typeof value !== "string") {
+    return 0;
+  }
+
+  if (/[zZ]$/.test(value)) {
+    return 0;
+  }
+
+  const match = value.match(/([+-])(\d{2}):?(\d{2})$/);
+  if (!match) {
+    return 0;
+  }
+
+  const sign = match[1] === "-" ? -1 : 1;
+  return sign * (Number(match[2]) * 60 + Number(match[3]));
+}
+
+function formatDateInOffset(baseDate, offsetMinutes) {
+  const shifted = new Date(baseDate.getTime() + offsetMinutes * 60 * 1000);
+  return shifted.toISOString().slice(0, 10);
+}
+
+function isPlacementDateLastModifiedMatch(placement, { baseDate = new Date() } = {}) {
+  const rawValue = placement?.dateLastModified;
+  if (!rawValue) {
+    return false;
+  }
+
+  if (typeof rawValue === "string") {
+    const datePart = rawValue.slice(0, 10);
+    const currentDatePart = formatDateInOffset(baseDate, getTimestampOffsetMinutes(rawValue));
+    return datePart === currentDatePart;
+  }
+
+  const parsed = new Date(rawValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  return parsed.toISOString().slice(0, 10) === baseDate.toISOString().slice(0, 10);
+}
+
+function getPlacementDatabaseEnrichmentMatchReason(
+  placement,
+  statusChange,
+  { baseDate = new Date() } = {},
+) {
+  const employmentType = normalizeValue(
+    placement?.employmentType || placement?.jobOrder?.employmentType,
+  );
+
+  if (isPermEmploymentType(employmentType)) {
+    if (isPermPlacementDatabaseEnrichmentStatusChange(statusChange)) {
+      return "perm-approved-status-change";
+    }
+  } else if (isContractPlacementDatabaseEnrichmentStatusChange(statusChange)) {
+    return "contract-approved-status-change";
+  }
+
+  if (isPlacementDateLastModifiedMatch(placement, { baseDate })) {
+    return "date-last-modified";
+  }
+
+  return null;
 }
 
 function isDateOnOrAfterTodayUtc(value, { baseDate = new Date() } = {}) {
@@ -126,7 +181,7 @@ function buildCandidatePatchFromPlacementForDatabaseEnrichment(
     status: "Placed by us",
   };
 
-  if (PERM_EMPLOYMENT_TYPES.has(employmentType)) {
+  if (isPermEmploymentType(employmentType)) {
     if (!isDateOnOrAfterTodayUtc(placement?.dateBegin, { baseDate })) {
       return null;
     }
@@ -174,10 +229,14 @@ function getFieldChanges(currentCandidate, patch) {
 module.exports = {
   addOneDay,
   buildCandidatePatchFromPlacementForDatabaseEnrichment,
-  buildPreviousUtcDayWindow,
   extractFieldChanges,
   getFieldChanges,
+  getPlacementDatabaseEnrichmentMatchReason,
   getStatusChangeFromEditHistory,
+  isContractPlacementDatabaseEnrichmentStatusChange,
   isDateOnOrAfterTodayUtc,
-  isTargetPlacementDatabaseEnrichmentStatusChange,
+  isPermEmploymentType,
+  isPermPlacementDatabaseEnrichmentStatusChange,
+  isPlacementDateLastModifiedMatch,
+  normalizeValue,
 };
