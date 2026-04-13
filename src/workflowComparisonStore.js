@@ -119,6 +119,57 @@ async function writeWorkflowComparisonRecords({ config, logger, records }) {
   return { skipped: false, count: records.length };
 }
 
+function parseDetails(detailsJson) {
+  if (!detailsJson) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(detailsJson);
+  } catch {
+    return {};
+  }
+}
+
+async function listWorkflowComparisonRecordsForDate({ config, workflowName, runDate }) {
+  const client = getClient({ config });
+  if (!client) {
+    return [];
+  }
+
+  await ensureTable({ client });
+  const partitionKey = buildPartitionKey({
+    environment: getEnvironmentLabel(config),
+    workflowName,
+    runDate,
+  });
+  const entities = [];
+
+  for await (const entity of client.listEntities({
+    queryOptions: {
+      filter: `PartitionKey eq '${partitionKey.replace(/'/g, "''")}'`,
+    },
+  })) {
+    entities.push({
+      environment: entity.environment || null,
+      workflowName: entity.workflowName || workflowName,
+      runDate: entity.runDate || runDate,
+      runTimestamp: entity.runTimestamp || null,
+      sourceSystem: entity.sourceSystem || "azure-functions",
+      recordType: entity.recordType || null,
+      actionDecision: entity.actionDecision || null,
+      entityType: entity.entityType || null,
+      entityId: entity.entityId ?? null,
+      transactionId: entity.transactionId || null,
+      candidateId: entity.candidateId ?? null,
+      relatedId: entity.relatedId ?? null,
+      details: parseDetails(entity.detailsJson),
+    });
+  }
+
+  return entities;
+}
+
 async function writeWorkflowComparisonRecordsSafe(args) {
   try {
     return await writeWorkflowComparisonRecords(args);
@@ -140,6 +191,7 @@ async function writeWorkflowComparisonRecordsSafe(args) {
 }
 
 module.exports = {
+  listWorkflowComparisonRecordsForDate,
   writeWorkflowComparisonRecords,
   writeWorkflowComparisonRecordsSafe,
 };

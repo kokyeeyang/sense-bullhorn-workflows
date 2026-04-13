@@ -116,6 +116,7 @@ const configSchema = z.object({
   DAILY_SUMMARY_RECIPIENT_EMAIL: optionalString,
   DAILY_SUMMARY_FROM_EMAIL: optionalString,
   AZURE_DAILY_WORKFLOW_SUMMARY_SCHEDULE: stringWithDefault("0 55 23 * * *"),
+  AZURE_DAILY_WORKFLOW_COMPARISON_SUMMARY_SCHEDULE: stringWithDefault("0 50 23 * * *"),
   RETRY_MAX_ATTEMPTS: positiveIntWithDefault(4),
   RETRY_BASE_DELAY_MS: positiveIntWithDefault(500),
   UPDATE_DELAY_MS: nonNegativeIntWithDefault(150),

@@ -13,6 +13,7 @@ const { run: runPlacementStartReminderSync } = require("./src/placementStartRemi
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/placementYearlyFeeIncreaseSync");
 const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/placementYearlyFeeIncreaseTestSend");
 const { run: runDailyWorkflowSummary } = require("./src/dailyWorkflowSummary");
+const { run: runDailyWorkflowComparisonSummary } = require("./src/dailyWorkflowComparisonSummary");
 const { run: runClientContactDncSync } = require("./src/clientContactDncSync");
 const { run: runClientCorporation360Sync } = require("./src/clientCorporation360Sync");
 const { run: runClientCorporationKeyAccountSync } = require("./src/clientCorporationKeyAccountSync");
@@ -135,6 +136,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 55 23 * * *",
     logLabel: "daily workflow summary",
     run: ({ targetDate } = {}) => runDailyWorkflowSummary({ targetDate }),
+  },
+  {
+    functionName: "dailyWorkflowComparisonSummary",
+    workflowName: "daily-workflow-comparison-summary",
+    route: "workflows/daily-workflow-comparison-summary",
+    scheduleEnv: "AZURE_DAILY_WORKFLOW_COMPARISON_SUMMARY_SCHEDULE",
+    defaultSchedule: "0 50 23 * * *",
+    logLabel: "daily workflow comparison summary",
+    run: ({ targetDate } = {}) => runDailyWorkflowComparisonSummary({ targetDate }),
   },
 ];
 

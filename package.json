@@ -20,6 +20,7 @@
     "run:placement-start-reminder-test-send": "node src/placementStartReminderTestSend.js",
     "run:placement-yearly-fee-increase-test-send": "node src/placementYearlyFeeIncreaseTestSend.js",
     "run:daily-workflow-summary": "node src/dailyWorkflowSummary.js",
+    "run:daily-workflow-comparison-summary": "node src/dailyWorkflowComparisonSummary.js",
     "run:check-sparkpost-template": "node src/checkSparkPostTemplate.js",
     "start:azure": "func start",
     "test": "jest"
