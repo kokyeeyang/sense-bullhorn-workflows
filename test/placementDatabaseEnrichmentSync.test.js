@@ -19,7 +19,9 @@ const mockBullhornClient = {
   getAuthorizationCode: jest.fn(),
   getAccessToken: jest.fn(),
   login: jest.fn(),
-  queryPlacementEditHistoryByDateAddedRange: jest.fn(),
+  upsertEventSubscription: jest.fn(),
+  consumeEvents: jest.fn(),
+  getPlacementStatusChange: jest.fn(),
   getPlacement: jest.fn(),
   updateCandidate: jest.fn(),
 };
@@ -38,8 +40,9 @@ describe("placementDatabaseEnrichmentSync", () => {
 
     loadConfig.mockReturnValue({
       DRY_RUN: false,
-      PLACEMENT_DATABASE_ENRICHMENT_QUERY_COUNT: 200,
-      PLACEMENT_DATABASE_ENRICHMENT_DAYS_BACK: 1,
+      PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID:
+        "sense-placement-database-enrichment-sync",
+      PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS: 100,
       RETRY_MAX_ATTEMPTS: 4,
       RETRY_BASE_DELAY_MS: 500,
       UPDATE_DELAY_MS: 0,
@@ -51,29 +54,45 @@ describe("placementDatabaseEnrichmentSync", () => {
       restUrl: "https://rest.example.com",
       bhRestToken: "token",
     });
+    mockBullhornClient.upsertEventSubscription.mockResolvedValue({
+      subscriptionId: "sense-placement-database-enrichment-sync",
+    });
   });
 
-  test("updates candidates for matched approved transitions using the correct branch rules", async () => {
-    mockBullhornClient.queryPlacementEditHistoryByDateAddedRange.mockResolvedValue([
-      {
-        id: 7001,
-        transactionID: "tx-1",
-        targetEntity: { id: 321 },
-        fieldChanges: [{ columnName: "status", oldValue: "submitted", newValue: "approved" }],
-      },
-      {
-        id: 7002,
-        transactionID: "tx-2",
-        targetEntity: { id: 322 },
-        fieldChanges: [{ columnName: "status", oldValue: null, newValue: "approved" }],
-      },
-      {
-        id: 7003,
-        transactionID: "tx-3",
-        targetEntity: { id: 323 },
-        fieldChanges: [{ columnName: "status", oldValue: "rejected", newValue: "approved" }],
-      },
-    ]);
+  test("updates candidates for matched placement events using the correct branch rules", async () => {
+    mockBullhornClient.consumeEvents.mockResolvedValue({
+      events: [
+        {
+          entityId: 321,
+          transactionID: "tx-1",
+          updatedProperties: ["status"],
+        },
+        {
+          entityId: 322,
+          transactionID: "tx-2",
+          updatedProperties: ["status"],
+        },
+        {
+          entityId: 323,
+          transactionID: "tx-3",
+          updatedProperties: ["status"],
+        },
+      ],
+    });
+
+    mockBullhornClient.getPlacementStatusChange
+      .mockResolvedValueOnce({
+        oldValue: null,
+        newValue: "approved",
+      })
+      .mockResolvedValueOnce({
+        oldValue: null,
+        newValue: "approved",
+      })
+      .mockResolvedValueOnce({
+        oldValue: "rejected",
+        newValue: "approved",
+      });
 
     mockBullhornClient.getPlacement
       .mockResolvedValueOnce({
@@ -81,6 +100,7 @@ describe("placementDatabaseEnrichmentSync", () => {
         status: "approved",
         employmentType: "perm",
         dateBegin: "2099-05-01T00:00:00.000Z",
+        dateLastModified: "2026-04-13T03:00:00.000Z",
         candidate: {
           id: 123,
           companyName: "Old Corp",
@@ -96,6 +116,7 @@ describe("placementDatabaseEnrichmentSync", () => {
         employmentType: "contract",
         payRate: 42.5,
         dateEnd: 1_700_000_000_000,
+        dateLastModified: "2026-04-13T05:00:00.000Z",
         candidate: {
           id: 124,
           companyName: "Legacy LLC",
@@ -106,10 +127,36 @@ describe("placementDatabaseEnrichmentSync", () => {
         },
         clientCorporation: { name: "Beta Corp" },
         jobOrder: { title: "Field Engineer" },
+      })
+      .mockResolvedValueOnce({
+        id: 323,
+        status: "approved",
+        employmentType: "contract",
+        dateLastModified: "2026-04-12T05:00:00.000Z",
+        candidate: {
+          id: 125,
+          companyName: "Skip Corp",
+          occupation: "Skip Occupation",
+          status: "Available",
+        },
+        clientCorporation: { name: "Gamma Corp" },
+        jobOrder: { title: "Inspector" },
       });
 
     const result = await run();
 
+    expect(mockBullhornClient.upsertEventSubscription).toHaveBeenCalledWith({
+      restUrl: "https://rest.example.com",
+      bhRestToken: "token",
+      subscriptionId: "sense-placement-database-enrichment-sync",
+      entityName: "Placement",
+    });
+    expect(mockBullhornClient.consumeEvents).toHaveBeenCalledWith({
+      restUrl: "https://rest.example.com",
+      bhRestToken: "token",
+      subscriptionId: "sense-placement-database-enrichment-sync",
+      maxEvents: 100,
+    });
     expect(mockBullhornClient.updateCandidate).toHaveBeenCalledTimes(2);
     expect(mockBullhornClient.updateCandidate).toHaveBeenNthCalledWith(1, {
       restUrl: "https://rest.example.com",
@@ -133,33 +180,36 @@ describe("placementDatabaseEnrichmentSync", () => {
         dateAvailable: 1_700_086_400_000,
       },
     });
-    expect(result.totals).toEqual({
-      totalEditHistories: 3,
-      matchedTransitions: 2,
+    expect(result.report.totals).toEqual({
+      totalEvents: 3,
+      matchedPlacements: 3,
       affectedCandidates: 2,
       updated: 2,
       skippedMissingPlacementId: 0,
-      skippedWrongTransition: 1,
+      skippedMissingTransactionId: 0,
+      skippedNotEligible: 1,
       skippedDuplicatePlacement: 0,
       skippedNoPatch: 0,
       skippedNoChange: 0,
     });
-    expect(result.skippedTransitions).toEqual([
+    expect(result.report.skippedPlacements).toEqual([
       {
         placementId: 323,
-        editHistoryId: 7003,
         transactionId: "tx-3",
-        dateAdded: null,
+        updatedProperties: ["status"],
+        dateLastModified: "2026-04-12T05:00:00.000Z",
+        employmentType: "contract",
         oldValue: "rejected",
         newValue: "approved",
-        reason: "status-transition-not-targeted",
+        reason: "placement-not-eligible-for-database-enrichment",
       },
     ]);
-    expect(result.affectedCandidates[0]).toMatchObject({
+    expect(result.report.affectedCandidates[0]).toMatchObject({
       placementId: 321,
       candidateId: 123,
       mode: "updated",
       mappingType: "placement-database-enrichment",
+      matchReason: "perm-approved-status-change",
       ruleType: "perm-or-contract-to-perm",
       transactionId: "tx-1",
       placement: {
@@ -178,6 +228,15 @@ describe("placementDatabaseEnrichmentSync", () => {
         dateAvailable: null,
         hourlyRateLow: null,
       },
+    });
+    expect(result.report.affectedCandidates[1]).toMatchObject({
+      placementId: 322,
+      candidateId: 124,
+      mode: "updated",
+      mappingType: "placement-database-enrichment",
+      matchReason: "contract-approved-status-change",
+      ruleType: "non-perm-active-placement",
+      transactionId: "tx-2",
     });
     expect(fs.writeFile).toHaveBeenCalledTimes(1);
   });

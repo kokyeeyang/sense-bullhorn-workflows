@@ -1,55 +1,52 @@
 const {
   addOneDay,
   buildCandidatePatchFromPlacementForDatabaseEnrichment,
-  buildPreviousUtcDayWindow,
+  getPlacementDatabaseEnrichmentMatchReason,
   getStatusChangeFromEditHistory,
+  isContractPlacementDatabaseEnrichmentStatusChange,
   isDateOnOrAfterTodayUtc,
-  isTargetPlacementDatabaseEnrichmentStatusChange,
+  isPermPlacementDatabaseEnrichmentStatusChange,
+  isPlacementDateLastModifiedMatch,
 } = require("../src/placementDatabaseEnrichmentUtils");
 
-test("builds the previous UTC day window", () => {
+test("matches contract status changes from qc approved, submitted, or null to approved", () => {
   expect(
-    buildPreviousUtcDayWindow({
-      baseDate: new Date("2026-04-06T00:01:00.000Z"),
-      daysBack: 1,
-    }),
-  ).toEqual({
-    startMs: 1775347200000,
-    endMs: 1775433600000,
-    targetDate: "2026-04-05",
-    daysBack: 1,
-  });
-});
-
-test("matches status changes from qc approved, submitted, or null to approved", () => {
-  expect(
-    isTargetPlacementDatabaseEnrichmentStatusChange({
+    isContractPlacementDatabaseEnrichmentStatusChange({
       oldValue: "qc approved",
       newValue: "approved",
     }),
   ).toBe(true);
   expect(
-    isTargetPlacementDatabaseEnrichmentStatusChange({
+    isContractPlacementDatabaseEnrichmentStatusChange({
       oldValue: "submitted",
       newValue: "approved",
     }),
   ).toBe(true);
   expect(
-    isTargetPlacementDatabaseEnrichmentStatusChange({
+    isContractPlacementDatabaseEnrichmentStatusChange({
       oldValue: null,
       newValue: "approved",
     }),
   ).toBe(true);
   expect(
-    isTargetPlacementDatabaseEnrichmentStatusChange({
+    isContractPlacementDatabaseEnrichmentStatusChange({
       oldValue: "rejected",
       newValue: "approved",
     }),
   ).toBe(false);
+});
+
+test("matches perm status changes only from null to approved", () => {
   expect(
-    isTargetPlacementDatabaseEnrichmentStatusChange({
-      oldValue: "approved",
-      newValue: "completed",
+    isPermPlacementDatabaseEnrichmentStatusChange({
+      oldValue: null,
+      newValue: "approved",
+    }),
+  ).toBe(true);
+  expect(
+    isPermPlacementDatabaseEnrichmentStatusChange({
+      oldValue: "submitted",
+      newValue: "approved",
     }),
   ).toBe(false);
 });
@@ -93,6 +90,56 @@ test("identifies whether dateBegin is on or after today in UTC", () => {
   expect(isDateOnOrAfterTodayUtc("2026-04-06T12:00:00.000Z", { baseDate })).toBe(true);
   expect(isDateOnOrAfterTodayUtc("2026-04-07T00:00:00.000Z", { baseDate })).toBe(true);
   expect(isDateOnOrAfterTodayUtc("2026-04-05T23:59:59.000Z", { baseDate })).toBe(false);
+});
+
+test("matches dateLastModified using the timestamp date", () => {
+  const baseDate = new Date("2026-04-13T09:30:00.000Z");
+
+  expect(
+    isPlacementDateLastModifiedMatch(
+      { dateLastModified: "2026-04-13T05:00:00.000Z" },
+      { baseDate },
+    ),
+  ).toBe(true);
+  expect(
+    isPlacementDateLastModifiedMatch(
+      { dateLastModified: "2026-04-12T23:59:59.000Z" },
+      { baseDate },
+    ),
+  ).toBe(false);
+});
+
+test("returns the correct match reason for perm status changes", () => {
+  expect(
+    getPlacementDatabaseEnrichmentMatchReason(
+      { employmentType: "perm" },
+      { oldValue: null, newValue: "approved" },
+      { baseDate: new Date("2026-04-13T09:30:00.000Z") },
+    ),
+  ).toBe("perm-approved-status-change");
+});
+
+test("returns the correct match reason for contract status changes", () => {
+  expect(
+    getPlacementDatabaseEnrichmentMatchReason(
+      { employmentType: "contract" },
+      { oldValue: "submitted", newValue: "approved" },
+      { baseDate: new Date("2026-04-13T09:30:00.000Z") },
+    ),
+  ).toBe("contract-approved-status-change");
+});
+
+test("returns date-last-modified when status change does not match but the date does", () => {
+  expect(
+    getPlacementDatabaseEnrichmentMatchReason(
+      {
+        employmentType: "contract",
+        dateLastModified: "2026-04-13T05:00:00.000Z",
+      },
+      { oldValue: "rejected", newValue: "approved" },
+      { baseDate: new Date("2026-04-13T09:30:00.000Z") },
+    ),
+  ).toBe("date-last-modified");
 });
 
 test("builds the perm enrichment patch when dateBegin is today or later", () => {
