@@ -115,12 +115,64 @@ function summarizeWorkflowRecords(records) {
   return totals;
 }
 
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
+function compareRunTimestamps(left, right) {
+  const leftTime = left?.runTimestamp ? new Date(left.runTimestamp).getTime() : 0;
+  const rightTime = right?.runTimestamp ? new Date(right.runTimestamp).getTime() : 0;
+  return leftTime - rightTime;
+}
+
+function buildDedupKey(record) {
+  return [
+    record.workflowName || "",
+    record.recordType || "",
+    record.actionDecision || "",
+    record.entityType || "",
+    record.entityId ?? "",
+    record.candidateId ?? "",
+    record.relatedId ?? "",
+    stableStringify(record.details || {}),
+  ].join("|");
+}
+
+function dedupeWorkflowRecords(records) {
+  const deduped = new Map();
+
+  for (const record of records) {
+    const key = buildDedupKey(record);
+    const existing = deduped.get(key);
+    if (!existing || compareRunTimestamps(existing, record) <= 0) {
+      deduped.set(key, record);
+    }
+  }
+
+  return [...deduped.values()].sort((left, right) => compareRunTimestamps(left, right));
+}
+
 function buildDailyComparisonSummary({ environment, summaryDate, workflowRecords }) {
-  const workflows = workflowRecords.map(({ workflowName, records }) => ({
-    workflowName,
-    totals: summarizeWorkflowRecords(records),
-    comparisonRecords: records,
-  }));
+  const workflows = workflowRecords.map(({ workflowName, records }) => {
+    const comparisonRecords = dedupeWorkflowRecords(records);
+
+    return {
+      workflowName,
+      totals: summarizeWorkflowRecords(comparisonRecords),
+      rawRecordCount: records.length,
+      dedupedRecordCount: comparisonRecords.length,
+      comparisonRecords,
+    };
+  });
 
   const totals = workflows.reduce(
     (aggregate, workflow) => {
@@ -280,6 +332,8 @@ module.exports = {
   DAILY_COMPARISON_WORKFLOWS,
   buildAggregateTotals,
   buildDailyComparisonSummary,
+  buildDedupKey,
+  dedupeWorkflowRecords,
   resolveSummaryDate,
   resolveSummaryDates,
   resolveWorkflowNames,
