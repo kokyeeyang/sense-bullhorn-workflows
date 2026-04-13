@@ -19,6 +19,7 @@
     "run:placement-yearly-fee-increase-sync": "node src/placementYearlyFeeIncreaseSync.js",
     "run:placement-start-reminder-test-send": "node src/placementStartReminderTestSend.js",
     "run:placement-yearly-fee-increase-test-send": "node src/placementYearlyFeeIncreaseTestSend.js",
+    "run:daily-workflow-summary": "node src/dailyWorkflowSummary.js",
     "run:check-sparkpost-template": "node src/checkSparkPostTemplate.js",
     "start:azure": "func start",
     "test": "jest"
@@ -35,6 +36,7 @@
   },
   "homepage": "https://github.com/kokyeeyang/sense-bullhorn-workflows#readme",
   "dependencies": {
+    "@azure/data-tables": "^13.3.2",
     "@azure/functions": "^4.8.0",
     "axios": "^1.13.6",
     "dotenv": "^17.3.1",

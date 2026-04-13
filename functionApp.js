@@ -2,6 +2,8 @@ require("dotenv").config();
 
 // testsada
 const { app } = require("@azure/functions");
+const { loadConfig } = require("./src/config");
+const { logger } = require("./src/logger");
 const { run: runCandidateStateSync } = require("./src/index");
 const { run: runPlacementDatabaseEnrichmentSync } = require("./src/placementDatabaseEnrichmentSync");
 const { run: runPlacementStatusSync } = require("./src/placementStatusSync");
@@ -10,6 +12,7 @@ const { run: runInterviewIllinoisEmailSync } = require("./src/interviewIllinoisE
 const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/placementYearlyFeeIncreaseSync");
 const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/placementYearlyFeeIncreaseTestSend");
+const { run: runDailyWorkflowSummary } = require("./src/dailyWorkflowSummary");
 const { run: runClientContactDncSync } = require("./src/clientContactDncSync");
 const { run: runClientCorporation360Sync } = require("./src/clientCorporation360Sync");
 const { run: runClientCorporationKeyAccountSync } = require("./src/clientCorporationKeyAccountSync");
@@ -18,6 +21,10 @@ const {
   buildHttpSuccessPayload,
   serializeError,
 } = require("./src/workflowRuntime");
+const { buildWorkflowRunSummary } = require("./src/workflowRunSummary");
+const { writeWorkflowRunLogSafe } = require("./src/workflowRunLogStore");
+
+const config = loadConfig();
 
 const workflowDefinitions = [
   {
@@ -118,15 +125,58 @@ const workflowDefinitions = [
     logLabel: "client corporation key account sync",
     run: runClientCorporationKeyAccountSync,
   },
+  {
+    functionName: "dailyWorkflowSummary",
+    workflowName: "daily-workflow-summary",
+    route: "workflows/daily-workflow-summary",
+    scheduleEnv: "AZURE_DAILY_WORKFLOW_SUMMARY_SCHEDULE",
+    defaultSchedule: "0 55 23 * * *",
+    logLabel: "daily workflow summary",
+    run: ({ targetDate } = {}) => runDailyWorkflowSummary({ targetDate }),
+  },
 ];
 
 function createTimerHandler(definition) {
   return async (_timer, context) => {
+    const startedAt = new Date().toISOString();
     context.log(`Running ${definition.logLabel}`);
+
     try {
-      await definition.run();
+      const result = await definition.run();
+      const finishedAt = new Date().toISOString();
+      const summary = buildWorkflowRunSummary({
+        workflowName: definition.workflowName,
+        result,
+      });
+
+      await writeWorkflowRunLogSafe({
+        config,
+        logger,
+        workflowName: definition.workflowName,
+        trigger: "timer",
+        startedAt,
+        finishedAt,
+        status: "success",
+        summary,
+      });
     } catch (error) {
+      const finishedAt = new Date().toISOString();
       context.error(serializeError(error), `${definition.logLabel} failed`);
+
+      await writeWorkflowRunLogSafe({
+        config,
+        logger,
+        workflowName: definition.workflowName,
+        trigger: "timer",
+        startedAt,
+        finishedAt,
+        status: "failed",
+        summary: buildWorkflowRunSummary({
+          workflowName: definition.workflowName,
+          error,
+        }),
+      });
+
       throw error;
     }
   };
@@ -141,8 +191,24 @@ function createHttpHandler(definition) {
     });
 
     try {
-      const result = await definition.run();
+      const targetDate = request.query.get("targetDate") || null;
+      const result = await definition.run({ targetDate });
       const finishedAt = new Date().toISOString();
+      const summary = buildWorkflowRunSummary({
+        workflowName: definition.workflowName,
+        result,
+      });
+
+      await writeWorkflowRunLogSafe({
+        config,
+        logger,
+        workflowName: definition.workflowName,
+        trigger: "http",
+        startedAt,
+        finishedAt,
+        status: "success",
+        summary,
+      });
 
       return {
         status: 200,
@@ -157,6 +223,20 @@ function createHttpHandler(definition) {
     } catch (error) {
       const finishedAt = new Date().toISOString();
       context.error(serializeError(error), `${definition.logLabel} failed`);
+
+      await writeWorkflowRunLogSafe({
+        config,
+        logger,
+        workflowName: definition.workflowName,
+        trigger: "http",
+        startedAt,
+        finishedAt,
+        status: "failed",
+        summary: buildWorkflowRunSummary({
+          workflowName: definition.workflowName,
+          error,
+        }),
+      });
 
       return {
         status: error.response?.status || 500,

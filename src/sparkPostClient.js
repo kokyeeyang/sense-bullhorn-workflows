@@ -75,6 +75,32 @@ class SparkPostClient {
     return response.data;
   }
 
+  async sendMessage({ from, to, subject, text, html }) {
+    const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
+    const payload = {
+      content: {
+        from,
+        subject,
+        text,
+        html,
+      },
+      recipients: [{ address: { email: to } }],
+    };
+
+    const response = await this.requestWithRetry({
+      label: "sparkpost_send_message",
+      fn: () =>
+        axios.post(url, payload, {
+          headers: {
+            Authorization: this.config.SPARKPOST_API_KEY,
+            "Content-Type": "application/json",
+          },
+        }),
+    });
+
+    return response.data;
+  }
+
   async getTemplate(templateId) {
     const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/templates/${templateId}`;
 
