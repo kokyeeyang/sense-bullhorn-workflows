@@ -2,12 +2,39 @@ const crypto = require("node:crypto");
 
 const { TableClient } = require("@azure/data-tables");
 
+function getEnvironmentLabel(config) {
+  return String(config.BULLHORN_ENV || "production").trim().toLowerCase();
+}
+
 function buildRunDate(value) {
   return String(value).slice(0, 10);
 }
 
-function buildPartitionKey({ workflowName, runDate }) {
-  return `${workflowName}|${runDate}`;
+function buildHumanReadableDateTime(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }).format(parsed);
+}
+
+function buildPartitionKey({ environment, workflowName, runDate }) {
+  return `${environment}|${workflowName}|${runDate}`;
 }
 
 function buildRowKey({ finishedAt }) {
@@ -80,16 +107,20 @@ async function writeWorkflowRunLog({
     return { skipped: true, reason: "table-storage-not-configured" };
   }
 
+  const environment = getEnvironmentLabel(config);
   const runDate = buildRunDate(finishedAt);
   const entity = {
-    partitionKey: buildPartitionKey({ workflowName, runDate }),
+    partitionKey: buildPartitionKey({ environment, workflowName, runDate }),
     rowKey: buildRowKey({ finishedAt }),
+    environment,
     workflowName,
     runDate,
     trigger,
     status,
     startedAt,
     finishedAt,
+    startedAtDisplay: buildHumanReadableDateTime(startedAt) || "",
+    finishedAtDisplay: buildHumanReadableDateTime(finishedAt) || "",
     successCount: summary.successCount,
     failureCount: summary.failureCount,
     skippedCount: summary.skippedCount,
@@ -104,6 +135,7 @@ async function writeWorkflowRunLog({
 
   logger.info(
     {
+      environment,
       workflowName,
       runDate,
       status,
@@ -122,7 +154,11 @@ async function listWorkflowRunLogsForDate({ config, workflowName, runDate }) {
   }
 
   await ensureTable({ client });
-  const partitionKey = buildPartitionKey({ workflowName, runDate });
+  const partitionKey = buildPartitionKey({
+    environment: getEnvironmentLabel(config),
+    workflowName,
+    runDate,
+  });
   const entities = [];
 
   for await (const entity of client.listEntities({
@@ -159,7 +195,9 @@ async function writeWorkflowRunLogSafe(args) {
 
 module.exports = {
   buildPartitionKey,
+  buildHumanReadableDateTime,
   buildRunDate,
+  getEnvironmentLabel,
   listWorkflowRunLogsForDate,
   writeWorkflowRunLog,
   writeWorkflowRunLogSafe,

@@ -3,7 +3,11 @@ require("dotenv").config();
 const { loadConfig } = require("./config");
 const { logger } = require("./logger");
 const { SparkPostClient } = require("./sparkPostClient");
-const { listWorkflowRunLogsForDate } = require("./workflowRunLogStore");
+const {
+  buildHumanReadableDateTime,
+  getEnvironmentLabel,
+  listWorkflowRunLogsForDate,
+} = require("./workflowRunLogStore");
 const { serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
 const DAILY_SUMMARY_WORKFLOWS = [
@@ -74,6 +78,7 @@ function buildWorkflowDailySummary({ workflowName, runDate, entities }) {
   }
 
   return {
+    environment: sortedEntities[0]?.environment || null,
     workflowName,
     runDate,
     totals,
@@ -81,6 +86,10 @@ function buildWorkflowDailySummary({ workflowName, runDate, entities }) {
     entities: sortedEntities.map((entity) => ({
       startedAt: entity.startedAt || null,
       finishedAt: entity.finishedAt || null,
+      startedAtDisplay:
+        entity.startedAtDisplay || buildHumanReadableDateTime(entity.startedAt) || null,
+      finishedAtDisplay:
+        entity.finishedAtDisplay || buildHumanReadableDateTime(entity.finishedAt) || null,
       trigger: entity.trigger || null,
       status: entity.status || null,
       successCount: Number(entity.successCount || 0),
@@ -96,6 +105,7 @@ function buildSummaryEmailContent(summary) {
   const lines = [
     `${summary.workflowName}`,
     `Date: ${summary.runDate}`,
+    `Environment: ${summary.environment || "unknown"}`,
     `Runs: ${summary.totals.totalRuns} | Successful runs: ${summary.totals.successfulRuns} | Failed runs: ${summary.totals.failedRuns}`,
     `Items: successful=${summary.totals.successCount}, failed=${summary.totals.failureCount}, skipped=${summary.totals.skippedCount}`,
   ];
@@ -103,7 +113,7 @@ function buildSummaryEmailContent(summary) {
   if (summary.runFailures.length > 0) {
     lines.push("", "Failed runs:");
     for (const failure of summary.runFailures.slice(0, 10)) {
-      const timestamp = failure.finishedAt || "unknown time";
+      const timestamp = buildHumanReadableDateTime(failure.finishedAt) || failure.finishedAt || "unknown time";
       const description = failure.message || failure.summary || "No failure details recorded";
       lines.push(`- ${timestamp}: ${description}`);
     }
@@ -115,7 +125,7 @@ function buildSummaryEmailContent(summary) {
     lines.push("", "Recent runs:");
     for (const entity of summary.entities.slice(-5)) {
       lines.push(
-        `- ${entity.finishedAt || entity.startedAt || "unknown"} | ${entity.status} | success=${entity.successCount}, failed=${entity.failureCount}, skipped=${entity.skippedCount}`,
+        `- ${entity.finishedAtDisplay || entity.startedAtDisplay || "unknown"} | ${entity.status} | success=${entity.successCount}, failed=${entity.failureCount}, skipped=${entity.skippedCount}`,
       );
     }
   }
@@ -125,6 +135,7 @@ function buildSummaryEmailContent(summary) {
     `<section style="margin: 0 0 28px;">`,
     `<h2 style="margin: 0 0 8px; font-size: 20px;">${summary.workflowName}</h2>`,
     `<p style="margin: 0 0 12px; color: #475467;">Date: <strong>${summary.runDate}</strong></p>`,
+    `<p style="margin: 0 0 12px; color: #475467;">Environment: <strong>${summary.environment || "unknown"}</strong></p>`,
     `<table style="border-collapse: collapse; width: 100%; max-width: 720px; margin-bottom: 14px;">`,
     "<tr>",
     '<th style="text-align: left; border-bottom: 1px solid #d0d5dd; padding: 8px; background: #f8fafc;">Metric</th>',
@@ -142,7 +153,7 @@ function buildSummaryEmailContent(summary) {
   if (summary.runFailures.length > 0) {
     html.push('<h3 style="margin: 16px 0 8px; font-size: 16px;">Failed runs</h3>', "<ul>");
     for (const failure of summary.runFailures.slice(0, 10)) {
-      const timestamp = failure.finishedAt || "unknown time";
+      const timestamp = buildHumanReadableDateTime(failure.finishedAt) || failure.finishedAt || "unknown time";
       const description = failure.message || failure.summary || "No failure details recorded";
       html.push(`<li>${timestamp}: ${description}</li>`);
     }
@@ -163,7 +174,7 @@ function buildSummaryEmailContent(summary) {
     );
     for (const entity of summary.entities.slice(-5)) {
       html.push(
-        `<tr><td style="padding: 8px; border-bottom: 1px solid #eaecf0;">${entity.finishedAt || entity.startedAt || "unknown"}</td><td style="padding: 8px; border-bottom: 1px solid #eaecf0;">${entity.status}</td><td style="padding: 8px; border-bottom: 1px solid #eaecf0;">success=${entity.successCount}, failed=${entity.failureCount}, skipped=${entity.skippedCount}</td></tr>`,
+        `<tr><td style="padding: 8px; border-bottom: 1px solid #eaecf0;">${entity.finishedAtDisplay || entity.startedAtDisplay || "unknown"}</td><td style="padding: 8px; border-bottom: 1px solid #eaecf0;">${entity.status}</td><td style="padding: 8px; border-bottom: 1px solid #eaecf0;">success=${entity.successCount}, failed=${entity.failureCount}, skipped=${entity.skippedCount}</td></tr>`,
       );
     }
     html.push("</table>");
@@ -197,6 +208,7 @@ function buildCombinedSummaryEmailContent({ summaryDate, summaries }) {
   const textSections = [
     `Workflow daily summary bundle`,
     `Date: ${summaryDate}`,
+    `Environment: ${getEnvironmentLabel({ BULLHORN_ENV: summaries[0]?.environment || "production" })}`,
     "",
     `Workflows included: ${summaries.length}`,
     `Total runs: ${aggregateTotals.totalRuns}`,
@@ -212,6 +224,7 @@ function buildCombinedSummaryEmailContent({ summaryDate, summaries }) {
     '<div style="max-width: 900px; margin: 0 auto; background: #ffffff; border: 1px solid #eaecf0; border-radius: 16px; padding: 24px 28px;">',
     '<h1 style="margin: 0 0 8px; font-size: 28px;">Workflow daily summary bundle</h1>',
     `<p style="margin: 0 0 20px; color: #475467;">Date: <strong>${summaryDate}</strong></p>`,
+    `<p style="margin: 0 0 20px; color: #475467;">Environment: <strong>${summaries[0]?.environment || "unknown"}</strong></p>`,
     '<table style="border-collapse: collapse; width: 100%; margin-bottom: 24px;">',
     "<tr>",
     '<th style="text-align: left; border-bottom: 1px solid #d0d5dd; padding: 10px; background: #eef2f6;">Metric</th>',
