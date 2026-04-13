@@ -27,6 +27,19 @@ function resolveSummaryDate(targetDate) {
   return new Date().toISOString().slice(0, 10);
 }
 
+function resolveWorkflowNames(workflowName) {
+  if (!workflowName) {
+    return DAILY_SUMMARY_WORKFLOWS;
+  }
+
+  const normalized = String(workflowName).trim();
+  if (!DAILY_SUMMARY_WORKFLOWS.includes(normalized)) {
+    throw new Error(`Unsupported workflowName filter: ${normalized}`);
+  }
+
+  return [normalized];
+}
+
 function parseDetails(detailsJson) {
   if (!detailsJson) {
     return {};
@@ -285,31 +298,33 @@ async function writeDailySummaryArtifact({ summaryDate, summaries }) {
   });
 }
 
-async function run({ targetDate } = {}) {
+async function run({ targetDate, workflowName } = {}) {
   const config = loadConfig();
   validateSummaryConfig(config);
 
   const summaryDate = resolveSummaryDate(targetDate);
+  const workflowNames = resolveWorkflowNames(workflowName);
   const sparkPost = new SparkPostClient({ config, logger });
   const summaries = [];
 
   logger.info(
     {
       summaryDate,
-      workflowCount: DAILY_SUMMARY_WORKFLOWS.length,
+      workflowCount: workflowNames.length,
+      workflowName: workflowName || null,
       recipient: config.DAILY_SUMMARY_RECIPIENT_EMAIL,
     },
     "Starting daily workflow summary run",
   );
 
-  for (const workflowName of DAILY_SUMMARY_WORKFLOWS) {
+  for (const currentWorkflowName of workflowNames) {
     const entities = await listWorkflowRunLogsForDate({
       config,
-      workflowName,
+      workflowName: currentWorkflowName,
       runDate: summaryDate,
     });
     const summary = buildWorkflowDailySummary({
-      workflowName,
+      workflowName: currentWorkflowName,
       runDate: summaryDate,
       entities,
     });
@@ -319,7 +334,7 @@ async function run({ targetDate } = {}) {
 
     logger.info(
       {
-        workflowName,
+        workflowName: currentWorkflowName,
         summaryDate,
         totalRuns: summary.totals.totalRuns,
         failedRuns: summary.totals.failedRuns,
@@ -383,5 +398,6 @@ module.exports = {
   buildSummaryEmailContent,
   buildWorkflowDailySummary,
   resolveSummaryDate,
+  resolveWorkflowNames,
   run,
 };

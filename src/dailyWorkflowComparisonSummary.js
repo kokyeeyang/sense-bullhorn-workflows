@@ -24,6 +24,62 @@ function resolveSummaryDate(targetDate) {
   return new Date().toISOString().slice(0, 10);
 }
 
+function parseDateOnly(value, label) {
+  const normalized = String(value || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    throw new Error(`Invalid ${label}: ${value}`);
+  }
+
+  const parsed = new Date(`${normalized}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid ${label}: ${value}`);
+  }
+
+  return parsed;
+}
+
+function resolveSummaryDates({ targetDate, dateFrom, dateTo }) {
+  if (targetDate && (dateFrom || dateTo)) {
+    throw new Error("Use either targetDate or dateFrom/dateTo, not both");
+  }
+
+  if (!dateFrom && !dateTo) {
+    return [resolveSummaryDate(targetDate)];
+  }
+
+  if (!dateFrom || !dateTo) {
+    throw new Error("Both dateFrom and dateTo are required when using a date range");
+  }
+
+  const start = parseDateOnly(dateFrom, "dateFrom");
+  const end = parseDateOnly(dateTo, "dateTo");
+  if (start.getTime() > end.getTime()) {
+    throw new Error("dateFrom must be on or before dateTo");
+  }
+
+  const dates = [];
+  const current = new Date(start);
+  while (current.getTime() <= end.getTime()) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+
+  return dates;
+}
+
+function resolveWorkflowNames(workflowName) {
+  if (!workflowName) {
+    return DAILY_COMPARISON_WORKFLOWS;
+  }
+
+  const normalized = String(workflowName).trim();
+  if (!DAILY_COMPARISON_WORKFLOWS.includes(normalized)) {
+    throw new Error(`Unsupported workflowName filter: ${normalized}`);
+  }
+
+  return [normalized];
+}
+
 function summarizeWorkflowRecords(records) {
   const totals = {
     totalRecords: records.length,
@@ -97,50 +153,98 @@ function buildDailyComparisonSummary({ environment, summaryDate, workflowRecords
   };
 }
 
+function buildAggregateTotals(dateSummaries) {
+  return dateSummaries.reduce(
+    (aggregate, summary) => {
+      aggregate.dateCount += 1;
+      aggregate.workflowCount = Math.max(aggregate.workflowCount, summary.totals.workflowCount);
+      aggregate.totalRecords += summary.totals.totalRecords;
+      aggregate.wouldUpdate += summary.totals.wouldUpdate;
+      aggregate.updated += summary.totals.updated;
+      aggregate.wouldSendEmail += summary.totals.wouldSendEmail;
+      aggregate.sentEmail += summary.totals.sentEmail;
+      aggregate.skipped += summary.totals.skipped;
+      return aggregate;
+    },
+    {
+      dateCount: 0,
+      workflowCount: 0,
+      totalRecords: 0,
+      wouldUpdate: 0,
+      updated: 0,
+      wouldSendEmail: 0,
+      sentEmail: 0,
+      skipped: 0,
+    },
+  );
+}
+
 async function writeDailyComparisonSummaryArtifact({ summary }) {
+  const suffix = summary.summaryDate || `${summary.dateFrom}-to-${summary.dateTo}`;
   return writeJsonArtifact({
-    filePrefix: `workflow-comparison-daily-summary-${summary.summaryDate}`,
+    filePrefix: `workflow-comparison-daily-summary-${suffix}`,
     payload: summary,
   });
 }
 
-async function run({ targetDate } = {}) {
+async function run({ targetDate, workflowName, dateFrom, dateTo } = {}) {
   const config = loadConfig();
-  const summaryDate = resolveSummaryDate(targetDate);
+  const summaryDates = resolveSummaryDates({ targetDate, dateFrom, dateTo });
+  const workflowNames = resolveWorkflowNames(workflowName);
   const environment = getEnvironmentLabel(config);
-  const workflowRecords = [];
+  const dateSummaries = [];
 
   logger.info(
     {
-      summaryDate,
+      summaryDates,
       environment,
-      workflowCount: DAILY_COMPARISON_WORKFLOWS.length,
+      workflowCount: workflowNames.length,
+      workflowName: workflowName || null,
     },
     "Starting daily workflow comparison summary run",
   );
 
-  for (const workflowName of DAILY_COMPARISON_WORKFLOWS) {
-    const records = await listWorkflowComparisonRecordsForDate({
-      config,
-      workflowName,
-      runDate: summaryDate,
-    });
-    workflowRecords.push({
-      workflowName,
-      records,
-    });
+  for (const summaryDate of summaryDates) {
+    const workflowRecords = [];
+    for (const currentWorkflowName of workflowNames) {
+      const records = await listWorkflowComparisonRecordsForDate({
+        config,
+        workflowName: currentWorkflowName,
+        runDate: summaryDate,
+      });
+      workflowRecords.push({
+        workflowName: currentWorkflowName,
+        records,
+      });
+    }
+
+    dateSummaries.push(
+      buildDailyComparisonSummary({
+        environment,
+        summaryDate,
+        workflowRecords,
+      }),
+    );
   }
 
-  const summary = buildDailyComparisonSummary({
-    environment,
-    summaryDate,
-    workflowRecords,
-  });
+  const summary =
+    dateSummaries.length === 1
+      ? dateSummaries[0]
+      : {
+          generatedAt: new Date().toISOString(),
+          environment,
+          dateFrom: summaryDates[0],
+          dateTo: summaryDates[summaryDates.length - 1],
+          totals: buildAggregateTotals(dateSummaries),
+          dateSummaries,
+        };
   const reportPath = await writeDailyComparisonSummaryArtifact({ summary });
 
   logger.info(
     {
-      summaryDate,
+      summaryDate: dateSummaries.length === 1 ? dateSummaries[0].summaryDate : null,
+      dateFrom: dateSummaries.length > 1 ? summaryDates[0] : null,
+      dateTo: dateSummaries.length > 1 ? summaryDates[summaryDates.length - 1] : null,
       environment,
       workflowCount: summary.totals.workflowCount,
       totalRecords: summary.totals.totalRecords,
@@ -150,10 +254,15 @@ async function run({ targetDate } = {}) {
   );
 
   return {
-    summaryDate,
     environment,
+    ...(dateSummaries.length === 1
+      ? { summaryDate: dateSummaries[0].summaryDate, workflows: dateSummaries[0].workflows }
+      : {
+          dateFrom: summaryDates[0],
+          dateTo: summaryDates[summaryDates.length - 1],
+          dateSummaries,
+        }),
     totals: summary.totals,
-    workflows: summary.workflows,
     artifacts: {
       reportPath,
     },
@@ -169,7 +278,10 @@ if (require.main === module) {
 
 module.exports = {
   DAILY_COMPARISON_WORKFLOWS,
+  buildAggregateTotals,
   buildDailyComparisonSummary,
   resolveSummaryDate,
+  resolveSummaryDates,
+  resolveWorkflowNames,
   run,
 };

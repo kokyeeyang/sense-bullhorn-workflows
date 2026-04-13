@@ -213,7 +213,10 @@ function createHttpHandler(definition) {
 
     try {
       const targetDate = request.query.get("targetDate") || null;
-      const result = await definition.run({ targetDate });
+      const workflowName = request.query.get("workflowName") || null;
+      const dateFrom = request.query.get("dateFrom") || null;
+      const dateTo = request.query.get("dateTo") || null;
+      const result = await definition.run({ targetDate, workflowName, dateFrom, dateTo });
       const finishedAt = new Date().toISOString();
       const summary = buildWorkflowRunSummary({
         workflowName: definition.workflowName,
