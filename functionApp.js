@@ -21,6 +21,8 @@ const {
   buildHttpSuccessPayload,
   serializeError,
 } = require("./src/workflowRuntime");
+const { buildWorkflowComparisonRecords } = require("./src/workflowComparisonRecords");
+const { writeWorkflowComparisonRecordsSafe } = require("./src/workflowComparisonStore");
 const { buildWorkflowRunSummary } = require("./src/workflowRunSummary");
 const { writeWorkflowRunLogSafe } = require("./src/workflowRunLogStore");
 
@@ -148,6 +150,10 @@ function createTimerHandler(definition) {
         workflowName: definition.workflowName,
         result,
       });
+      const comparisonRecords = buildWorkflowComparisonRecords({
+        workflowName: definition.workflowName,
+        result,
+      });
 
       await writeWorkflowRunLogSafe({
         config,
@@ -158,6 +164,11 @@ function createTimerHandler(definition) {
         finishedAt,
         status: "success",
         summary,
+      });
+      await writeWorkflowComparisonRecordsSafe({
+        config,
+        logger,
+        records: comparisonRecords,
       });
     } catch (error) {
       const finishedAt = new Date().toISOString();
@@ -198,6 +209,10 @@ function createHttpHandler(definition) {
         workflowName: definition.workflowName,
         result,
       });
+      const comparisonRecords = buildWorkflowComparisonRecords({
+        workflowName: definition.workflowName,
+        result,
+      });
 
       await writeWorkflowRunLogSafe({
         config,
@@ -208,6 +223,11 @@ function createHttpHandler(definition) {
         finishedAt,
         status: "success",
         summary,
+      });
+      await writeWorkflowComparisonRecordsSafe({
+        config,
+        logger,
+        records: comparisonRecords,
       });
 
       return {
