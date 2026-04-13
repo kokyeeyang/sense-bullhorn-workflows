@@ -109,6 +109,9 @@ const configSchema = z.object({
   PLACEMENT_TERMINATION_TEST_DATE_END: optionalString,
   AZURE_TABLE_STORAGE_CONNECTION_STRING: optionalString,
   AZURE_TABLE_STORAGE_TABLE_NAME: stringWithDefault("WorkflowRunLogs"),
+  AZURE_PLACEMENT_DATABASE_ENRICHMENT_COMPARISON_TABLE_NAME: stringWithDefault(
+    "PlacementDatabaseEnrichmentComparisonRecords",
+  ),
   DAILY_SUMMARY_RECIPIENT_EMAIL: optionalString,
   DAILY_SUMMARY_FROM_EMAIL: optionalString,
   AZURE_DAILY_WORKFLOW_SUMMARY_SCHEDULE: stringWithDefault("0 55 23 * * *"),

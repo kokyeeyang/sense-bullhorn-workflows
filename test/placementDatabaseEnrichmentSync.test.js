@@ -238,6 +238,16 @@ describe("placementDatabaseEnrichmentSync", () => {
       ruleType: "non-perm-active-placement",
       transactionId: "tx-2",
     });
-    expect(fs.writeFile).toHaveBeenCalledTimes(1);
+    expect(result.artifacts).toEqual(
+      expect.objectContaining({
+        reportPath: expect.stringContaining("placement-database-enrichment-report"),
+        comparisonReportPath: expect.stringContaining(
+          "placement-database-enrichment-comparison-report",
+        ),
+      }),
+    );
+    expect(fs.writeFile).toHaveBeenCalledTimes(2);
+    expect(fs.writeFile.mock.calls[1][1]).toContain("\"comparisonRecords\"");
+    expect(fs.writeFile.mock.calls[1][1]).toContain("\"sourceSystem\": \"azure-functions\"");
   });
 });

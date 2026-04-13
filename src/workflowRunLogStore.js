@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const path = require("node:path");
 
 const { TableClient } = require("@azure/data-tables");
 
@@ -35,6 +36,20 @@ function buildHumanReadableDateTime(value) {
 
 function buildPartitionKey({ environment, workflowName, runDate }) {
   return `${environment}|${workflowName}|${runDate}`;
+}
+
+function normalizeArtifactPathForStorage(artifactPath) {
+  if (!artifactPath) {
+    return "";
+  }
+
+  const normalized = String(artifactPath).replace(/\\/g, "/");
+  const reportsIndex = normalized.lastIndexOf("/reports/");
+  if (reportsIndex >= 0) {
+    return `/tmp${normalized.slice(reportsIndex)}`;
+  }
+
+  return `/tmp/reports/${path.basename(normalized)}`;
 }
 
 function buildRowKey({ finishedAt }) {
@@ -126,7 +141,7 @@ async function writeWorkflowRunLog({
     skippedCount: summary.skippedCount,
     summary: summary.summary,
     detailsJson: JSON.stringify(summary.details || {}),
-    artifactPath: summary.artifactPath || "",
+    artifactPath: normalizeArtifactPathForStorage(summary.artifactPath),
     emailedInDailySummary: false,
   };
 
@@ -199,6 +214,7 @@ module.exports = {
   buildRunDate,
   getEnvironmentLabel,
   listWorkflowRunLogsForDate,
+  normalizeArtifactPathForStorage,
   writeWorkflowRunLog,
   writeWorkflowRunLogSafe,
 };

@@ -8,6 +8,9 @@ const {
   getFieldChanges,
   getPlacementDatabaseEnrichmentMatchReason,
 } = require("./placementDatabaseEnrichmentUtils");
+const {
+  writeComparisonRecordsSafe,
+} = require("./placementDatabaseEnrichmentComparisonStore");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
 const SKIPPED_TRANSITIONS_PREVIEW_LIMIT = 25;
@@ -19,6 +22,13 @@ function sleep(ms) {
 async function writeChangesReport({ report }) {
   return writeJsonArtifact({
     filePrefix: "placement-database-enrichment-report",
+    payload: report,
+  });
+}
+
+async function writeComparisonReport({ report }) {
+  return writeJsonArtifact({
+    filePrefix: "placement-database-enrichment-comparison-report",
     payload: report,
   });
 }
@@ -38,6 +48,7 @@ function buildAffectedCandidateRecord({ match, placement, candidateUpdate, chang
       employmentType: placement?.employmentType || placement?.jobOrder?.employmentType || null,
       dateBegin: placement?.dateBegin ?? null,
       dateEnd: placement?.dateEnd ?? null,
+      dateLastModified: placement?.dateLastModified ?? null,
       payRate: placement?.payRate ?? null,
       clientCorporationName: placement?.clientCorporation?.name ?? null,
       jobOrderTitle: placement?.jobOrder?.title ?? null,
@@ -50,6 +61,51 @@ function buildAffectedCandidateRecord({ match, placement, candidateUpdate, chang
       hourlyRateLow: placement?.candidate?.hourlyRateLow ?? null,
     },
     changes,
+  };
+}
+
+function buildComparisonRecordFromAffectedCandidate({ workflowName, generatedAt, record }) {
+  return {
+    sourceSystem: "azure-functions",
+    workflowName,
+    recordType: "affected-candidate",
+    actionDecision: record.mode === "dry-run" ? "would-update" : "updated",
+    generatedAt,
+    placementId: record.placementId,
+    transactionId: record.transactionId || null,
+    candidateId: record.candidateId || null,
+    employmentType: record.placement?.employmentType || null,
+    currentPlacementStatus: record.placement?.status || null,
+    statusOldValue: record.statusChange?.oldValue ?? null,
+    statusNewValue: record.statusChange?.newValue ?? null,
+    dateLastModified: record.placement?.dateLastModified || null,
+    matchReason: record.matchReason || null,
+    ruleType: record.ruleType || null,
+    fieldsToChange: Array.isArray(record.changes)
+      ? record.changes.map((change) => change.field)
+      : [],
+  };
+}
+
+function buildComparisonRecordFromSkippedPlacement({ workflowName, generatedAt, record }) {
+  return {
+    sourceSystem: "azure-functions",
+    workflowName,
+    recordType: "skipped-placement",
+    actionDecision: record.reason || "skipped",
+    generatedAt,
+    placementId: record.placementId,
+    transactionId: record.transactionId || null,
+    candidateId: null,
+    employmentType: record.employmentType || null,
+    currentPlacementStatus: null,
+    statusOldValue: record.oldValue ?? null,
+    statusNewValue: record.newValue ?? null,
+    dateLastModified: record.dateLastModified || null,
+    matchReason: null,
+    ruleType: null,
+    fieldsToChange: [],
+    updatedProperties: record.updatedProperties || [],
   };
 }
 
@@ -271,8 +327,9 @@ async function run() {
     "Placement database enrichment sync finished",
   );
 
+  const generatedAt = new Date().toISOString();
   const report = {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     dryRun: config.DRY_RUN,
     subscriptionId: config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID,
     totals: {
@@ -290,15 +347,44 @@ async function run() {
     skippedPlacements,
     affectedCandidates,
   };
+  const comparisonReport = {
+    generatedAt,
+    dryRun: config.DRY_RUN,
+    workflowName: "placement-database-enrichment-sync",
+    comparisonRecords: [
+      ...affectedCandidates.map((record) =>
+        buildComparisonRecordFromAffectedCandidate({
+          workflowName: "placement-database-enrichment-sync",
+          generatedAt,
+          record,
+        }),
+      ),
+      ...skippedPlacements.map((record) =>
+        buildComparisonRecordFromSkippedPlacement({
+          workflowName: "placement-database-enrichment-sync",
+          generatedAt,
+          record,
+        }),
+      ),
+    ],
+  };
 
   const reportPath = await writeChangesReport({ report });
+  const comparisonReportPath = await writeComparisonReport({ report: comparisonReport });
+  await writeComparisonRecordsSafe({
+    config,
+    logger,
+    records: comparisonReport.comparisonRecords,
+  });
   logger.info({ reportPath }, "Placement database enrichment report written");
+  logger.info({ comparisonReportPath }, "Placement database enrichment comparison report written");
 
   return buildWorkflowResult({
     workflowName: "placement-database-enrichment-sync",
     report,
     artifacts: {
       reportPath,
+      comparisonReportPath,
     },
   });
 }
