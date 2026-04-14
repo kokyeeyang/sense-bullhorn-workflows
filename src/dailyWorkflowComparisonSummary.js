@@ -161,7 +161,7 @@ function dedupeWorkflowRecords(records) {
   return [...deduped.values()].sort((left, right) => compareRunTimestamps(left, right));
 }
 
-function buildDailyComparisonSummary({ environment, summaryDate, workflowRecords }) {
+function buildDailyComparisonSummary({ environment, summaryDate, workflowRecords, includeRecords }) {
   const workflows = workflowRecords.map(({ workflowName, records }) => {
     const comparisonRecords = dedupeWorkflowRecords(records);
 
@@ -170,7 +170,7 @@ function buildDailyComparisonSummary({ environment, summaryDate, workflowRecords
       totals: summarizeWorkflowRecords(comparisonRecords),
       rawRecordCount: records.length,
       dedupedRecordCount: comparisonRecords.length,
-      comparisonRecords,
+      ...(includeRecords ? { comparisonRecords } : {}),
     };
   });
 
@@ -239,7 +239,7 @@ async function writeDailyComparisonSummaryArtifact({ summary }) {
   });
 }
 
-async function run({ targetDate, workflowName, dateFrom, dateTo } = {}) {
+async function run({ targetDate, workflowName, dateFrom, dateTo, includeRecords = false } = {}) {
   const config = loadConfig();
   const summaryDates = resolveSummaryDates({ targetDate, dateFrom, dateTo });
   const workflowNames = resolveWorkflowNames(workflowName);
@@ -275,6 +275,7 @@ async function run({ targetDate, workflowName, dateFrom, dateTo } = {}) {
         environment,
         summaryDate,
         workflowRecords,
+        includeRecords: true,
       }),
     );
   }
@@ -308,11 +309,30 @@ async function run({ targetDate, workflowName, dateFrom, dateTo } = {}) {
   return {
     environment,
     ...(dateSummaries.length === 1
-      ? { summaryDate: dateSummaries[0].summaryDate, workflows: dateSummaries[0].workflows }
+      ? {
+          summaryDate: dateSummaries[0].summaryDate,
+          workflows: dateSummaries[0].workflows.map((workflow) => ({
+            workflowName: workflow.workflowName,
+            totals: workflow.totals,
+            rawRecordCount: workflow.rawRecordCount,
+            dedupedRecordCount: workflow.dedupedRecordCount,
+            ...(includeRecords ? { comparisonRecords: workflow.comparisonRecords || [] } : {}),
+          })),
+        }
       : {
           dateFrom: summaryDates[0],
           dateTo: summaryDates[summaryDates.length - 1],
-          dateSummaries,
+          dateSummaries: dateSummaries.map((dateSummary) => ({
+            summaryDate: dateSummary.summaryDate,
+            totals: dateSummary.totals,
+            workflows: dateSummary.workflows.map((workflow) => ({
+              workflowName: workflow.workflowName,
+              totals: workflow.totals,
+              rawRecordCount: workflow.rawRecordCount,
+              dedupedRecordCount: workflow.dedupedRecordCount,
+              ...(includeRecords ? { comparisonRecords: workflow.comparisonRecords || [] } : {}),
+            })),
+          })),
         }),
     totals: summary.totals,
     artifacts: {

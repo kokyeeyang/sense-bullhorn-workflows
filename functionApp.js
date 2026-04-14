@@ -236,7 +236,19 @@ function createHttpHandler(definition) {
       const workflowName = request.query.get("workflowName") || null;
       const dateFrom = request.query.get("dateFrom") || null;
       const dateTo = request.query.get("dateTo") || null;
-      const result = await definition.run({ targetDate, workflowName, dateFrom, dateTo });
+      const includeRecords =
+        ["true", "1", "yes", "y"].includes(
+          String(request.query.get("includeRecords") || "")
+            .trim()
+            .toLowerCase(),
+        );
+      const result = await definition.run({
+        targetDate,
+        workflowName,
+        dateFrom,
+        dateTo,
+        includeRecords,
+      });
       const finishedAt = new Date().toISOString();
       const summary = buildWorkflowRunSummary({
         workflowName: definition.workflowName,
