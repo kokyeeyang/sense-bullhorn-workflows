@@ -302,7 +302,13 @@ function buildPlacementReminderRecords({ workflowName, generatedAt, report }) {
       recordType: "matched-placement",
       actionDecision: report.dryRun ? "would-send-email" : "sent-email",
       details: {
-        recipientEmail: record.owner?.email || record.sparkPostRecipient?.address?.email || null,
+        recipientEmail:
+          record.recipient?.toEmail ||
+          record.owner?.email ||
+          record.sparkPostRecipient?.address?.email ||
+          null,
+        ccEmails: record.recipient?.ccEmails || [],
+        stage: record.stage?.label || null,
       },
     }),
     entityType: "placement",
@@ -357,6 +363,7 @@ function buildWorkflowComparisonRecords({ workflowName, result }) {
         entityType: "appointment",
       });
     case "placement-start-reminder-sync":
+    case "placement-benefits-reminder-sync":
     case "placement-yearly-fee-increase-sync":
       return buildPlacementReminderRecords({ workflowName, generatedAt, report });
     default:

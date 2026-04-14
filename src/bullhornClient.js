@@ -645,8 +645,9 @@ class BullhornClient {
     startMs,
     endMs,
     count = 200,
+    fieldsOverride,
   }) {
-    const fields = [
+    const fields = fieldsOverride || [
       "id",
       "dateBegin",
       "dateEnd",
@@ -704,8 +705,9 @@ class BullhornClient {
               "firstName",
               "lastName",
               "email",
+              "benefitPackage",
               "dateAdded",
-              "owner(id,firstName,lastName)",
+              "owner(id,firstName,lastName,email,primaryDepartment(name))",
             ].join(","),
           },
         }),
@@ -723,7 +725,7 @@ class BullhornClient {
         axios.get(url, {
           params: {
             BhRestToken: bhRestToken,
-            fields: "id,firstName,lastName,email",
+            fields: "id,firstName,lastName,email,primaryDepartment(name)",
           },
         }),
     });

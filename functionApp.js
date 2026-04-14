@@ -1,6 +1,5 @@
 require("dotenv").config();
 
-// testsada
 const { app } = require("@azure/functions");
 const { loadConfig } = require("./src/config");
 const { logger } = require("./src/logger");
@@ -10,6 +9,8 @@ const { run: runPlacementStatusSync } = require("./src/placementStatusSync");
 const { run: runPlacementTerminationEmailSync } = require("./src/placementTerminationEmailSync");
 const { run: runInterviewIllinoisEmailSync } = require("./src/interviewIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
+const { run: runPlacementBenefitsReminderSync } = require("./src/placementBenefitsReminderSync");
+const { run: runPlacementBenefitsReminderTestSend } = require("./src/placementBenefitsReminderTestSend");
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/placementYearlyFeeIncreaseSync");
 const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/placementYearlyFeeIncreaseTestSend");
 const { run: runDailyWorkflowSummary } = require("./src/dailyWorkflowSummary");
@@ -74,6 +75,23 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 0 * * *",
     logLabel: "placement start reminder sync",
     run: runPlacementStartReminderSync,
+  },
+  {
+    functionName: "placementBenefitsReminderSync",
+    workflowName: "placement-benefits-reminder-sync",
+    route: "workflows/placement-benefits-reminder-sync",
+    scheduleEnv: "AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE",
+    defaultSchedule: "0 0 17 * * *",
+    logLabel: "placement benefits reminder sync",
+    run: ({ targetDate } = {}) => runPlacementBenefitsReminderSync({ targetDate }),
+  },
+  {
+    functionName: "placementBenefitsReminderTestSend",
+    workflowName: "placement-benefits-reminder-test-send",
+    route: "workflows/placement-benefits-reminder-test-send",
+    logLabel: "placement benefits reminder test send",
+    run: runPlacementBenefitsReminderTestSend,
+    enableTimer: false,
   },
   {
     functionName: "placementYearlyFeeIncreaseSync",

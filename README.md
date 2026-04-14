@@ -9,6 +9,7 @@ Completed Sense workflows:
 7. Start Date reminders
 8. Key Accounts
 9. Reminder for Yearly Fee Increase
+10. Placement Benefits Reminder
 
 Minimal Node.js workflow to:
 
@@ -91,6 +92,15 @@ It also includes a placement yearly fee increase reminder automation:
 4. Transform each matching placement into one SparkPost recipient with yearly-fee-increase substitution data.
 5. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
 
+It also includes a placement benefits reminder automation:
+
+1. Run once per day and calculate the active business date in `America/Los_Angeles`.
+2. For reminder stages `dateBegin + 10`, `+21`, and `+26`, compute the exact `dateBegin` values that are due today, including weekend shifts to the closest Friday or Monday.
+3. Query only those exact `Placement.dateBegin` day windows.
+4. Keep only placements where `employmentType = contract`, `status` contains `approved` or `qc approved`, `candidate.benefitPackage = benefit eligible`, the candidate owner department is not excluded, and the client corporation is not excluded.
+5. Send the day-specific SparkPost template to the candidate, with job order owner and candidate owner CC'd for the later reminder stages.
+6. Write both a reminder report and SparkPost payload report, or write dry-run preview reports when `DRY_RUN=true`.
+
 It also includes a placement termination email automation:
 
 1. Subscribe to Bullhorn `Placement` update events with a dedicated subscription queue.
@@ -129,6 +139,8 @@ npm run run:placement-termination-email-sync
 npm run run:interview-illinois-email-test-send
 npm run run:interview-illinois-email-sync
 npm run run:placement-start-reminder-sync
+npm run run:placement-benefits-reminder-sync
+npm run run:placement-benefits-reminder-test-send
 npm run run:placement-yearly-fee-increase-sync
 npm run run:placement-yearly-fee-increase-test-send
 npm run run:client-corporation-360-sync
@@ -139,6 +151,8 @@ npm run run:client-corporation-key-account-sync
 `TEST_CANDIDATE_ID=2923234` restricts the run to exactly one candidate by id.
 Each run writes `reports/changes-report-<timestamp>.json` with all affected candidates and field-level changes.
 Placement start reminder runs write both `reports/placement-start-reminder-report-<timestamp>.json` and `reports/placement-start-reminder-sparkpost-payload-<timestamp>.json`.
+Placement benefits reminder runs write both `reports/placement-benefits-reminder-report-<timestamp>.json` and `reports/placement-benefits-reminder-sparkpost-payload-<timestamp>.json`.
+Placement benefits reminder test sends write `reports/placement-benefits-reminder-sparkpost-test-payload-<timestamp>.json`.
 Placement yearly fee increase runs write both `reports/placement-yearly-fee-increase-report-<timestamp>.json` and `reports/placement-yearly-fee-increase-sparkpost-payload-<timestamp>.json`.
 Placement yearly fee increase test sends write `reports/placement-yearly-fee-increase-sparkpost-test-payload-<timestamp>.json`.
 Placement termination email runs write both `reports/placement-termination-email-report-<timestamp>.json` and `reports/placement-termination-email-sparkpost-payload-<timestamp>.json`.
@@ -189,6 +203,10 @@ Optional:
 - `PLACEMENT_START_REMINDER_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (default: `0`; expands the query window backward for testing)
 - `PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS` (default: `0`; expands the query window forward for testing)
+- `PLACEMENT_BENEFITS_REMINDER_QUERY_COUNT` (default: `200`)
+- `PLACEMENT_BENEFITS_REMINDER_DAY10_SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
+- `PLACEMENT_BENEFITS_REMINDER_DAY21_SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
+- `PLACEMENT_BENEFITS_REMINDER_DAY26_SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
 - `PLACEMENT_YEARLY_FEE_INCREASE_MONTH_OFFSET` (default: `11`)
 - `PLACEMENT_YEARLY_FEE_INCREASE_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS` (default: `0`)
@@ -338,9 +356,12 @@ Azure schedules:
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
+- `AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE` default: `0 0 17 * * *`
 - `AZURE_PLACEMENT_YEARLY_FEE_INCREASE_SCHEDULE` default: `0 0 0 * * *`
 - `AZURE_CLIENT_CORPORATION_360_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_CLIENT_CORPORATION_KEY_ACCOUNT_SYNC_SCHEDULE` default: `0 */5 * * * *`
+
+For the benefits reminder schedule, set `WEBSITE_TIME_ZONE=Pacific Standard Time` in Azure if you want `AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE` to be interpreted as 5:00 PM Pacific time with daylight-saving handling.
 
 ## Azure Functions + Logic Apps
 
@@ -390,6 +411,8 @@ Routes:
 - `POST /api/workflows/placement-termination-email-sync`
 - `POST /api/workflows/interview-illinois-email-sync`
 - `POST /api/workflows/placement-start-reminder-sync`
+- `POST /api/workflows/placement-benefits-reminder-sync`
+- `POST /api/workflows/placement-benefits-reminder-test-send`
 - `POST /api/workflows/placement-yearly-fee-increase-sync`
 - `POST /api/workflows/client-corporation-360-sync`
 - `POST /api/workflows/client-corporation-key-account-sync`
@@ -492,8 +515,10 @@ Notes:
 - `src/placementTerminationEmailSync.js`: Placement termination email runner.
 - `src/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
 - `src/placementStartReminderSync.js`: Placement start reminder enrichment runner.
+- `src/placementBenefitsReminderSync.js`: Combined day 10 / day 21 / day 26 placement benefits reminder runner.
 - `src/placementYearlyFeeIncreaseSync.js`: Placement yearly fee increase reminder runner.
 - `src/placementStartReminderUtils.js`: Placement reminder substitution and formatting helpers.
+- `src/placementBenefitsReminderUtils.js`: Placement benefits reminder date planning, filters, and SparkPost helpers.
 - `src/placementYearlyFeeIncreaseUtils.js`: Placement yearly fee increase filters and SparkPost helpers.
 - `src/placementTerminationEmailUtils.js`: Placement termination email helpers.
 - `src/interviewIllinoisEmailUtils.js`: Illinois interview filter and substitution helpers.
