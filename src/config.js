@@ -115,6 +115,7 @@ const configSchema = z.object({
   AZURE_TABLE_STORAGE_TABLE_NAME: stringWithDefault("WorkflowRunLogs"),
   AZURE_WORKFLOW_COMPARISON_TABLE_NAME: stringWithDefault("WorkflowComparisonRecords"),
   AZURE_WORKFLOW_DAILY_CHANGE_TABLE_NAME: stringWithDefault("WorkflowDailyChangeRecords"),
+  AZURE_WORKFLOW_DAILY_EMAIL_TABLE_NAME: stringWithDefault("WorkflowDailyEmailRecords"),
   AZURE_PLACEMENT_DATABASE_ENRICHMENT_COMPARISON_TABLE_NAME: stringWithDefault(
     "PlacementDatabaseEnrichmentComparisonRecords",
   ),

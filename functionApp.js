@@ -15,6 +15,7 @@ const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/placementYearl
 const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/placementYearlyFeeIncreaseTestSend");
 const { run: runDailyWorkflowSummary } = require("./src/dailyWorkflowSummary");
 const { run: runDailyWorkflowComparisonSummary } = require("./src/dailyWorkflowComparisonSummary");
+const { run: runDailyWorkflowEmailSummary } = require("./src/dailyWorkflowEmailSummary");
 const { run: runClientContactDncSync } = require("./src/clientContactDncSync");
 const { run: runClientCorporation360Sync } = require("./src/clientCorporation360Sync");
 const { run: runClientCorporationKeyAccountSync } = require("./src/clientCorporationKeyAccountSync");
@@ -26,6 +27,7 @@ const {
 const { buildWorkflowComparisonRecords } = require("./src/workflowComparisonRecords");
 const { writeWorkflowComparisonRecordsSafe } = require("./src/workflowComparisonStore");
 const { writeWorkflowDailyChangeRecordsSafe } = require("./src/workflowDailyChangeStore");
+const { writeWorkflowDailyEmailRecordsSafe } = require("./src/workflowDailyEmailStore");
 const { buildWorkflowRunSummary } = require("./src/workflowRunSummary");
 const { writeWorkflowRunLogSafe } = require("./src/workflowRunLogStore");
 
@@ -167,6 +169,15 @@ const workflowDefinitions = [
     logLabel: "daily workflow comparison summary",
     run: ({ targetDate } = {}) => runDailyWorkflowComparisonSummary({ targetDate }),
   },
+  {
+    functionName: "dailyWorkflowEmailSummary",
+    workflowName: "daily-workflow-email-summary",
+    route: "workflows/daily-workflow-email-summary",
+    logLabel: "daily workflow email summary",
+    run: ({ targetDate, workflowName, includeRecords } = {}) =>
+      runDailyWorkflowEmailSummary({ targetDate, workflowName, includeRecords }),
+    enableTimer: false,
+  },
 ];
 
 function createTimerHandler(definition) {
@@ -202,6 +213,11 @@ function createTimerHandler(definition) {
         records: comparisonRecords,
       });
       await writeWorkflowDailyChangeRecordsSafe({
+        config,
+        logger,
+        records: comparisonRecords,
+      });
+      await writeWorkflowDailyEmailRecordsSafe({
         config,
         logger,
         records: comparisonRecords,
@@ -281,6 +297,11 @@ function createHttpHandler(definition) {
         records: comparisonRecords,
       });
       await writeWorkflowDailyChangeRecordsSafe({
+        config,
+        logger,
+        records: comparisonRecords,
+      });
+      await writeWorkflowDailyEmailRecordsSafe({
         config,
         logger,
         records: comparisonRecords,
