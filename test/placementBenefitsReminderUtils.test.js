@@ -39,7 +39,7 @@ describe("placementBenefitsReminderUtils", () => {
         employmentType: "Contract",
         status: "QC Approved",
         candidate: {
-          benefitPackage: "benefit eligible",
+          customText21: "Benefit Eligible",
           owner: {
             primaryDepartment: {
               name: "hou - perms",
@@ -59,7 +59,7 @@ describe("placementBenefitsReminderUtils", () => {
         employmentType: "Contract",
         status: "approved",
         candidate: {
-          benefitPackage: "benefit eligible",
+          customText21: "Benefit Eligible",
           owner: {
             primaryDepartment: {
               name: "hou - dcm",

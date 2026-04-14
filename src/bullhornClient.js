@@ -705,7 +705,7 @@ class BullhornClient {
               "firstName",
               "lastName",
               "email",
-              "benefitPackage",
+              "customText21",
               "dateAdded",
               "owner(id,firstName,lastName,email,primaryDepartment(name))",
             ].join(","),

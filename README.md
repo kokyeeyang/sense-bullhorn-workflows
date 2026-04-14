@@ -97,7 +97,7 @@ It also includes a placement benefits reminder automation:
 1. Run once per day and calculate the active business date in `America/Los_Angeles`.
 2. For reminder stages `dateBegin + 10`, `+21`, and `+26`, compute the exact `dateBegin` values that are due today, including weekend shifts to the closest Friday or Monday.
 3. Query only those exact `Placement.dateBegin` day windows.
-4. Keep only placements where `employmentType = contract`, `status` contains `approved` or `qc approved`, `candidate.benefitPackage = benefit eligible`, the candidate owner department is not excluded, and the client corporation is not excluded.
+4. Keep only placements where `employmentType = contract`, `status` contains `approved` or `qc approved`, `candidate.customText21 = Benefit Eligible`, the candidate owner department is not excluded, and the client corporation is not excluded.
 5. Send the day-specific SparkPost template to the candidate, with job order owner and candidate owner CC'd for the later reminder stages.
 6. Write both a reminder report and SparkPost payload report, or write dry-run preview reports when `DRY_RUN=true`.
 

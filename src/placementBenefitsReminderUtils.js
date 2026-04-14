@@ -111,7 +111,7 @@ function normalizeLower(value) {
 function matchesBenefitsReminderPlacement(placement) {
   const employmentType = normalizeLower(placement?.employmentType);
   const status = normalizeLower(placement?.status);
-  const benefitPackage = normalizeLower(placement?.candidate?.benefitPackage);
+  const benefitPackage = normalizeLower(placement?.candidate?.customText21);
   const candidateOwnerDepartment = normalizeLower(
     placement?.candidate?.owner?.primaryDepartment?.name,
   );

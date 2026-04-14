@@ -8,16 +8,16 @@ describe("placementBenefitsReminderTestSend", () => {
       PLACEMENT_BENEFITS_REMINDER_DAY26_SPARKPOST_TEMPLATE_ID: "benefits-day-26",
     });
 
-    expect(payloads).toHaveLength(3);
-    expect(payloads.map((item) => item.content.template_id)).toEqual([
+    expect(payloads).toHaveLength(6);
+    expect(payloads.slice(0, 3).map((item) => item.content.template_id)).toEqual([
+      "benefits-day-10",
       "benefits-day-10",
       "benefits-day-21",
-      "benefits-day-26",
     ]);
-    expect(payloads[0].recipients).toHaveLength(2);
-    expect(payloads[1].recipients).toHaveLength(6);
-    expect(payloads[1].content.headers).toEqual({
-      CC: "job.owner.test@spencer-ogden.com, candidate.owner.test@spencer-ogden.com",
+    expect(payloads[0].recipients).toHaveLength(1);
+    expect(payloads[2].recipients).toHaveLength(3);
+    expect(payloads[2].content.headers).toEqual({
+      CC: "yeeyang.kok+jobowner@spencer-ogden.com, yeeyang.kok+candowner@spencer-ogden.com",
     });
   });
 });

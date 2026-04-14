@@ -146,7 +146,7 @@ async function run({ targetDate } = {}) {
     "status",
     "dateBegin",
     "employmentType",
-    "candidate(id,firstName,lastName,email,benefitPackage,owner(id,firstName,lastName,email,primaryDepartment(name)))",
+    "candidate(id,firstName,lastName,email,customText21,owner(id,firstName,lastName,email,primaryDepartment(name)))",
     "clientCorporation(id,name)",
     "jobOrder(id,title,owner(id,firstName,lastName,email))",
   ].join(",");

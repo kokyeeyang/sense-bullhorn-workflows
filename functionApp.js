@@ -84,6 +84,7 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 17 * * *",
     logLabel: "placement benefits reminder sync",
     run: ({ targetDate } = {}) => runPlacementBenefitsReminderSync({ targetDate }),
+    enabled: false,
   },
   {
     functionName: "placementBenefitsReminderTestSend",
@@ -92,6 +93,7 @@ const workflowDefinitions = [
     logLabel: "placement benefits reminder test send",
     run: runPlacementBenefitsReminderTestSend,
     enableTimer: false,
+    enabled: false,
   },
   {
     functionName: "placementYearlyFeeIncreaseSync",
@@ -304,6 +306,10 @@ function createHttpHandler(definition) {
 }
 
 for (const definition of workflowDefinitions) {
+  if (definition.enabled === false) {
+    continue;
+  }
+
   if (definition.enableTimer !== false) {
     app.timer(definition.functionName, {
       schedule: process.env[definition.scheduleEnv] || definition.defaultSchedule,

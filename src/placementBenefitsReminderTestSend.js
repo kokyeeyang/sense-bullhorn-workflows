@@ -17,12 +17,12 @@ function buildDummyPlacements() {
         lastName: "Kok",
         email: "yeeyang.kok@spencer-ogden.com",
         owner: {
-          email: "candidate.owner.test@spencer-ogden.com",
+          email: "yeeyang.kok+candowner@spencer-ogden.com",
         },
       },
       jobOrder: {
         owner: {
-          email: "job.owner.test@spencer-ogden.com",
+          email: "yeeyang.kok+jobowner@spencer-ogden.com",
         },
       },
     },
@@ -34,76 +34,69 @@ function buildDummyPlacements() {
         lastName: "Test",
         email: "yee_yang94@hotmail.com",
         owner: {
-          email: "candidate.owner.hotmail@spencer-ogden.com",
+          email: "yeeyang.kok+hotmailcandowner@spencer-ogden.com",
         },
       },
       jobOrder: {
         owner: {
-          email: "job.owner.hotmail@spencer-ogden.com",
+          email: "yeeyang.kok+hotmailjobowner@spencer-ogden.com",
         },
       },
     },
   ];
 }
 
-function buildStageRecipients({ stage, placements }) {
+function buildStagePayloads({ stage, placements, config }) {
   return placements.map((placement) => {
     const toEmail = placement.candidate.email;
     const ccEmails = stage.includeCcRecipients
       ? [placement.jobOrder.owner.email, placement.candidate.owner.email]
       : [];
+    const substitution_data = {
+      candidate_first_name: placement.candidate.firstName,
+      candidate_name: `${placement.candidate.firstName} ${placement.candidate.lastName}`,
+      placement_id: String(placement.id),
+      placement_start_date: placement.id === 123456 ? "7 April 2026" : "8 April 2026",
+      reminder_stage: stage.label,
+      reminder_day_offset: String(stage.dayOffset),
+    };
 
-    return [
-      {
-        address: {
-          email: toEmail,
-        },
-        substitution_data: {
-          candidate_first_name: placement.candidate.firstName,
-          candidate_name: `${placement.candidate.firstName} ${placement.candidate.lastName}`,
-          placement_id: String(placement.id),
-          placement_start_date: stage.key === "day10" ? "7 April 2026" : "8 April 2026",
-          reminder_stage: stage.label,
-          reminder_day_offset: String(stage.dayOffset),
-        },
+    return {
+      stage: {
+        key: stage.key,
+        label: stage.label,
+        dayOffset: stage.dayOffset,
       },
-      ...ccEmails.map((email) => ({
-        address: {
-          email,
-          header_to: toEmail,
+      content: {
+        template_id:
+          config[stage.templateConfigKey] || `placement-benefits-reminder-${stage.label}`,
+        ...(ccEmails.length > 0 ? { headers: { CC: ccEmails.join(", ") } } : {}),
+      },
+      recipients: [
+        {
+          address: {
+            email: toEmail,
+          },
+          substitution_data,
         },
-        substitution_data: {
-          candidate_first_name: placement.candidate.firstName,
-          candidate_name: `${placement.candidate.firstName} ${placement.candidate.lastName}`,
-          placement_id: String(placement.id),
-          placement_start_date: stage.key === "day10" ? "7 April 2026" : "8 April 2026",
-          reminder_stage: stage.label,
-          reminder_day_offset: String(stage.dayOffset),
-        },
-      })),
-    ];
-  }).flat();
+        ...ccEmails.map((email) => ({
+          address: {
+            email,
+            header_to: toEmail,
+          },
+          substitution_data,
+        })),
+      ],
+    };
+  });
 }
 
 function buildTestSparkPostPayloads(config) {
   const placements = buildDummyPlacements();
 
-  return BENEFITS_REMINDER_STAGES.map((stage) => ({
-    stage: {
-      key: stage.key,
-      label: stage.label,
-      dayOffset: stage.dayOffset,
-    },
-    content: {
-      template_id: config[stage.templateConfigKey] || `placement-benefits-reminder-${stage.label}`,
-      headers: stage.includeCcRecipients
-        ? {
-            CC: "job.owner.test@spencer-ogden.com, candidate.owner.test@spencer-ogden.com",
-          }
-        : undefined,
-    },
-    recipients: buildStageRecipients({ stage, placements }),
-  }));
+  return BENEFITS_REMINDER_STAGES.flatMap((stage) =>
+    buildStagePayloads({ stage, placements, config }),
+  );
 }
 
 async function writePayloadReport({ payload }) {
@@ -167,6 +160,9 @@ async function run() {
 
       transmissions.push({
         stage: stagePayload.stage.label,
+        placementId: Number(
+          stagePayload.recipients?.[0]?.substitution_data?.placement_id || 0,
+        ) || null,
         transmission,
       });
     }

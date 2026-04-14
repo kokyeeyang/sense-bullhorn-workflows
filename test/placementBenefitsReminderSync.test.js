@@ -105,7 +105,7 @@ describe("placementBenefitsReminderSync", () => {
         firstName: "Ava",
         lastName: "Tan",
         email: "ava@example.com",
-        benefitPackage: "benefit eligible",
+        customText21: "Benefit Eligible",
         owner: { id: 9101 },
       })
       .mockResolvedValueOnce({
@@ -113,7 +113,7 @@ describe("placementBenefitsReminderSync", () => {
         firstName: "Ben",
         lastName: "Lee",
         email: "ben@example.com",
-        benefitPackage: "benefit eligible",
+        customText21: "Benefit Eligible",
         owner: { id: 9102 },
       })
       .mockResolvedValueOnce({
@@ -121,7 +121,7 @@ describe("placementBenefitsReminderSync", () => {
         firstName: "Chris",
         lastName: "Fox",
         email: "chris@example.com",
-        benefitPackage: "benefit eligible",
+        customText21: "Benefit Eligible",
         owner: { id: 9103 },
       });
 
