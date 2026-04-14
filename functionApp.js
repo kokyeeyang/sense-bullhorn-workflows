@@ -25,6 +25,7 @@ const {
 } = require("./src/workflowRuntime");
 const { buildWorkflowComparisonRecords } = require("./src/workflowComparisonRecords");
 const { writeWorkflowComparisonRecordsSafe } = require("./src/workflowComparisonStore");
+const { writeWorkflowDailyChangeRecordsSafe } = require("./src/workflowDailyChangeStore");
 const { buildWorkflowRunSummary } = require("./src/workflowRunSummary");
 const { writeWorkflowRunLogSafe } = require("./src/workflowRunLogStore");
 
@@ -200,6 +201,11 @@ function createTimerHandler(definition) {
         logger,
         records: comparisonRecords,
       });
+      await writeWorkflowDailyChangeRecordsSafe({
+        config,
+        logger,
+        records: comparisonRecords,
+      });
     } catch (error) {
       const finishedAt = new Date().toISOString();
       context.error(serializeError(error), `${definition.logLabel} failed`);
@@ -270,6 +276,11 @@ function createHttpHandler(definition) {
         summary,
       });
       await writeWorkflowComparisonRecordsSafe({
+        config,
+        logger,
+        records: comparisonRecords,
+      });
+      await writeWorkflowDailyChangeRecordsSafe({
         config,
         logger,
         records: comparisonRecords,
