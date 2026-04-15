@@ -15,6 +15,10 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function elapsedMs(startTime) {
+  return Date.now() - startTime;
+}
+
 function epochSecondsFromDateString(value) {
   const date = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(date.getTime())) {
@@ -29,6 +33,7 @@ async function writeChangesReport({ report }) {
 }
 
 async function run() {
+  const startedAtMs = Date.now();
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
   const fromEpoch = epochSecondsFromDateString(config.CLIENT_CORPORATION_360_CUTOFF_DATE);
@@ -47,16 +52,37 @@ async function run() {
     "Starting client corporation 360 cleanup",
   );
 
+  logger.info({ elapsedMs: elapsedMs(startedAtMs) }, "Starting Bullhorn authorization");
   const code = await bullhorn.getAuthorizationCode();
+  logger.info({ elapsedMs: elapsedMs(startedAtMs) }, "Bullhorn authorization code acquired");
   const accessToken = await bullhorn.getAccessToken(code);
+  logger.info({ elapsedMs: elapsedMs(startedAtMs) }, "Bullhorn access token acquired");
   const session = await bullhorn.login(accessToken);
+  logger.info({ elapsedMs: elapsedMs(startedAtMs), restUrl: session.restUrl }, "Bullhorn login completed");
 
+  logger.info(
+    {
+      elapsedMs: elapsedMs(startedAtMs),
+      mode: config.TEST_CLIENT_CORPORATION_ID ? "test-client-corporation" : "cutoff-date-search",
+      cutoffDate: config.CLIENT_CORPORATION_360_CUTOFF_DATE,
+      fromEpoch,
+      testClientCorporationId: config.TEST_CLIENT_CORPORATION_ID || null,
+    },
+    "Starting client corporation load",
+  );
   const clientCorporations = await bullhorn.searchClientCorporations({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
     fromEpochSeconds: fromEpoch,
     clientCorporationId: config.TEST_CLIENT_CORPORATION_ID,
   });
+  logger.info(
+    {
+      elapsedMs: elapsedMs(startedAtMs),
+      clientCorporationCount: clientCorporations.length,
+    },
+    "Finished client corporation load",
+  );
 
   logger.info({ clientCorporationCount: clientCorporations.length }, "Fetched client corporations");
 
@@ -66,8 +92,10 @@ async function run() {
   let skippedNoPatch = 0;
   let skippedNoChange = 0;
   const affectedClientCorporations = [];
+  let inspectedClientCorporations = 0;
 
   for (const clientCorporation of clientCorporations) {
+    inspectedClientCorporations += 1;
     if (isExcludedClientCorporationName(clientCorporation.name)) {
       skippedExcludedName += 1;
       continue;
@@ -144,10 +172,26 @@ async function run() {
     if (config.UPDATE_DELAY_MS > 0) {
       await sleep(config.UPDATE_DELAY_MS);
     }
+
+    if (inspectedClientCorporations % 100 === 0) {
+      logger.info(
+        {
+          elapsedMs: elapsedMs(startedAtMs),
+          inspectedClientCorporations,
+          updated,
+          skippedExcludedName,
+          skippedDelayNotMet,
+          skippedNoPatch,
+          skippedNoChange,
+        },
+        "Client corporation 360 cleanup progress",
+      );
+    }
   }
 
   logger.info(
     {
+      elapsedMs: elapsedMs(startedAtMs),
       updated,
       skippedExcludedName,
       skippedDelayNotMet,
