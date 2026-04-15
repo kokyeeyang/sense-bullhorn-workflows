@@ -27,12 +27,17 @@ async function run() {
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
   const fromEpoch = epochSecondsFromDateString(config.CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE);
+  const eligibleThroughEpoch = Math.floor(
+    (Date.now() - config.CLIENT_CORPORATION_KEY_ACCOUNT_DELAY_HOURS * 60 * 60 * 1000) / 1000,
+  );
 
   logger.info(
     {
       cutoffDate: config.CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE,
       delayHours: config.CLIENT_CORPORATION_KEY_ACCOUNT_DELAY_HOURS,
       fromEpoch,
+      eligibleThroughEpoch,
+      queryCount: config.CLIENT_CORPORATION_KEY_ACCOUNT_QUERY_COUNT,
       dryRun: config.DRY_RUN,
       testClientCorporationId: config.TEST_CLIENT_CORPORATION_ID || null,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
@@ -50,7 +55,9 @@ async function run() {
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
     fromEpochSeconds: fromEpoch,
+    toEpochSeconds: config.TEST_CLIENT_CORPORATION_ID ? undefined : eligibleThroughEpoch,
     clientCorporationId: config.TEST_CLIENT_CORPORATION_ID,
+    maxCount: config.TEST_CLIENT_CORPORATION_ID ? 1 : config.CLIENT_CORPORATION_KEY_ACCOUNT_QUERY_COUNT,
   });
 
   logger.info({ clientCorporationCount: clientCorporations.length }, "Fetched client corporations");
@@ -161,6 +168,7 @@ async function run() {
     window: {
       cutoffDate: config.CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE,
       fromEpoch,
+      eligibleThroughEpoch,
     },
     totals: {
       totalClientCorporations: clientCorporations.length,

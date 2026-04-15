@@ -309,19 +309,26 @@ class BullhornClient {
     restUrl,
     bhRestToken,
     fromEpochSeconds,
+    toEpochSeconds,
     clientCorporationId,
+    maxCount = 500,
   }) {
     const fields = ["id", "name", "dateAdded", "customText7"].join(",");
     const all = [];
-    const pageSize = 500;
     let start = 0;
     let total = 0;
     const query =
       clientCorporationId && Number.isInteger(clientCorporationId)
         ? `id:${clientCorporationId}`
-        : `dateAdded[${fromEpochSeconds} TO *]`;
+        : `dateAdded[${fromEpochSeconds} TO ${toEpochSeconds ?? "*"}]`;
 
     do {
+      const remaining = Math.max(maxCount - all.length, 0);
+      if (remaining === 0) {
+        break;
+      }
+
+      const pageSize = Math.min(500, remaining);
       const response = await this.requestWithRetry({
         label: "search_client_corporations",
         fn: () =>
@@ -340,9 +347,9 @@ class BullhornClient {
       total = reportedTotal;
       all.push(...data);
       start += data.length;
-    } while (start < total);
+    } while (start < total && all.length < maxCount);
 
-    return all;
+    return all.slice(0, maxCount);
   }
 
   async updateCandidateAddress({ restUrl, bhRestToken, candidateId, addressPatch }) {
