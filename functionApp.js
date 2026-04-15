@@ -167,7 +167,14 @@ const workflowDefinitions = [
     scheduleEnv: "AZURE_DAILY_WORKFLOW_COMPARISON_SUMMARY_SCHEDULE",
     defaultSchedule: "0 50 23 * * *",
     logLabel: "daily workflow comparison summary",
-    run: ({ targetDate } = {}) => runDailyWorkflowComparisonSummary({ targetDate }),
+    run: ({ targetDate, workflowName, dateFrom, dateTo, includeRecords } = {}) =>
+      runDailyWorkflowComparisonSummary({
+        targetDate,
+        workflowName,
+        dateFrom,
+        dateTo,
+        includeRecords,
+      }),
   },
   {
     functionName: "dailyWorkflowEmailSummary",
