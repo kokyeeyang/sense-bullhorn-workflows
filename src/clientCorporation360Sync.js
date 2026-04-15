@@ -28,23 +28,42 @@ function epochSecondsFromDateString(value) {
   return Math.floor(date.getTime() / 1000);
 }
 
+function calculateRollingFromEpoch({
+  cutoffDate,
+  windowDays,
+  nowMs = Date.now(),
+}) {
+  const cutoffEpoch = epochSecondsFromDateString(cutoffDate);
+  const rollingEpoch = Math.floor((nowMs - windowDays * 24 * 60 * 60 * 1000) / 1000);
+
+  return Math.max(cutoffEpoch, rollingEpoch);
+}
+
 async function writeChangesReport({ report }) {
   return writeJsonArtifact({ filePrefix: "client-corporation-360-report", payload: report });
 }
 
 async function run() {
   const startedAtMs = Date.now();
+  const nowMs = Date.now();
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
-  const fromEpoch = epochSecondsFromDateString(config.CLIENT_CORPORATION_360_CUTOFF_DATE);
+  const cutoffEpoch = epochSecondsFromDateString(config.CLIENT_CORPORATION_360_CUTOFF_DATE);
+  const fromEpoch = calculateRollingFromEpoch({
+    cutoffDate: config.CLIENT_CORPORATION_360_CUTOFF_DATE,
+    windowDays: config.CLIENT_CORPORATION_360_WINDOW_DAYS,
+    nowMs,
+  });
   const eligibleThroughEpoch = Math.floor(
-    (Date.now() - config.CLIENT_CORPORATION_360_DELAY_HOURS * 60 * 60 * 1000) / 1000,
+    (nowMs - config.CLIENT_CORPORATION_360_DELAY_HOURS * 60 * 60 * 1000) / 1000,
   );
 
   logger.info(
     {
       cutoffDate: config.CLIENT_CORPORATION_360_CUTOFF_DATE,
+      cutoffEpoch,
       delayHours: config.CLIENT_CORPORATION_360_DELAY_HOURS,
+      windowDays: config.CLIENT_CORPORATION_360_WINDOW_DAYS,
       fromEpoch,
       eligibleThroughEpoch,
       queryCount: config.CLIENT_CORPORATION_360_QUERY_COUNT,
@@ -70,6 +89,8 @@ async function run() {
       elapsedMs: elapsedMs(startedAtMs),
       mode: config.TEST_CLIENT_CORPORATION_ID ? "test-client-corporation" : "cutoff-date-search",
       cutoffDate: config.CLIENT_CORPORATION_360_CUTOFF_DATE,
+      cutoffEpoch,
+      windowDays: config.CLIENT_CORPORATION_360_WINDOW_DAYS,
       fromEpoch,
       eligibleThroughEpoch,
       queryCount: config.CLIENT_CORPORATION_360_QUERY_COUNT,
@@ -217,6 +238,8 @@ async function run() {
     testClientCorporationId: config.TEST_CLIENT_CORPORATION_ID || null,
     window: {
       cutoffDate: config.CLIENT_CORPORATION_360_CUTOFF_DATE,
+      cutoffEpoch,
+      windowDays: config.CLIENT_CORPORATION_360_WINDOW_DAYS,
       fromEpoch,
       eligibleThroughEpoch,
     },
@@ -251,4 +274,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { epochSecondsFromDateString, run };
+module.exports = { calculateRollingFromEpoch, epochSecondsFromDateString, run };

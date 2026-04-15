@@ -9,7 +9,7 @@ const {
   inferClientCorporationKeyAccountPatch,
   isListedClientCorporationName,
 } = require("./clientCorporationKeyAccountUtils");
-const { epochSecondsFromDateString } = require("./clientCorporation360Sync");
+const { calculateRollingFromEpoch, epochSecondsFromDateString } = require("./clientCorporation360Sync");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
 function sleep(ms) {
@@ -24,17 +24,25 @@ async function writeChangesReport({ report }) {
 }
 
 async function run() {
+  const nowMs = Date.now();
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
-  const fromEpoch = epochSecondsFromDateString(config.CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE);
+  const cutoffEpoch = epochSecondsFromDateString(config.CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE);
+  const fromEpoch = calculateRollingFromEpoch({
+    cutoffDate: config.CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE,
+    windowDays: config.CLIENT_CORPORATION_KEY_ACCOUNT_WINDOW_DAYS,
+    nowMs,
+  });
   const eligibleThroughEpoch = Math.floor(
-    (Date.now() - config.CLIENT_CORPORATION_KEY_ACCOUNT_DELAY_HOURS * 60 * 60 * 1000) / 1000,
+    (nowMs - config.CLIENT_CORPORATION_KEY_ACCOUNT_DELAY_HOURS * 60 * 60 * 1000) / 1000,
   );
 
   logger.info(
     {
       cutoffDate: config.CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE,
+      cutoffEpoch,
       delayHours: config.CLIENT_CORPORATION_KEY_ACCOUNT_DELAY_HOURS,
+      windowDays: config.CLIENT_CORPORATION_KEY_ACCOUNT_WINDOW_DAYS,
       fromEpoch,
       eligibleThroughEpoch,
       queryCount: config.CLIENT_CORPORATION_KEY_ACCOUNT_QUERY_COUNT,
@@ -167,6 +175,8 @@ async function run() {
     testClientCorporationId: config.TEST_CLIENT_CORPORATION_ID || null,
     window: {
       cutoffDate: config.CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE,
+      cutoffEpoch,
+      windowDays: config.CLIENT_CORPORATION_KEY_ACCOUNT_WINDOW_DAYS,
       fromEpoch,
       eligibleThroughEpoch,
     },
