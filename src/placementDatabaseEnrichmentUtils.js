@@ -5,6 +5,7 @@ const EXCLUDED_PLACEMENT_STATUSES = new Set([
   "fall out",
   "temporarily suspended",
 ]);
+const DATE_LAST_MODIFIED_ALLOWED_STATUSES = new Set(["approved"]);
 function normalizeValue(value) {
   if (value === null || value === undefined) return "";
   if (typeof value !== "string") return String(value).trim().toLowerCase();
@@ -112,6 +113,10 @@ function isPlacementDateLastModifiedMatch(placement, { baseDate = new Date() } =
   return parsed.toISOString().slice(0, 10) === baseDate.toISOString().slice(0, 10);
 }
 
+function isPlacementDateLastModifiedStatusEligible(placement) {
+  return DATE_LAST_MODIFIED_ALLOWED_STATUSES.has(normalizeValue(placement?.status));
+}
+
 function getPlacementDatabaseEnrichmentMatchReason(
   placement,
   statusChange,
@@ -129,7 +134,10 @@ function getPlacementDatabaseEnrichmentMatchReason(
     return "contract-approved-status-change";
   }
 
-  if (isPlacementDateLastModifiedMatch(placement, { baseDate })) {
+  if (
+    isPlacementDateLastModifiedStatusEligible(placement) &&
+    isPlacementDateLastModifiedMatch(placement, { baseDate })
+  ) {
     return "date-last-modified";
   }
 
@@ -238,5 +246,6 @@ module.exports = {
   isPermEmploymentType,
   isPermPlacementDatabaseEnrichmentStatusChange,
   isPlacementDateLastModifiedMatch,
+  isPlacementDateLastModifiedStatusEligible,
   normalizeValue,
 };

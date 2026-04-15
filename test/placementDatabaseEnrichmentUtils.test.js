@@ -7,6 +7,7 @@ const {
   isDateOnOrAfterTodayUtc,
   isPermPlacementDatabaseEnrichmentStatusChange,
   isPlacementDateLastModifiedMatch,
+  isPlacementDateLastModifiedStatusEligible,
 } = require("../src/placementDatabaseEnrichmentUtils");
 
 test("matches contract status changes from qc approved, submitted, or null to approved", () => {
@@ -109,6 +110,20 @@ test("matches dateLastModified using the timestamp date", () => {
   ).toBe(false);
 });
 
+test("only allows date-last-modified fallback for approved placements", () => {
+  expect(
+    isPlacementDateLastModifiedStatusEligible({
+      status: "Approved",
+    }),
+  ).toBe(true);
+
+  expect(
+    isPlacementDateLastModifiedStatusEligible({
+      status: "Pre-Hire",
+    }),
+  ).toBe(false);
+});
+
 test("returns the correct match reason for perm status changes", () => {
   expect(
     getPlacementDatabaseEnrichmentMatchReason(
@@ -134,12 +149,27 @@ test("returns date-last-modified when status change does not match but the date 
     getPlacementDatabaseEnrichmentMatchReason(
       {
         employmentType: "contract",
+        status: "approved",
         dateLastModified: "2026-04-13T05:00:00.000Z",
       },
       { oldValue: "rejected", newValue: "approved" },
       { baseDate: new Date("2026-04-13T09:30:00.000Z") },
     ),
   ).toBe("date-last-modified");
+});
+
+test("does not return date-last-modified for pre-hire placements", () => {
+  expect(
+    getPlacementDatabaseEnrichmentMatchReason(
+      {
+        employmentType: "contract",
+        status: "pre-hire",
+        dateLastModified: "2026-04-13T05:00:00.000Z",
+      },
+      null,
+      { baseDate: new Date("2026-04-13T09:30:00.000Z") },
+    ),
+  ).toBeNull();
 });
 
 test("builds the perm enrichment patch when dateBegin is today or later", () => {
