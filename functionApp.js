@@ -8,6 +8,7 @@ const { run: runPlacementDatabaseEnrichmentSync } = require("./src/placementData
 const { run: runPlacementStatusSync } = require("./src/placementStatusSync");
 const { run: runPlacementTerminationEmailSync } = require("./src/placementTerminationEmailSync");
 const { run: runInterviewIllinoisEmailSync } = require("./src/interviewIllinoisEmailSync");
+const { run: runNewJobIllinoisEmailSync } = require("./src/newJobIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
 const { run: runPlacementBenefitsReminderSync } = require("./src/placementBenefitsReminderSync");
 const { run: runPlacementBenefitsReminderTestSend } = require("./src/placementBenefitsReminderTestSend");
@@ -123,6 +124,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 */5 * * * *",
     logLabel: "interview Illinois email sync",
     run: runInterviewIllinoisEmailSync,
+  },
+  {
+    functionName: "newJobIllinoisEmailSync",
+    workflowName: "new-job-illinois-email-sync",
+    route: "workflows/new-job-illinois-email-sync",
+    scheduleEnv: "AZURE_NEW_JOB_ILLINOIS_EMAIL_SCHEDULE",
+    defaultSchedule: "0 0 7 * * *",
+    logLabel: "new job Illinois email sync",
+    run: runNewJobIllinoisEmailSync,
   },
   {
     functionName: "clientContactDncSync",

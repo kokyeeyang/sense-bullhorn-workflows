@@ -586,6 +586,52 @@ class BullhornClient {
     return response.data.data;
   }
 
+  async queryJobOrdersByDateAddedRange({
+    restUrl,
+    bhRestToken,
+    startMs,
+    endMs,
+    count = 200,
+  }) {
+    const fields = [
+      "id",
+      "dateAdded",
+      "employmentType",
+      "address(state)",
+      "clientCorporation(id,name)",
+      "owner(id,firstName,lastName)",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "query_job_orders_by_date_added_range",
+        fn: () =>
+          axios.get(`${restUrl}/query/JobOrder`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `dateAdded>=${startMs} AND dateAdded<${endMs}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
   async getPlacementStatusChange({ restUrl, bhRestToken, transactionId }) {
     const url = `${restUrl}/query/PlacementEditHistory`;
 

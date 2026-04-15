@@ -14,6 +14,7 @@
     "run:placement-termination-email-sync": "node src/placementTerminationEmailSync.js",
     "run:placement-termination-email-test-send": "node src/placementTerminationEmailTestSend.js",
     "run:interview-illinois-email-sync": "node src/interviewIllinoisEmailSync.js",
+    "run:new-job-illinois-email-sync": "node src/newJobIllinoisEmailSync.js",
     "run:interview-illinois-email-test-send": "node src/interviewIllinoisEmailTestSend.js",
     "run:placement-start-reminder-sync": "node src/placementStartReminderSync.js",
     "run:placement-benefits-reminder-sync": "node src/placementBenefitsReminderSync.js",

@@ -319,6 +319,25 @@ function buildPlacementReminderRecords({ workflowName, generatedAt, report }) {
   }));
 }
 
+function buildJobOrderEmailRecords({ workflowName, generatedAt, report }) {
+  return (report.jobOrders || []).map((record) => ({
+    ...buildCommonRecord({
+      workflowName,
+      generatedAt,
+      recordType: "matched-job-order",
+      actionDecision: report.dryRun ? "would-send-email" : "sent-email",
+      details: {
+        recipientEmail: record.owner?.email || record.sparkPostRecipient?.address?.email || null,
+      },
+    }),
+    entityType: "job-order",
+    entityId: record.jobOrderId ?? record.jobOrder?.id ?? null,
+    transactionId: null,
+    candidateId: null,
+    relatedId: record.owner?.id || null,
+  }));
+}
+
 function buildWorkflowComparisonRecords({ workflowName, result }) {
   const report = result?.report || {};
   const generatedAt = report.generatedAt || new Date().toISOString();
@@ -366,6 +385,8 @@ function buildWorkflowComparisonRecords({ workflowName, result }) {
     case "placement-benefits-reminder-sync":
     case "placement-yearly-fee-increase-sync":
       return buildPlacementReminderRecords({ workflowName, generatedAt, report });
+    case "new-job-illinois-email-sync":
+      return buildJobOrderEmailRecords({ workflowName, generatedAt, report });
     default:
       return [];
   }

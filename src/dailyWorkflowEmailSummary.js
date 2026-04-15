@@ -9,6 +9,7 @@ const { serializeError, writeJsonArtifact } = require("./workflowRuntime");
 const DAILY_EMAIL_WORKFLOWS = [
   "placement-termination-email-sync",
   "interview-illinois-email-sync",
+  "new-job-illinois-email-sync",
   "placement-start-reminder-sync",
   "placement-yearly-fee-increase-sync",
   "placement-benefits-reminder-sync",
