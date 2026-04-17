@@ -10,6 +10,20 @@ function epochSecondsFromDate(date) {
   return Math.floor(date.getTime() / 1000);
 }
 
+function parseIsoDateStart(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = new Date(`${normalized.slice(0, 10)}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid CANDIDATE_STATE_SYNC_CUTOFF_DATE: ${value}`);
+  }
+
+  return parsed;
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -34,15 +48,20 @@ async function run() {
   const bullhorn = new BullhornClient({ config, logger });
 
   const now = new Date();
-  const from = new Date(now.getTime() - config.LOOKBACK_HOURS * 60 * 60 * 1000);
+  const lookbackFrom = new Date(now.getTime() - config.LOOKBACK_HOURS * 60 * 60 * 1000);
+  const cutoffDate = parseIsoDateStart(config.CANDIDATE_STATE_SYNC_CUTOFF_DATE);
+  const from =
+    cutoffDate && cutoffDate.getTime() > lookbackFrom.getTime() ? cutoffDate : lookbackFrom;
   const fromEpoch = epochSecondsFromDate(from);
   const toEpoch = epochSecondsFromDate(now);
+  const cutoffMs = cutoffDate?.getTime() ?? null;
 
   logger.info(
     {
       fromEpoch,
       toEpoch,
       lookbackHours: config.LOOKBACK_HOURS,
+      candidateStateSyncCutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
       dryRun: config.DRY_RUN,
       testCandidateId: config.TEST_CANDIDATE_ID || null,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
@@ -67,11 +86,21 @@ async function run() {
   logger.info({ candidateCount: candidates.length }, "Fetched candidates");
 
   let updated = 0;
+  let skippedBeforeCutoff = 0;
   let skippedNoMapping = 0;
   let skippedNoChange = 0;
   const affectedCandidates = [];
 
   for (const candidate of candidates) {
+    const candidateDateAddedMs = new Date(candidate.dateAdded).getTime();
+    if (
+      cutoffMs !== null &&
+      (!Number.isFinite(candidateDateAddedMs) || candidateDateAddedMs < cutoffMs)
+    ) {
+      skippedBeforeCutoff += 1;
+      continue;
+    }
+
     const mapped = inferAddressUpdateFromCandidate(candidate);
     if (!mapped) {
       if (config.DRY_RUN) {
@@ -164,7 +193,13 @@ async function run() {
   }
 
   logger.info(
-    { updated, skippedNoMapping, skippedNoChange, totalCandidates: candidates.length },
+    {
+      updated,
+      skippedBeforeCutoff,
+      skippedNoMapping,
+      skippedNoChange,
+      totalCandidates: candidates.length,
+    },
     "Candidate state sync finished",
   );
 
@@ -176,11 +211,13 @@ async function run() {
       fromEpoch,
       toEpoch,
       lookbackHours: config.LOOKBACK_HOURS,
+      cutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
     },
     totals: {
       totalCandidates: candidates.length,
       affectedCandidates: affectedCandidates.length,
       updated,
+      skippedBeforeCutoff,
       skippedNoMapping,
       skippedNoChange,
     },
@@ -206,4 +243,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { run };
+module.exports = { parseIsoDateStart, run };

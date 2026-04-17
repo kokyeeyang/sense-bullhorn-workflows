@@ -14,7 +14,7 @@ Completed Sense workflows:
 Minimal Node.js workflow to:
 
 1. Authenticate to Bullhorn.
-2. Search recently added candidates (`dateAdded` window).
+2. Search recently added candidates (`dateAdded` window), but never before the configured candidate cutoff date.
 3. Read candidate phone numbers (`phone`, `mobile`, `phone2`, `phone3`).
 4. Infer region from phone number:
    - `+1` numbers use US area code (example: `515` -> `IA`).
@@ -119,6 +119,59 @@ It also includes an Illinois interview notification automation:
 5. Fetch the job order owner and send one SparkPost email per matching interview.
 6. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
 
+It also includes a New Jobs Illinois email automation:
+
+1. Run once per day from Azure Functions.
+2. Query Bullhorn `JobOrder` records by `dateAdded`.
+3. Use a delayed eligibility window instead of alerting immediately. By default, the workflow looks for jobs added between `now - 48 hours` and `now - 24 hours`.
+4. Keep only job orders where `address.state = Illinois` and `employmentType = contract`.
+5. Fetch the job order owner and send one SparkPost email per matching job order.
+6. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
+
+### New Jobs Illinois timing notes
+
+The Azure Function timer for `newJobIllinoisEmailSync` uses `AZURE_NEW_JOB_ILLINOIS_EMAIL_SCHEDULE` when it is set. If it is not set, the code falls back to:
+
+```text
+0 0 7 * * *
+```
+
+With no `WEBSITE_TIME_ZONE` app setting, Azure Functions interprets that schedule as `07:00 UTC`, which is `15:00` Malaysia time. If `WEBSITE_TIME_ZONE` is set in Azure, the same schedule runs at `07:00` in that configured timezone instead.
+
+The workflow also has a 24-hour grace period. With the default settings, a job created at `2026-04-15T12:04:44Z` is not eligible for the `2026-04-16T07:00:00Z` run because that run checks approximately:
+
+```text
+2026-04-14T07:00:00Z through 2026-04-15T07:00:00Z
+```
+
+The same job is eligible for the `2026-04-17T07:00:00Z` run because that run checks approximately:
+
+```text
+2026-04-15T07:00:00Z through 2026-04-16T07:00:00Z
+```
+
+If an Illinois job is not visible in the daily email summary yet, check these in the Azure Function App settings:
+
+- `BULLHORN_ENV` must point to the Bullhorn environment where the job was created.
+- `WEBSITE_TIME_ZONE` changes when the daily timer fires.
+- `AZURE_NEW_JOB_ILLINOIS_EMAIL_SCHEDULE` overrides the default `07:00` schedule.
+- `DRY_RUN=true` records the email as `would-send-email`; `DRY_RUN=false` records it as `sent-email`.
+- `AZURE_WORKFLOW_DAILY_EMAIL_TABLE_NAME` controls which table the summary API reads. The default is `WorkflowDailyEmailRecords`.
+
+The `daily-workflow-email-summary` API does not read the JSON files in `reports/`. It reads normalized recipient-level rows from Azure Table Storage. The partition key for this workflow is:
+
+```text
+{environment}|new-job-illinois-email-sync|{YYYY-MM-DD}
+```
+
+For example:
+
+```text
+production|new-job-illinois-email-sync|2026-04-17
+```
+
+Local runs such as `npm run run:new-job-illinois-email-sync` write report JSON files, but they do not write `WorkflowDailyEmailRecords`. Those table rows are written by the Azure Functions wrapper in `functionApp.js` after the workflow runs through the timer or HTTP endpoint.
+
 ## Important security note
 
 The credentials shared in chat should be treated as compromised. Rotate all Bullhorn `client_secret`, user password, access tokens, and any related secrets before using this in production.
@@ -158,6 +211,7 @@ Placement yearly fee increase test sends write `reports/placement-yearly-fee-inc
 Placement termination email runs write both `reports/placement-termination-email-report-<timestamp>.json` and `reports/placement-termination-email-sparkpost-payload-<timestamp>.json`.
 Illinois interview email runs write both `reports/interview-illinois-email-report-<timestamp>.json` and `reports/interview-illinois-email-sparkpost-payload-<timestamp>.json`.
 Illinois interview test sends write `reports/interview-illinois-email-sparkpost-test-payload-<timestamp>.json`.
+New Jobs Illinois email runs write both `reports/new-job-illinois-email-report-<timestamp>.json` and `reports/new-job-illinois-email-sparkpost-payload-<timestamp>.json`.
 
 ## Required environment variables
 
@@ -174,6 +228,7 @@ Optional:
 - `BULLHORN_<ENV>_API_BASE_URL` (if your login endpoint differs)
 - `BULLHORN_<ENV>_API_VERSION` (default: `*`)
 - `LOOKBACK_HOURS` (default: `60`)
+- `CANDIDATE_STATE_SYNC_CUTOFF_DATE` (default: `2022-01-01`; candidate state sync ignores candidates added before this date)
 - `CLIENT_CORPORATION_360_CUTOFF_DATE` (default: `2023-12-01`)
 - `CLIENT_CORPORATION_360_DELAY_HOURS` (default: `24`)
 - `CLIENT_CORPORATION_360_QUERY_COUNT` (default: `200`)
@@ -203,6 +258,11 @@ Optional:
 - `INTERVIEW_ILLINOIS_JOB_ORDER_STATE` (default: `Illinois`)
 - `INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED` (default: `2024-05-01`)
 - `INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE` (default: `contract`)
+- `NEW_JOB_ILLINOIS_GRACE_HOURS` (default: `24`; wait this many hours after `JobOrder.dateAdded` before including a job)
+- `NEW_JOB_ILLINOIS_QUERY_COUNT` (default: `200`)
+- `NEW_JOB_ILLINOIS_JOB_ORDER_STATE` (default: `Illinois`)
+- `NEW_JOB_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE` (default: `contract`)
+- `NEW_JOB_ILLINOIS_SPARKPOST_TEMPLATE_ID` (optional; falls back to `SPARKPOST_TEMPLATE_ID`)
 - `PLACEMENT_START_REMINDER_DAYS_AHEAD` (default: `4`)
 - `PLACEMENT_START_REMINDER_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (default: `0`; expands the query window backward for testing)
