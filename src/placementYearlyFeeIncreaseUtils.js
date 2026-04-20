@@ -60,7 +60,17 @@ function isDateAfterTodayUtc(value, { baseDate = new Date() } = {}) {
   return parsed.getTime() > todayStart;
 }
 
-function matchesYearlyFeeIncreasePlacement(placement, { baseDate = new Date() } = {}) {
+function matchesYearlyFeeIncreasePlacement(placement, { baseDate = new Date(), testMode = false } = {}) {
+  // In test mode, only require contract employment type and future end date
+  // This allows testing with existing contract placements that don't have the full criteria set up
+  if (testMode) {
+    return (
+      isContractEmploymentType(placement?.employmentType) &&
+      isDateAfterTodayUtc(placement?.dateEnd, { baseDate })
+    );
+  }
+
+  // Production criteria: require all conditions
   return (
     isContractEmploymentType(placement?.employmentType) &&
     hasValue(placement?.clientCorporation?.customDate1) &&

@@ -52,6 +52,46 @@ test("matches yearly fee increase placements only when all rules pass", () => {
   ).toBe(false);
 });
 
+test("matches placements with relaxed criteria in test mode", () => {
+  // In test mode, only contract employment type and future end date are required
+  expect(
+    matchesYearlyFeeIncreasePlacement(
+      {
+        employmentType: "Contract",
+        dateEnd: "2026-12-31T00:00:00.000Z",
+        clientCorporation: {
+          // Missing customDate1 and billingFrequency - should still match in test mode
+        },
+      },
+      { baseDate: new Date("2026-04-07T12:00:00.000Z"), testMode: true },
+    ),
+  ).toBe(true);
+
+  // Should still fail if not contract employment type, even in test mode
+  expect(
+    matchesYearlyFeeIncreasePlacement(
+      {
+        employmentType: "Permanent",
+        dateEnd: "2026-12-31T00:00:00.000Z",
+        clientCorporation: {},
+      },
+      { baseDate: new Date("2026-04-07T12:00:00.000Z"), testMode: true },
+    ),
+  ).toBe(false);
+
+  // Should still fail if end date is not in future, even in test mode
+  expect(
+    matchesYearlyFeeIncreasePlacement(
+      {
+        employmentType: "Contract",
+        dateEnd: "2026-01-01T00:00:00.000Z", // Past date
+        clientCorporation: {},
+      },
+      { baseDate: new Date("2026-04-07T12:00:00.000Z"), testMode: true },
+    ),
+  ).toBe(false);
+});
+
 test("builds the SparkPost recipient payload", () => {
   expect(
     buildPlacementYearlyFeeIncreaseRecipient({

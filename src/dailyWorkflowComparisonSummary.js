@@ -7,6 +7,7 @@ const { listWorkflowDailyChangeRecordsForDate } = require("./workflowDailyChange
 const { serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
 const DAILY_COMPARISON_WORKFLOWS = [
+  "candidate-state-sync",
   "placement-status-sync",
   "placement-database-enrichment-sync",
   "placement-termination-email-sync",

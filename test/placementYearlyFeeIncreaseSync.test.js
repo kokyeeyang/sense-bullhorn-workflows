@@ -49,6 +49,7 @@ describe("placementYearlyFeeIncreaseSync", () => {
       PLACEMENT_YEARLY_FEE_INCREASE_QUERY_COUNT: 200,
       PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS: 0,
       PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS: 0,
+      PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE: false,
       PLACEMENT_YEARLY_FEE_INCREASE_SPARKPOST_TEMPLATE_ID: "placement-yearly-fee-increase",
       SPARKPOST_TEMPLATE_ID: "template-123",
       SPARKPOST_API_KEY: "sparkpost-key",
@@ -163,5 +164,61 @@ describe("placementYearlyFeeIncreaseSync", () => {
     });
     expect(mockSparkPostClient.sendTransmission).not.toHaveBeenCalled();
     expect(fs.writeFile).toHaveBeenCalledTimes(2);
+  });
+
+  test("matches placements with relaxed criteria in test mode", async () => {
+    loadConfig.mockReturnValue({
+      DRY_RUN: true,
+      PLACEMENT_YEARLY_FEE_INCREASE_MONTH_OFFSET: 11,
+      PLACEMENT_YEARLY_FEE_INCREASE_QUERY_COUNT: 200,
+      PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS: 0,
+      PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS: 0,
+      PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE: true,
+      PLACEMENT_YEARLY_FEE_INCREASE_SPARKPOST_TEMPLATE_ID: "placement-yearly-fee-increase",
+      SPARKPOST_TEMPLATE_ID: "template-123",
+      SPARKPOST_API_KEY: "sparkpost-key",
+      RETRY_MAX_ATTEMPTS: 4,
+      RETRY_BASE_DELAY_MS: 500,
+    });
+
+    mockBullhornClient.queryPlacementsByDateBeginRange.mockResolvedValue([
+      {
+        id: 49086,
+        employmentType: "Contract",
+        dateBegin: 1743984000000,
+        dateEnd: 1798761600000,
+        candidate: { id: 516238, firstName: "Sammy", lastName: "Thackeray" },
+        clientCorporation: {
+          id: 9,
+          name: "Bubbles Oil",
+          // Note: missing customDate1 and billingFrequency - should still match in test mode
+        },
+        jobOrder: {
+          id: 9901,
+          title: "Offshore Lead Cables Engineer",
+          owner: { id: 8, firstName: "Olivia", lastName: "Stone" },
+        },
+      },
+    ]);
+
+    mockBullhornClient.getCorporateUser.mockResolvedValue({
+      id: 8,
+      firstName: "Olivia",
+      lastName: "Stone",
+      email: "olivia@example.com",
+    });
+
+    const report = await run();
+
+    expect(report.window.windowBeforeDays).toBe(3);
+    expect(report.window.windowAfterDays).toBe(3);
+    expect(report.totals).toEqual({
+      totalPlacements: 1,
+      matchedPlacements: 1,
+      recipients: 1,
+      skippedNonMatchingPlacement: 0,
+      skippedMissingOwnerId: 0,
+      skippedMissingOwnerEmail: 0,
+    });
   });
 });

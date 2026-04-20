@@ -48,18 +48,30 @@ async function run() {
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });
   const templateId = getTemplateId(config);
+  const effectiveWindowBeforeDays =
+    config.PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE &&
+    config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS === 0
+      ? 3
+      : config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS;
+  const effectiveWindowAfterDays =
+    config.PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE &&
+    config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS === 0
+      ? 3
+      : config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS;
+
   const window = buildUtcMonthOffsetDayWindow({
     monthOffset: config.PLACEMENT_YEARLY_FEE_INCREASE_MONTH_OFFSET,
-    windowBeforeDays: config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS,
-    windowAfterDays: config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS,
+    windowBeforeDays: effectiveWindowBeforeDays,
+    windowAfterDays: effectiveWindowAfterDays,
   });
 
   logger.info(
     {
       dryRun: config.DRY_RUN,
+      testMode: config.PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE,
       monthOffset: config.PLACEMENT_YEARLY_FEE_INCREASE_MONTH_OFFSET,
-      windowBeforeDays: config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS,
-      windowAfterDays: config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS,
+      windowBeforeDays: effectiveWindowBeforeDays,
+      windowAfterDays: effectiveWindowAfterDays,
       targetPlacementDateBegin: window.targetPlacementDateBegin,
       startMs: window.startMs,
       endMs: window.endMs,
@@ -93,7 +105,7 @@ async function run() {
   const ownerCache = new Map();
 
   for (const placement of placements) {
-    if (!matchesYearlyFeeIncreasePlacement(placement)) {
+    if (!matchesYearlyFeeIncreasePlacement(placement, { testMode: config.PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE })) {
       skippedNonMatchingPlacement += 1;
       continue;
     }
@@ -167,8 +179,8 @@ async function run() {
     dryRun: config.DRY_RUN,
     window: {
       monthOffset: config.PLACEMENT_YEARLY_FEE_INCREASE_MONTH_OFFSET,
-      windowBeforeDays: config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS,
-      windowAfterDays: config.PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS,
+      windowBeforeDays: effectiveWindowBeforeDays,
+      windowAfterDays: effectiveWindowAfterDays,
       targetPlacementDateBegin: window.targetPlacementDateBegin,
       startMs: window.startMs,
       endMs: window.endMs,

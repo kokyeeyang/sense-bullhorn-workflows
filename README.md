@@ -216,6 +216,33 @@ Illinois interview email runs write both `reports/interview-illinois-email-repor
 Illinois interview test sends write `reports/interview-illinois-email-sparkpost-test-payload-<timestamp>.json`.
 New Jobs Illinois email runs write both `reports/new-job-illinois-email-report-<timestamp>.json` and `reports/new-job-illinois-email-sparkpost-payload-<timestamp>.json`.
 
+## Testing
+
+### Placement Yearly Fee Increase Test Mode
+
+When testing the placement yearly fee increase workflow with real Bullhorn data but no qualifying placements, you can enable test mode to use relaxed matching criteria:
+
+```bash
+# Enable test mode - only requires contract employment type + future end date
+PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE=true npm run run:placement-yearly-fee-increase-sync
+
+# Or run the test script directly
+PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE=true node test-yearly-fee-increase.js
+```
+
+**Test Mode Criteria (relaxed):**
+- Employment type must be "contract"
+- Placement end date must be in the future
+- If both window values are left at `0`, the workflow automatically expands the query window to 3 days before and after the target date
+
+**Production Criteria (strict):**
+- Employment type must be "contract"
+- Client corporation must have TOB date (`customDate1`)
+- Billing frequency must be 1-10 (fee increase percentage)
+- Placement end date must be in the future
+
+Use `DRY_RUN=true` (default) to test without sending actual emails.
+
 ## Required environment variables
 
 - `BULLHORN_ENV` (`staging` or `production`; default: `production`)
