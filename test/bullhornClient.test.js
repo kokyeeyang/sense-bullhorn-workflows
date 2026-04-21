@@ -43,7 +43,7 @@ describe("BullhornClient", () => {
     );
   });
 
-  test("searchCandidates can use millisecond dateAdded ranges for manual backfills", async () => {
+  test("queryCandidatesByDateAddedRange uses millisecond where clause for manual backfills", async () => {
     axios.get.mockResolvedValue({
       data: {
         data: [],
@@ -52,20 +52,18 @@ describe("BullhornClient", () => {
     });
 
     const client = new BullhornClient({ config, logger });
-    await client.searchCandidates({
+    await client.queryCandidatesByDateAddedRange({
       restUrl: "https://example-rest.bullhornstaffing.com/rest-services/123",
       bhRestToken: "token",
-      fromEpochSeconds: 1498867200,
-      toEpochSeconds: 1509494399,
-      fromEpochMilliseconds: 1498867200000,
-      toEpochMilliseconds: 1509494399999,
+      startMs: 1498867200000,
+      endMs: 1509494399999,
     });
 
     expect(axios.get).toHaveBeenCalledWith(
-      "https://example-rest.bullhornstaffing.com/rest-services/123/search/Candidate",
+      "https://example-rest.bullhornstaffing.com/rest-services/123/query/Candidate",
       expect.objectContaining({
         params: expect.objectContaining({
-          query: "dateAdded[1498867200000 TO 1509494399999]",
+          where: "dateAdded>=1498867200000 AND dateAdded<=1509494399999",
         }),
       }),
     );

@@ -171,17 +171,21 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
   const accessToken = await bullhorn.getAccessToken(code);
   const session = await bullhorn.login(accessToken);
 
-  const candidates = await bullhorn.searchCandidates({
-    restUrl: session.restUrl,
-    bhRestToken: session.bhRestToken,
-    fromEpochSeconds: fromEpoch,
-    toEpochSeconds: toEpoch,
-    fromEpochMilliseconds:
-      dateWindow.mode === "manual-date-window" ? fromEpochMilliseconds : undefined,
-    toEpochMilliseconds:
-      dateWindow.mode === "manual-date-window" ? toEpochMilliseconds : undefined,
-    candidateId: config.TEST_CANDIDATE_ID,
-  });
+  const candidates =
+    dateWindow.mode === "manual-date-window" && !config.TEST_CANDIDATE_ID
+      ? await bullhorn.queryCandidatesByDateAddedRange({
+          restUrl: session.restUrl,
+          bhRestToken: session.bhRestToken,
+          startMs: fromEpochMilliseconds,
+          endMs: toEpochMilliseconds,
+        })
+      : await bullhorn.searchCandidates({
+          restUrl: session.restUrl,
+          bhRestToken: session.bhRestToken,
+          fromEpochSeconds: fromEpoch,
+          toEpochSeconds: toEpoch,
+          candidateId: config.TEST_CANDIDATE_ID,
+        });
 
   logger.info({ candidateCount: candidates.length }, "Fetched candidates");
 
