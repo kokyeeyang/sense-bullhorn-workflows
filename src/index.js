@@ -24,6 +24,62 @@ function parseIsoDateStart(value) {
   return parsed;
 }
 
+function parseIsoDateEnd(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = new Date(`${normalized.slice(0, 10)}T23:59:59.999Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid dateTo: ${value}`);
+  }
+
+  return parsed;
+}
+
+function buildCandidateDateWindow({ now, lookbackHours, cutoffDateValue, dateFrom, dateTo }) {
+  const hasManualDateFrom = Boolean(String(dateFrom || "").trim());
+  const hasManualDateTo = Boolean(String(dateTo || "").trim());
+
+  if (hasManualDateFrom || hasManualDateTo) {
+    if (!hasManualDateFrom || !hasManualDateTo) {
+      throw new Error("candidate-state-sync manual date window requires both dateFrom and dateTo");
+    }
+
+    const manualFrom = parseIsoDateStart(dateFrom);
+    const manualTo = parseIsoDateEnd(dateTo);
+    if (manualFrom.getTime() > manualTo.getTime()) {
+      throw new Error("candidate-state-sync dateFrom must be before or equal to dateTo");
+    }
+
+    return {
+      from: manualFrom,
+      to: manualTo,
+      cutoffDate: parseIsoDateStart(cutoffDateValue),
+      mode: "manual-date-window",
+      manualFromMs: manualFrom.getTime(),
+      manualToMs: manualTo.getTime(),
+      applyCutoff: false,
+    };
+  }
+
+  const lookbackFrom = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000);
+  const cutoffDate = parseIsoDateStart(cutoffDateValue);
+  const from =
+    cutoffDate && cutoffDate.getTime() > lookbackFrom.getTime() ? cutoffDate : lookbackFrom;
+
+  return {
+    from,
+    to: now,
+    cutoffDate,
+    mode: "rolling-lookback",
+    manualFromMs: null,
+    manualToMs: null,
+    applyCutoff: true,
+  };
+}
+
 function parseBullhornDateAdded(value) {
   if (value === null || value === undefined || value === "") return null;
 
@@ -74,23 +130,30 @@ async function writeChangesReport({ report }) {
   return writeJsonArtifact({ filePrefix: "changes-report", payload: report });
 }
 
-async function run() {
+async function run({ dateFrom = null, dateTo = null } = {}) {
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
 
   const now = new Date();
-  const lookbackFrom = new Date(now.getTime() - config.LOOKBACK_HOURS * 60 * 60 * 1000);
-  const cutoffDate = parseIsoDateStart(config.CANDIDATE_STATE_SYNC_CUTOFF_DATE);
-  const from =
-    cutoffDate && cutoffDate.getTime() > lookbackFrom.getTime() ? cutoffDate : lookbackFrom;
+  const dateWindow = buildCandidateDateWindow({
+    now,
+    lookbackHours: config.LOOKBACK_HOURS,
+    cutoffDateValue: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
+    dateFrom,
+    dateTo,
+  });
+  const { from, to, cutoffDate } = dateWindow;
   const fromEpoch = epochSecondsFromDate(from);
-  const toEpoch = epochSecondsFromDate(now);
+  const toEpoch = epochSecondsFromDate(to);
   const cutoffMs = cutoffDate?.getTime() ?? null;
 
   logger.info(
     {
       fromEpoch,
       toEpoch,
+      dateWindowMode: dateWindow.mode,
+      dateFrom: dateFrom || null,
+      dateTo: dateTo || null,
       lookbackHours: config.LOOKBACK_HOURS,
       candidateStateSyncCutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
       dryRun: config.DRY_RUN,
@@ -118,6 +181,7 @@ async function run() {
 
   let updated = 0;
   let skippedBeforeCutoff = 0;
+  let skippedOutsideDateWindow = 0;
   let skippedNoMapping = 0;
   let skippedNoChange = 0;
   const affectedCandidates = [];
@@ -125,7 +189,17 @@ async function run() {
 
   for (const candidate of candidates) {
     const candidateDateAddedMs = parseBullhornDateAdded(candidate.dateAdded);
-    if (
+    if (dateWindow.mode === "manual-date-window") {
+      if (
+        !Number.isFinite(candidateDateAddedMs) ||
+        candidateDateAddedMs < dateWindow.manualFromMs ||
+        candidateDateAddedMs > dateWindow.manualToMs
+      ) {
+        skippedOutsideDateWindow += 1;
+        continue;
+      }
+    } else if (
+      dateWindow.applyCutoff &&
       cutoffMs !== null &&
       (!Number.isFinite(candidateDateAddedMs) || candidateDateAddedMs < cutoffMs)
     ) {
@@ -239,6 +313,7 @@ async function run() {
     {
       updated,
       skippedBeforeCutoff,
+      skippedOutsideDateWindow,
       skippedNoMapping,
       skippedNoChange,
       totalCandidates: candidates.length,
@@ -253,14 +328,19 @@ async function run() {
     window: {
       fromEpoch,
       toEpoch,
+      mode: dateWindow.mode,
+      dateFrom: dateFrom || null,
+      dateTo: dateTo || null,
       lookbackHours: config.LOOKBACK_HOURS,
       cutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
+      cutoffApplied: dateWindow.applyCutoff,
     },
     totals: {
       totalCandidates: candidates.length,
       affectedCandidates: affectedCandidates.length,
       updated,
       skippedBeforeCutoff,
+      skippedOutsideDateWindow,
       skippedNoMapping,
       skippedNoChange,
     },
@@ -289,4 +369,10 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseBullhornDateAdded, parseIsoDateStart, run };
+module.exports = {
+  buildCandidateDateWindow,
+  parseBullhornDateAdded,
+  parseIsoDateEnd,
+  parseIsoDateStart,
+  run,
+};

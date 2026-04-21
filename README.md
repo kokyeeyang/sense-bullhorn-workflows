@@ -23,6 +23,18 @@ Minimal Node.js workflow to:
    - US number -> update `address.state`
    - Non-US candidate -> update `address.countryCode` and `address.countryName` from `address.countryID`
 
+For manual one-time cleanup runs, the HTTP endpoint accepts an explicit candidate `dateAdded`
+window:
+
+```text
+POST /api/workflows/candidate-state-sync?dateFrom=2017-12-31&dateTo=2018-12-31
+```
+
+When both `dateFrom` and `dateTo` are supplied, the workflow uses that exact UTC date
+window instead of `LOOKBACK_HOURS`, and it does not apply
+`CANDIDATE_STATE_SYNC_CUTOFF_DATE`. Scheduled runs continue to use the normal rolling
+lookback plus cutoff behavior.
+
 This repo also includes a second automation for placement status transitions:
 
 1. Subscribe to Bullhorn `Placement` update events.
