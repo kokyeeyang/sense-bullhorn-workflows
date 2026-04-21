@@ -272,9 +272,8 @@ class BullhornClient {
     bhRestToken,
     fromEpochSeconds,
     toEpochSeconds,
-    fromEpochMilliseconds,
-    toEpochMilliseconds,
     candidateId,
+    manualMode = false,
   }) {
     const fields = candidateStateFields();
 
@@ -282,12 +281,12 @@ class BullhornClient {
     const pageSize = 500;
     let start = 0;
     let total = 0;
-    const fromDateAdded = fromEpochMilliseconds ?? fromEpochSeconds;
-    const toDateAdded = toEpochMilliseconds ?? toEpochSeconds;
     const query =
       candidateId && Number.isInteger(candidateId)
         ? `id:${candidateId}`
-        : `dateAdded:[${fromDateAdded} TO ${toDateAdded}]`;
+        : manualMode
+          ? "id:[* TO *]"
+        : `dateAdded[${fromEpochSeconds} TO ${toEpochSeconds}]`;
 
     do {
       const response = await this.requestWithRetry({

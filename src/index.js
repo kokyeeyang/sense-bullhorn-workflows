@@ -24,46 +24,7 @@ function parseIsoDateStart(value) {
   return parsed;
 }
 
-function parseIsoDateEnd(value) {
-  const normalized = String(value || "").trim();
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = new Date(`${normalized.slice(0, 10)}T23:59:59.999Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`Invalid dateTo: ${value}`);
-  }
-
-  return parsed;
-}
-
-function buildCandidateDateWindow({ now, lookbackHours, cutoffDateValue, dateFrom, dateTo }) {
-  const hasManualDateFrom = Boolean(String(dateFrom || "").trim());
-  const hasManualDateTo = Boolean(String(dateTo || "").trim());
-
-  if (hasManualDateFrom || hasManualDateTo) {
-    if (!hasManualDateFrom || !hasManualDateTo) {
-      throw new Error("candidate-state-sync manual date window requires both dateFrom and dateTo");
-    }
-
-    const manualFrom = parseIsoDateStart(dateFrom);
-    const manualTo = parseIsoDateEnd(dateTo);
-    if (manualFrom.getTime() > manualTo.getTime()) {
-      throw new Error("candidate-state-sync dateFrom must be before or equal to dateTo");
-    }
-
-    return {
-      from: manualFrom,
-      to: manualTo,
-      cutoffDate: parseIsoDateStart(cutoffDateValue),
-      mode: "manual-date-window",
-      manualFromMs: manualFrom.getTime(),
-      manualToMs: manualTo.getTime(),
-      applyCutoff: false,
-    };
-  }
-
+function buildCandidateDateWindow({ now, lookbackHours, cutoffDateValue }) {
   const lookbackFrom = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000);
   const cutoffDate = parseIsoDateStart(cutoffDateValue);
   const from =
@@ -73,11 +34,11 @@ function buildCandidateDateWindow({ now, lookbackHours, cutoffDateValue, dateFro
     from,
     to: now,
     cutoffDate,
-    mode: "rolling-lookback",
-    manualFromMs: null,
-    manualToMs: null,
-    applyCutoff: true,
   };
+}
+
+function parseBooleanFlag(value) {
+  return ["true", "1", "yes", "y"].includes(String(value || "").trim().toLowerCase());
 }
 
 function parseBullhornDateAdded(value) {
@@ -130,32 +91,27 @@ async function writeChangesReport({ report }) {
   return writeJsonArtifact({ filePrefix: "changes-report", payload: report });
 }
 
-async function run({ dateFrom = null, dateTo = null } = {}) {
+async function run({ manualMode = false } = {}) {
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
+  const isManualMode = parseBooleanFlag(manualMode);
 
   const now = new Date();
   const dateWindow = buildCandidateDateWindow({
     now,
     lookbackHours: config.LOOKBACK_HOURS,
     cutoffDateValue: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
-    dateFrom,
-    dateTo,
   });
   const { from, to, cutoffDate } = dateWindow;
   const fromEpoch = epochSecondsFromDate(from);
   const toEpoch = epochSecondsFromDate(to);
-  const fromEpochMilliseconds = from.getTime();
-  const toEpochMilliseconds = to.getTime();
   const cutoffMs = cutoffDate?.getTime() ?? null;
 
   logger.info(
     {
       fromEpoch,
       toEpoch,
-      dateWindowMode: dateWindow.mode,
-      dateFrom: dateFrom || null,
-      dateTo: dateTo || null,
+      manualMode: isManualMode,
       lookbackHours: config.LOOKBACK_HOURS,
       candidateStateSyncCutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
       dryRun: config.DRY_RUN,
@@ -176,48 +132,22 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
     bhRestToken: session.bhRestToken,
     fromEpochSeconds: fromEpoch,
     toEpochSeconds: toEpoch,
-    fromEpochMilliseconds:
-      dateWindow.mode === "manual-date-window" ? fromEpochMilliseconds : undefined,
-    toEpochMilliseconds:
-      dateWindow.mode === "manual-date-window" ? toEpochMilliseconds : undefined,
     candidateId: config.TEST_CANDIDATE_ID,
+    manualMode: isManualMode,
   });
 
   logger.info({ candidateCount: candidates.length }, "Fetched candidates");
 
   let updated = 0;
   let skippedBeforeCutoff = 0;
-  let skippedOutsideDateWindow = 0;
   let skippedNoMapping = 0;
   let skippedNoChange = 0;
   const affectedCandidates = [];
   const skippedBeforeCutoffSamples = [];
-  const skippedOutsideDateWindowSamples = [];
 
   for (const candidate of candidates) {
     const candidateDateAddedMs = parseBullhornDateAdded(candidate.dateAdded);
-    if (dateWindow.mode === "manual-date-window") {
-      if (
-        !Number.isFinite(candidateDateAddedMs) ||
-        candidateDateAddedMs < dateWindow.manualFromMs ||
-        candidateDateAddedMs > dateWindow.manualToMs
-      ) {
-        if (skippedOutsideDateWindowSamples.length < 10) {
-          skippedOutsideDateWindowSamples.push({
-            candidateId: candidate.id,
-            rawDateAdded: candidate.dateAdded ?? null,
-            rawDateAddedType: candidate.dateAdded === null ? "null" : typeof candidate.dateAdded,
-            parsedDateAdded:
-              Number.isFinite(candidateDateAddedMs)
-                ? new Date(candidateDateAddedMs).toISOString()
-                : null,
-          });
-        }
-        skippedOutsideDateWindow += 1;
-        continue;
-      }
-    } else if (
-      dateWindow.applyCutoff &&
+    if (
       cutoffMs !== null &&
       (!Number.isFinite(candidateDateAddedMs) || candidateDateAddedMs < cutoffMs)
     ) {
@@ -331,7 +261,6 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
     {
       updated,
       skippedBeforeCutoff,
-      skippedOutsideDateWindow,
       skippedNoMapping,
       skippedNoChange,
       totalCandidates: candidates.length,
@@ -346,30 +275,21 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
     window: {
       fromEpoch,
       toEpoch,
-      fromEpochMilliseconds:
-        dateWindow.mode === "manual-date-window" ? fromEpochMilliseconds : null,
-      toEpochMilliseconds:
-        dateWindow.mode === "manual-date-window" ? toEpochMilliseconds : null,
-      mode: dateWindow.mode,
-      dateFrom: dateFrom || null,
-      dateTo: dateTo || null,
+      manualMode: isManualMode,
       lookbackHours: config.LOOKBACK_HOURS,
       cutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
-      cutoffApplied: dateWindow.applyCutoff,
     },
     totals: {
       totalCandidates: candidates.length,
       affectedCandidates: affectedCandidates.length,
       updated,
       skippedBeforeCutoff,
-      skippedOutsideDateWindow,
       skippedNoMapping,
       skippedNoChange,
     },
     affectedCandidates,
     diagnostics: {
       skippedBeforeCutoffSamples,
-      skippedOutsideDateWindowSamples,
     },
   };
 
@@ -395,7 +315,7 @@ if (require.main === module) {
 module.exports = {
   buildCandidateDateWindow,
   parseBullhornDateAdded,
-  parseIsoDateEnd,
+  parseBooleanFlag,
   parseIsoDateStart,
   run,
 };
