@@ -52,7 +52,7 @@ const configSchema = z.object({
   BULLHORN_REDIRECT_URI: z.string().url(),
   BULLHORN_API_VERSION: stringWithDefault("*"),
   LOOKBACK_HOURS: positiveIntWithDefault(60),
-  CANDIDATE_STATE_SYNC_CUTOFF_DATE: stringWithDefault("2022-01-01"),
+  CANDIDATE_STATE_SYNC_CUTOFF_DATE: stringWithDefault("2018-10-31"),
   CLIENT_CORPORATION_360_CUTOFF_DATE: stringWithDefault("2023-12-01"),
   CLIENT_CORPORATION_360_DELAY_HOURS: positiveIntWithDefault(24),
   CLIENT_CORPORATION_360_QUERY_COUNT: positiveIntWithDefault(200),

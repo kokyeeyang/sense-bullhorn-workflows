@@ -258,7 +258,7 @@ Optional:
 - `BULLHORN_<ENV>_API_BASE_URL` (if your login endpoint differs)
 - `BULLHORN_<ENV>_API_VERSION` (default: `*`)
 - `LOOKBACK_HOURS` (default: `60`)
-- `CANDIDATE_STATE_SYNC_CUTOFF_DATE` (default: `2022-01-01`; candidate state sync ignores candidates added before this date)
+- `CANDIDATE_STATE_SYNC_CUTOFF_DATE` (default: `2018-10-31`; candidate state sync ignores candidates added before this date)
 - `CLIENT_CORPORATION_360_CUTOFF_DATE` (default: `2023-12-01`)
 - `CLIENT_CORPORATION_360_DELAY_HOURS` (default: `24`)
 - `CLIENT_CORPORATION_360_QUERY_COUNT` (default: `200`)
