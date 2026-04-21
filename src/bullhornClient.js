@@ -279,7 +279,7 @@ class BullhornClient {
     const query =
       candidateId && Number.isInteger(candidateId)
         ? `id:${candidateId}`
-        : `dateAdded[${fromEpochSeconds} TO ${toEpochSeconds}]`;
+        : `dateAdded:[${fromEpochSeconds} TO ${toEpochSeconds}]`;
 
     do {
       const response = await this.requestWithRetry({
