@@ -154,6 +154,7 @@ async function run({ candidateIds = null } = {}) {
   const candidateIdsToFetch = config.TEST_CANDIDATE_ID
     ? [config.TEST_CANDIDATE_ID]
     : explicitCandidateIds;
+  const isExplicitCandidateIdMode = candidateIdsToFetch.length > 0;
 
   let candidates;
   if (candidateIdsToFetch.length > 0) {
@@ -210,9 +211,10 @@ async function run({ candidateIds = null } = {}) {
     }
 
     if (
-      !Number.isFinite(candidateDateAddedMs) ||
-      candidateDateAddedMs < from.getTime() ||
-      candidateDateAddedMs > to.getTime()
+      !isExplicitCandidateIdMode &&
+      (!Number.isFinite(candidateDateAddedMs) ||
+        candidateDateAddedMs < from.getTime() ||
+        candidateDateAddedMs > to.getTime())
     ) {
       if (skippedOutsideLookbackSamples.length < 10) {
         skippedOutsideLookbackSamples.push({

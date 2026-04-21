@@ -32,8 +32,9 @@ POST /api/workflows/candidate-state-sync?candidateIds=1776036,1776057,1776027
 ```
 
 The workflow fetches those exact candidates and then applies the normal
-`CANDIDATE_STATE_SYNC_CUTOFF_DATE`, phone mapping, and no-change checks. Run it
-with `DRY_RUN=true` first and review `affectedCandidates` before allowing writes.
+`CANDIDATE_STATE_SYNC_CUTOFF_DATE`, phone mapping, and no-change checks. Explicit
+candidate ID runs do not apply the rolling `LOOKBACK_HOURS` window. Run it with
+`DRY_RUN=true` first and review `affectedCandidates` before allowing writes.
 
 This repo also includes a second automation for placement status transitions:
 
