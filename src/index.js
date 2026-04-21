@@ -24,6 +24,32 @@ function parseIsoDateStart(value) {
   return parsed;
 }
 
+function parseBullhornDateAdded(value) {
+  if (value === null || value === undefined || value === "") return null;
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const milliseconds = value < 100000000000 ? value * 1000 : value;
+    return milliseconds;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    if (!normalized) return null;
+
+    if (/^\d+$/.test(normalized)) {
+      const numericValue = Number(normalized);
+      if (!Number.isFinite(numericValue)) return null;
+      return numericValue < 100000000000 ? numericValue * 1000 : numericValue;
+    }
+
+    const parsed = new Date(normalized);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.getTime();
+  }
+
+  return null;
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -92,7 +118,7 @@ async function run() {
   const affectedCandidates = [];
 
   for (const candidate of candidates) {
-    const candidateDateAddedMs = new Date(candidate.dateAdded).getTime();
+    const candidateDateAddedMs = parseBullhornDateAdded(candidate.dateAdded);
     if (
       cutoffMs !== null &&
       (!Number.isFinite(candidateDateAddedMs) || candidateDateAddedMs < cutoffMs)
@@ -243,4 +269,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseIsoDateStart, run };
+module.exports = { parseBullhornDateAdded, parseIsoDateStart, run };
