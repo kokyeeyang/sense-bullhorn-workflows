@@ -1,0 +1,46 @@
+name: Bullhorn Client Corporation 360 Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run client corporation 360 cleanup
+        env:
+          BULLHORN_CLIENT_ID: ${{ secrets.BULLHORN_CLIENT_ID }}
+          BULLHORN_CLIENT_SECRET: ${{ secrets.BULLHORN_CLIENT_SECRET }}
+          BULLHORN_USERNAME: ${{ secrets.BULLHORN_USERNAME }}
+          BULLHORN_PASSWORD: ${{ secrets.BULLHORN_PASSWORD }}
+          BULLHORN_REDIRECT_URI: ${{ secrets.BULLHORN_REDIRECT_URI }}
+          DRY_RUN: ${{ secrets.DRY_RUN }}
+          CLIENT_CORPORATION_360_CUTOFF_DATE: ${{ secrets.CLIENT_CORPORATION_360_CUTOFF_DATE }}
+          CLIENT_CORPORATION_360_DELAY_HOURS: ${{ secrets.CLIENT_CORPORATION_360_DELAY_HOURS }}
+          TEST_CLIENT_CORPORATION_ID: ${{ secrets.TEST_CLIENT_CORPORATION_ID }}
+        run: npm run run:client-corporation-360-sync
+
+      - name: Upload client corporation changes report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bullhorn-client-corporation-360-report
+          path: reports/client-corporation-360-report-*.json
+          if-no-files-found: warn

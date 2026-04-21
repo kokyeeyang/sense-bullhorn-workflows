@@ -1,0 +1,136 @@
+const {
+  buildContactName,
+  getContactChanges,
+  hasContactDelayPassed,
+  inferEventDrivenContactPatch,
+  inferNewContactDoNotContactPatch,
+  isBlockedContactName,
+  isClientCorporationStatusDoNotContactActivation,
+  isClientCorporationStatusReactivation,
+} = require("../src/clientContactDncSyncUtils");
+
+test("waits until 60 hours have passed since contact dateAdded", () => {
+  expect(
+    hasContactDelayPassed(
+      { dateAdded: "2026-04-01T00:00:00.000Z" },
+      60,
+      new Date("2026-04-03T11:59:59.000Z").getTime(),
+    ),
+  ).toBe(false);
+
+  expect(
+    hasContactDelayPassed(
+      { dateAdded: "2026-04-01T00:00:00.000Z" },
+      60,
+      new Date("2026-04-03T12:00:00.000Z").getTime(),
+    ),
+  ).toBe(true);
+});
+
+test("detects blocked contact names", () => {
+  expect(isBlockedContactName({ name: ".. placeholder" })).toBe(true);
+  expect(isBlockedContactName({ firstName: "****", lastName: "Skip" })).toBe(true);
+  expect(isBlockedContactName({ firstName: "Jane", lastName: "Smith" })).toBe(false);
+});
+
+test("matches client corporation status transitions", () => {
+  expect(
+    isClientCorporationStatusReactivation({
+      oldValue: "do not contact",
+      newValue: "active",
+    }),
+  ).toBe(true);
+  expect(
+    isClientCorporationStatusDoNotContactActivation({
+      oldValue: null,
+      newValue: "do not contact",
+    }),
+  ).toBe(true);
+});
+
+test("builds delay-based DNC patch only when all conditions match", () => {
+  expect(
+    inferNewContactDoNotContactPatch(
+      {
+        name: "Jane Smith",
+        dateAdded: "2026-04-01T00:00:00.000Z",
+        status: "Active",
+        clientCorporation: { status: "do not contact" },
+      },
+      { delayHours: 60, now: new Date("2026-04-03T12:00:00.000Z").getTime() },
+    ),
+  ).toEqual({
+    massMailOptOut: true,
+    status: "do not contact",
+  });
+
+  expect(
+    inferNewContactDoNotContactPatch(
+      {
+        name: ".. Placeholder",
+        dateAdded: "2026-04-01T00:00:00.000Z",
+        status: "Active",
+        clientCorporation: { status: "do not contact" },
+      },
+      { delayHours: 60, now: new Date("2026-04-03T12:00:00.000Z").getTime() },
+    ),
+  ).toBeNull();
+});
+
+test("builds event-driven patches", () => {
+  expect(
+    inferEventDrivenContactPatch({
+      statusChange: { oldValue: "do not contact", newValue: "active" },
+      contact: { status: "do not contact", name: "Jane Smith" },
+    }),
+  ).toEqual({
+    massMailOptOut: false,
+    status: "Active",
+  });
+
+  expect(
+    inferEventDrivenContactPatch({
+      statusChange: { oldValue: "", newValue: "do not contact" },
+      contact: { status: "Prospect", name: "Jane Smith" },
+    }),
+  ).toEqual({
+    massMailOptOut: true,
+    status: "do not contact",
+  });
+
+  expect(
+    inferEventDrivenContactPatch({
+      statusChange: { oldValue: "do not contact", newValue: "active" },
+      contact: { status: "Active", name: "Jane Smith" },
+    }),
+  ).toBeNull();
+
+  expect(
+    inferEventDrivenContactPatch({
+      statusChange: { oldValue: "", newValue: "do not contact" },
+      contact: { status: "Active", name: ".. Placeholder" },
+    }),
+  ).toBeNull();
+});
+
+test("computes contact field changes and normalizes opt-out values", () => {
+  expect(
+    getContactChanges(
+      {
+        status: "Active",
+        massMailOptOut: "No",
+      },
+      {
+        status: "do not contact",
+        massMailOptOut: true,
+      },
+    ),
+  ).toEqual([
+    { field: "status", oldValue: "Active", newValue: "do not contact" },
+    { field: "massMailOptOut", oldValue: false, newValue: true },
+  ]);
+});
+
+test("builds a fallback full name when explicit name is missing", () => {
+  expect(buildContactName({ firstName: "Jane", lastName: "Smith" })).toBe("Jane Smith");
+});

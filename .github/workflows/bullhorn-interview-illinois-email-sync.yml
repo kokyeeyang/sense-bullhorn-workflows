@@ -1,0 +1,52 @@
+name: Bullhorn Interview Illinois Email Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run interview Illinois email sync
+        env:
+          BULLHORN_CLIENT_ID: ${{ secrets.BULLHORN_CLIENT_ID }}
+          BULLHORN_CLIENT_SECRET: ${{ secrets.BULLHORN_CLIENT_SECRET }}
+          BULLHORN_USERNAME: ${{ secrets.BULLHORN_USERNAME }}
+          BULLHORN_PASSWORD: ${{ secrets.BULLHORN_PASSWORD }}
+          BULLHORN_REDIRECT_URI: ${{ secrets.BULLHORN_REDIRECT_URI }}
+          DRY_RUN: ${{ secrets.DRY_RUN }}
+          INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID: ${{ secrets.INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID }}
+          INTERVIEW_ILLINOIS_EVENT_MAX_EVENTS: ${{ secrets.INTERVIEW_ILLINOIS_EVENT_MAX_EVENTS }}
+          INTERVIEW_ILLINOIS_JOB_ORDER_STATE: ${{ secrets.INTERVIEW_ILLINOIS_JOB_ORDER_STATE }}
+          INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED: ${{ secrets.INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED }}
+          INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE: ${{ secrets.INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE }}
+          SPARKPOST_API_KEY: ${{ secrets.SPARKPOST_API_KEY }}
+          INTERVIEW_ILLINOIS_SPARKPOST_TEMPLATE_ID: ${{ secrets.INTERVIEW_ILLINOIS_SPARKPOST_TEMPLATE_ID }}
+        run: npm run run:interview-illinois-email-sync
+
+      - name: Upload interview Illinois email reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bullhorn-interview-illinois-email-reports
+          path: |
+            reports/interview-illinois-email-report-*.json
+            reports/interview-illinois-email-sparkpost-payload-*.json
+          if-no-files-found: warn
