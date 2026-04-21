@@ -70,7 +70,7 @@ describe("BullhornClient", () => {
     );
   });
 
-  test("searchCandidates uses all-id query in manual mode", async () => {
+  test("searchCandidates uses dateLastModified query in manual mode", async () => {
     axios.get.mockResolvedValue({
       data: {
         data: [],
@@ -85,13 +85,15 @@ describe("BullhornClient", () => {
       fromEpochSeconds: 1498867200,
       toEpochSeconds: 1509494399,
       manualMode: true,
+      manualFromEpochSeconds: 1775942400,
+      manualToEpochSeconds: 1776297599,
     });
 
     expect(axios.get).toHaveBeenCalledWith(
       "https://example-rest.bullhornstaffing.com/rest-services/123/search/Candidate",
       expect.objectContaining({
         params: expect.objectContaining({
-          query: "id:[* TO *]",
+          query: "dateLastModified[1775942400 TO 1776297599]",
         }),
       }),
     );

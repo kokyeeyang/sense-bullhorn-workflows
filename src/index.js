@@ -24,6 +24,37 @@ function parseIsoDateStart(value) {
   return parsed;
 }
 
+function parseIsoDateEnd(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = new Date(`${normalized.slice(0, 10)}T23:59:59.999Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid dateTo: ${value}`);
+  }
+
+  return parsed;
+}
+
+function buildManualDateLastModifiedWindow({ dateFrom, dateTo }) {
+  const hasDateFrom = Boolean(String(dateFrom || "").trim());
+  const hasDateTo = Boolean(String(dateTo || "").trim());
+
+  if (!hasDateFrom || !hasDateTo) {
+    throw new Error("candidate-state-sync manualMode requires both dateFrom and dateTo");
+  }
+
+  const from = parseIsoDateStart(dateFrom);
+  const to = parseIsoDateEnd(dateTo);
+  if (from.getTime() > to.getTime()) {
+    throw new Error("candidate-state-sync dateFrom must be before or equal to dateTo");
+  }
+
+  return { from, to };
+}
+
 function buildCandidateDateWindow({ now, lookbackHours, cutoffDateValue }) {
   const lookbackFrom = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000);
   const cutoffDate = parseIsoDateStart(cutoffDateValue);
@@ -91,10 +122,13 @@ async function writeChangesReport({ report }) {
   return writeJsonArtifact({ filePrefix: "changes-report", payload: report });
 }
 
-async function run({ manualMode = false } = {}) {
+async function run({ manualMode = false, dateFrom = null, dateTo = null } = {}) {
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
   const isManualMode = parseBooleanFlag(manualMode);
+  const manualDateLastModifiedWindow = isManualMode
+    ? buildManualDateLastModifiedWindow({ dateFrom, dateTo })
+    : null;
 
   const now = new Date();
   const dateWindow = buildCandidateDateWindow({
@@ -105,6 +139,12 @@ async function run({ manualMode = false } = {}) {
   const { from, to, cutoffDate } = dateWindow;
   const fromEpoch = epochSecondsFromDate(from);
   const toEpoch = epochSecondsFromDate(to);
+  const manualFromEpoch =
+    manualDateLastModifiedWindow && epochSecondsFromDate(manualDateLastModifiedWindow.from);
+  const manualToEpoch =
+    manualDateLastModifiedWindow && epochSecondsFromDate(manualDateLastModifiedWindow.to);
+  const manualFromMs = manualDateLastModifiedWindow?.from.getTime() ?? null;
+  const manualToMs = manualDateLastModifiedWindow?.to.getTime() ?? null;
   const cutoffMs = cutoffDate?.getTime() ?? null;
 
   logger.info(
@@ -112,6 +152,9 @@ async function run({ manualMode = false } = {}) {
       fromEpoch,
       toEpoch,
       manualMode: isManualMode,
+      manualDateField: isManualMode ? "dateLastModified" : null,
+      manualDateFrom: isManualMode ? dateFrom : null,
+      manualDateTo: isManualMode ? dateTo : null,
       lookbackHours: config.LOOKBACK_HOURS,
       candidateStateSyncCutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
       dryRun: config.DRY_RUN,
@@ -134,18 +177,45 @@ async function run({ manualMode = false } = {}) {
     toEpochSeconds: toEpoch,
     candidateId: config.TEST_CANDIDATE_ID,
     manualMode: isManualMode,
+    manualFromEpochSeconds: manualFromEpoch,
+    manualToEpochSeconds: manualToEpoch,
   });
 
   logger.info({ candidateCount: candidates.length }, "Fetched candidates");
 
   let updated = 0;
   let skippedBeforeCutoff = 0;
+  let skippedOutsideManualDateLastModified = 0;
   let skippedNoMapping = 0;
   let skippedNoChange = 0;
   const affectedCandidates = [];
   const skippedBeforeCutoffSamples = [];
+  const skippedOutsideManualDateLastModifiedSamples = [];
 
   for (const candidate of candidates) {
+    const candidateDateLastModifiedMs = parseBullhornDateAdded(candidate.dateLastModified);
+    if (
+      isManualMode &&
+      (!Number.isFinite(candidateDateLastModifiedMs) ||
+        candidateDateLastModifiedMs < manualFromMs ||
+        candidateDateLastModifiedMs > manualToMs)
+    ) {
+      if (skippedOutsideManualDateLastModifiedSamples.length < 10) {
+        skippedOutsideManualDateLastModifiedSamples.push({
+          candidateId: candidate.id,
+          rawDateLastModified: candidate.dateLastModified ?? null,
+          rawDateLastModifiedType:
+            candidate.dateLastModified === null ? "null" : typeof candidate.dateLastModified,
+          parsedDateLastModified:
+            Number.isFinite(candidateDateLastModifiedMs)
+              ? new Date(candidateDateLastModifiedMs).toISOString()
+              : null,
+        });
+      }
+      skippedOutsideManualDateLastModified += 1;
+      continue;
+    }
+
     const candidateDateAddedMs = parseBullhornDateAdded(candidate.dateAdded);
     if (
       cutoffMs !== null &&
@@ -261,6 +331,7 @@ async function run({ manualMode = false } = {}) {
     {
       updated,
       skippedBeforeCutoff,
+      skippedOutsideManualDateLastModified,
       skippedNoMapping,
       skippedNoChange,
       totalCandidates: candidates.length,
@@ -276,6 +347,11 @@ async function run({ manualMode = false } = {}) {
       fromEpoch,
       toEpoch,
       manualMode: isManualMode,
+      manualDateField: isManualMode ? "dateLastModified" : null,
+      manualDateFrom: isManualMode ? dateFrom : null,
+      manualDateTo: isManualMode ? dateTo : null,
+      manualFromEpoch: isManualMode ? manualFromEpoch : null,
+      manualToEpoch: isManualMode ? manualToEpoch : null,
       lookbackHours: config.LOOKBACK_HOURS,
       cutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
     },
@@ -284,12 +360,14 @@ async function run({ manualMode = false } = {}) {
       affectedCandidates: affectedCandidates.length,
       updated,
       skippedBeforeCutoff,
+      skippedOutsideManualDateLastModified,
       skippedNoMapping,
       skippedNoChange,
     },
     affectedCandidates,
     diagnostics: {
       skippedBeforeCutoffSamples,
+      skippedOutsideManualDateLastModifiedSamples,
     },
   };
 
@@ -314,8 +392,10 @@ if (require.main === module) {
 
 module.exports = {
   buildCandidateDateWindow,
+  buildManualDateLastModifiedWindow,
   parseBullhornDateAdded,
   parseBooleanFlag,
+  parseIsoDateEnd,
   parseIsoDateStart,
   run,
 };
