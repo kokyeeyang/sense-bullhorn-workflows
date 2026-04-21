@@ -272,6 +272,8 @@ class BullhornClient {
     bhRestToken,
     fromEpochSeconds,
     toEpochSeconds,
+    fromEpochMilliseconds,
+    toEpochMilliseconds,
     candidateId,
   }) {
     const fields = candidateStateFields();
@@ -280,10 +282,12 @@ class BullhornClient {
     const pageSize = 500;
     let start = 0;
     let total = 0;
+    const fromDateAdded = fromEpochMilliseconds ?? fromEpochSeconds;
+    const toDateAdded = toEpochMilliseconds ?? toEpochSeconds;
     const query =
       candidateId && Number.isInteger(candidateId)
         ? `id:${candidateId}`
-        : `dateAdded[${fromEpochSeconds} TO ${toEpochSeconds}]`;
+        : `dateAdded:[${fromDateAdded} TO ${toDateAdded}]`;
 
     do {
       const response = await this.requestWithRetry({
@@ -305,45 +309,6 @@ class BullhornClient {
       all.push(...data);
       start += data.length;
     } while (start < total);
-
-    return all;
-  }
-
-  async queryCandidatesByDateAddedRange({
-    restUrl,
-    bhRestToken,
-    startMs,
-    endMs,
-    count = 500,
-  }) {
-    const fields = candidateStateFields();
-    const all = [];
-    let start = 0;
-
-    while (true) {
-      const response = await this.requestWithRetry({
-        label: "query_candidates_by_date_added_range",
-        fn: () =>
-          axios.get(`${restUrl}/query/Candidate`, {
-            params: {
-              BhRestToken: bhRestToken,
-              where: `dateAdded>=${startMs} AND dateAdded<=${endMs}`,
-              fields,
-              count,
-              start,
-            },
-          }),
-      });
-
-      const { data = [] } = response.data;
-      all.push(...data);
-
-      if (data.length < count) {
-        break;
-      }
-
-      start += data.length;
-    }
 
     return all;
   }

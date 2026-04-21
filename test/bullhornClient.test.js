@@ -17,7 +17,7 @@ describe("BullhornClient", () => {
     jest.clearAllMocks();
   });
 
-  test("searchCandidates uses bracket range syntax for candidate dateAdded searches", async () => {
+  test("searchCandidates uses colon range syntax for candidate dateAdded searches", async () => {
     axios.get.mockResolvedValue({
       data: {
         data: [],
@@ -37,13 +37,13 @@ describe("BullhornClient", () => {
       "https://example-rest.bullhornstaffing.com/rest-services/123/search/Candidate",
       expect.objectContaining({
         params: expect.objectContaining({
-          query: "dateAdded[1498867200 TO 1509494399]",
+          query: "dateAdded:[1498867200 TO 1509494399]",
         }),
       }),
     );
   });
 
-  test("queryCandidatesByDateAddedRange uses millisecond where clause for manual backfills", async () => {
+  test("searchCandidates can use millisecond dateAdded ranges for manual backfills", async () => {
     axios.get.mockResolvedValue({
       data: {
         data: [],
@@ -52,18 +52,20 @@ describe("BullhornClient", () => {
     });
 
     const client = new BullhornClient({ config, logger });
-    await client.queryCandidatesByDateAddedRange({
+    await client.searchCandidates({
       restUrl: "https://example-rest.bullhornstaffing.com/rest-services/123",
       bhRestToken: "token",
-      startMs: 1498867200000,
-      endMs: 1509494399999,
+      fromEpochSeconds: 1498867200,
+      toEpochSeconds: 1509494399,
+      fromEpochMilliseconds: 1498867200000,
+      toEpochMilliseconds: 1509494399999,
     });
 
     expect(axios.get).toHaveBeenCalledWith(
-      "https://example-rest.bullhornstaffing.com/rest-services/123/query/Candidate",
+      "https://example-rest.bullhornstaffing.com/rest-services/123/search/Candidate",
       expect.objectContaining({
         params: expect.objectContaining({
-          where: "dateAdded>=1498867200000 AND dateAdded<=1509494399999",
+          query: "dateAdded:[1498867200000 TO 1509494399999]",
         }),
       }),
     );
