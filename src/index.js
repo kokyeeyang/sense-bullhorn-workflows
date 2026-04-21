@@ -192,6 +192,7 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
   let skippedNoChange = 0;
   const affectedCandidates = [];
   const skippedBeforeCutoffSamples = [];
+  const skippedOutsideDateWindowSamples = [];
 
   for (const candidate of candidates) {
     const candidateDateAddedMs = parseBullhornDateAdded(candidate.dateAdded);
@@ -201,6 +202,17 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
         candidateDateAddedMs < dateWindow.manualFromMs ||
         candidateDateAddedMs > dateWindow.manualToMs
       ) {
+        if (skippedOutsideDateWindowSamples.length < 10) {
+          skippedOutsideDateWindowSamples.push({
+            candidateId: candidate.id,
+            rawDateAdded: candidate.dateAdded ?? null,
+            rawDateAddedType: candidate.dateAdded === null ? "null" : typeof candidate.dateAdded,
+            parsedDateAdded:
+              Number.isFinite(candidateDateAddedMs)
+                ? new Date(candidateDateAddedMs).toISOString()
+                : null,
+          });
+        }
         skippedOutsideDateWindow += 1;
         continue;
       }
@@ -357,6 +369,7 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
     affectedCandidates,
     diagnostics: {
       skippedBeforeCutoffSamples,
+      skippedOutsideDateWindowSamples,
     },
   };
 
