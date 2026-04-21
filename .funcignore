@@ -1,0 +1,10 @@
+.git*
+.github/
+node_modules/
+reports/
+.env
+.env.*
+local.settings.json
+*.PublishSettings
+npm-debug.log*
+.DS_Store
