@@ -145,6 +145,8 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
   const { from, to, cutoffDate } = dateWindow;
   const fromEpoch = epochSecondsFromDate(from);
   const toEpoch = epochSecondsFromDate(to);
+  const fromEpochMilliseconds = from.getTime();
+  const toEpochMilliseconds = to.getTime();
   const cutoffMs = cutoffDate?.getTime() ?? null;
 
   logger.info(
@@ -174,6 +176,10 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
     bhRestToken: session.bhRestToken,
     fromEpochSeconds: fromEpoch,
     toEpochSeconds: toEpoch,
+    fromEpochMilliseconds:
+      dateWindow.mode === "manual-date-window" ? fromEpochMilliseconds : undefined,
+    toEpochMilliseconds:
+      dateWindow.mode === "manual-date-window" ? toEpochMilliseconds : undefined,
     candidateId: config.TEST_CANDIDATE_ID,
   });
 
@@ -328,6 +334,10 @@ async function run({ dateFrom = null, dateTo = null } = {}) {
     window: {
       fromEpoch,
       toEpoch,
+      fromEpochMilliseconds:
+        dateWindow.mode === "manual-date-window" ? fromEpochMilliseconds : null,
+      toEpochMilliseconds:
+        dateWindow.mode === "manual-date-window" ? toEpochMilliseconds : null,
       mode: dateWindow.mode,
       dateFrom: dateFrom || null,
       dateTo: dateTo || null,

@@ -17,7 +17,7 @@ describe("BullhornClient", () => {
     jest.clearAllMocks();
   });
 
-  test("searchCandidates uses colon range syntax for candidate dateAdded searches", async () => {
+  test("searchCandidates uses bracket range syntax for candidate dateAdded searches", async () => {
     axios.get.mockResolvedValue({
       data: {
         data: [],
@@ -37,7 +37,35 @@ describe("BullhornClient", () => {
       "https://example-rest.bullhornstaffing.com/rest-services/123/search/Candidate",
       expect.objectContaining({
         params: expect.objectContaining({
-          query: "dateAdded:[1498867200 TO 1509494399]",
+          query: "dateAdded[1498867200 TO 1509494399]",
+        }),
+      }),
+    );
+  });
+
+  test("searchCandidates can use millisecond dateAdded ranges for manual backfills", async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        data: [],
+        total: 0,
+      },
+    });
+
+    const client = new BullhornClient({ config, logger });
+    await client.searchCandidates({
+      restUrl: "https://example-rest.bullhornstaffing.com/rest-services/123",
+      bhRestToken: "token",
+      fromEpochSeconds: 1498867200,
+      toEpochSeconds: 1509494399,
+      fromEpochMilliseconds: 1498867200000,
+      toEpochMilliseconds: 1509494399999,
+    });
+
+    expect(axios.get).toHaveBeenCalledWith(
+      "https://example-rest.bullhornstaffing.com/rest-services/123/search/Candidate",
+      expect.objectContaining({
+        params: expect.objectContaining({
+          query: "dateAdded[1498867200000 TO 1509494399999]",
         }),
       }),
     );
