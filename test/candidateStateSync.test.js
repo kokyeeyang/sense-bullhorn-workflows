@@ -29,6 +29,17 @@ describe("candidate state sync", () => {
     expect(window.to.toISOString()).toBe("2026-04-21T09:00:00.000Z");
   });
 
+  test("uses cutoff as from date when cutoff is later than lookback", () => {
+    const window = buildCandidateDateWindow({
+      now: new Date("2026-04-21T09:00:00.000Z"),
+      lookbackHours: 100000,
+      cutoffDateValue: "2018-10-31",
+    });
+
+    expect(window.from.toISOString()).toBe("2018-10-31T00:00:00.000Z");
+    expect(window.to.toISOString()).toBe("2026-04-21T09:00:00.000Z");
+  });
+
   test("parses Bullhorn dateAdded epoch seconds as milliseconds", () => {
     expect(new Date(parseBullhornDateAdded(1776764490)).toISOString()).toBe(
       "2026-04-21T09:41:30.000Z",

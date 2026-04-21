@@ -181,10 +181,12 @@ async function run({ candidateIds = null } = {}) {
 
   let updated = 0;
   let skippedBeforeCutoff = 0;
+  let skippedOutsideLookback = 0;
   let skippedNoMapping = 0;
   let skippedNoChange = 0;
   const affectedCandidates = [];
   const skippedBeforeCutoffSamples = [];
+  const skippedOutsideLookbackSamples = [];
 
   for (const candidate of candidates) {
     const candidateDateAddedMs = parseBullhornDateAdded(candidate.dateAdded);
@@ -204,6 +206,26 @@ async function run({ candidateIds = null } = {}) {
         });
       }
       skippedBeforeCutoff += 1;
+      continue;
+    }
+
+    if (
+      !Number.isFinite(candidateDateAddedMs) ||
+      candidateDateAddedMs < from.getTime() ||
+      candidateDateAddedMs > to.getTime()
+    ) {
+      if (skippedOutsideLookbackSamples.length < 10) {
+        skippedOutsideLookbackSamples.push({
+          candidateId: candidate.id,
+          rawDateAdded: candidate.dateAdded ?? null,
+          rawDateAddedType: candidate.dateAdded === null ? "null" : typeof candidate.dateAdded,
+          parsedDateAdded:
+            Number.isFinite(candidateDateAddedMs)
+              ? new Date(candidateDateAddedMs).toISOString()
+              : null,
+        });
+      }
+      skippedOutsideLookback += 1;
       continue;
     }
 
@@ -302,6 +324,7 @@ async function run({ candidateIds = null } = {}) {
     {
       updated,
       skippedBeforeCutoff,
+      skippedOutsideLookback,
       skippedNoMapping,
       skippedNoChange,
       totalCandidates: candidates.length,
@@ -325,12 +348,14 @@ async function run({ candidateIds = null } = {}) {
       affectedCandidates: affectedCandidates.length,
       updated,
       skippedBeforeCutoff,
+      skippedOutsideLookback,
       skippedNoMapping,
       skippedNoChange,
     },
     affectedCandidates,
     diagnostics: {
       skippedBeforeCutoffSamples,
+      skippedOutsideLookbackSamples,
     },
   };
 

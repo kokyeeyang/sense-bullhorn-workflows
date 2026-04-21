@@ -15,11 +15,12 @@ Minimal Node.js workflow to:
 
 1. Authenticate to Bullhorn.
 2. Search recently added candidates (`dateAdded` window), but never before the configured candidate cutoff date.
-3. Read candidate phone numbers (`phone`, `mobile`, `phone2`, `phone3`).
-4. Infer region from phone number:
+3. Locally skip any returned candidate whose `dateAdded` is outside that same window.
+4. Read candidate phone numbers (`phone`, `mobile`, `phone2`, `phone3`).
+5. Infer region from phone number:
    - `+1` numbers use US area code (example: `515` -> `IA`).
    - Non-US normalization uses `address.countryID` mapping (example: `2291` -> `MY` / `Malaysia`).
-5. Update Bullhorn candidate address:
+6. Update Bullhorn candidate address:
    - US number -> update `address.state`
    - Non-US candidate -> update `address.countryCode` and `address.countryName` from `address.countryID`
 
