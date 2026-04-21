@@ -44,7 +44,6 @@ function candidateStateFields() {
     "phone3",
     "address",
     "dateAdded",
-    "dateLastModified",
   ].join(",");
 }
 
@@ -274,9 +273,6 @@ class BullhornClient {
     fromEpochSeconds,
     toEpochSeconds,
     candidateId,
-    manualMode = false,
-    manualFromEpochSeconds,
-    manualToEpochSeconds,
   }) {
     const fields = candidateStateFields();
 
@@ -287,8 +283,6 @@ class BullhornClient {
     const query =
       candidateId && Number.isInteger(candidateId)
         ? `id:${candidateId}`
-        : manualMode
-          ? `dateLastModified[${manualFromEpochSeconds} TO ${manualToEpochSeconds}]`
         : `dateAdded[${fromEpochSeconds} TO ${toEpochSeconds}]`;
 
     do {

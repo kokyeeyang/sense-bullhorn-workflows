@@ -1,9 +1,7 @@
 const {
   buildCandidateDateWindow,
-  buildManualDateLastModifiedWindow,
+  parseCandidateIds,
   parseBullhornDateAdded,
-  parseBooleanFlag,
-  parseIsoDateEnd,
   parseIsoDateStart,
 } = require("../src/index");
 
@@ -17,12 +15,6 @@ describe("candidate state sync", () => {
   test("rejects invalid cutoff dates", () => {
     expect(() => parseIsoDateStart("not-a-date")).toThrow(
       "Invalid CANDIDATE_STATE_SYNC_CUTOFF_DATE",
-    );
-  });
-
-  test("parses dateTo at the end of the UTC day", () => {
-    expect(parseIsoDateEnd("2026-04-21").toISOString()).toBe(
-      "2026-04-21T23:59:59.999Z",
     );
   });
 
@@ -59,30 +51,11 @@ describe("candidate state sync", () => {
     );
   });
 
-  test("parses manual mode boolean flags", () => {
-    expect(parseBooleanFlag(true)).toBe(true);
-    expect(parseBooleanFlag("true")).toBe(true);
-    expect(parseBooleanFlag("1")).toBe(true);
-    expect(parseBooleanFlag("yes")).toBe(true);
-    expect(parseBooleanFlag("false")).toBe(false);
-    expect(parseBooleanFlag(null)).toBe(false);
+  test("parses explicit candidate id batches", () => {
+    expect(parseCandidateIds("1776036, 1776057,1776036")).toEqual([1776036, 1776057]);
   });
 
-  test("builds manual dateLastModified window", () => {
-    const window = buildManualDateLastModifiedWindow({
-      dateFrom: "2026-04-12",
-      dateTo: "2026-04-15",
-    });
-
-    expect(window.from.toISOString()).toBe("2026-04-12T00:00:00.000Z");
-    expect(window.to.toISOString()).toBe("2026-04-15T23:59:59.999Z");
-  });
-
-  test("manual dateLastModified window requires both dates", () => {
-    expect(() =>
-      buildManualDateLastModifiedWindow({
-        dateFrom: "2026-04-12",
-      }),
-    ).toThrow("requires both dateFrom and dateTo");
+  test("rejects invalid explicit candidate ids", () => {
+    expect(() => parseCandidateIds("1776036,nope")).toThrow("Invalid candidateIds value");
   });
 });

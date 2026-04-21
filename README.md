@@ -23,15 +23,15 @@ Minimal Node.js workflow to:
    - US number -> update `address.state`
    - Non-US candidate -> update `address.countryCode` and `address.countryName` from `address.countryID`
 
-For a one-time manual cleanup, the HTTP endpoint accepts `manualMode=true` with a
-`dateLastModified` window:
+For controlled backfills, the HTTP endpoint accepts an explicit comma-separated
+candidate ID list:
 
 ```text
-POST /api/workflows/candidate-state-sync?manualMode=true&dateFrom=2026-04-12&dateTo=2026-04-15
+POST /api/workflows/candidate-state-sync?candidateIds=1776036,1776057,1776027
 ```
 
-Manual mode searches Bullhorn candidates by `dateLastModified`, then applies the normal
-local `CANDIDATE_STATE_SYNC_CUTOFF_DATE`, phone mapping, and no-change checks. Run it
+The workflow fetches those exact candidates and then applies the normal
+`CANDIDATE_STATE_SYNC_CUTOFF_DATE`, phone mapping, and no-change checks. Run it
 with `DRY_RUN=true` first and review `affectedCandidates` before allowing writes.
 
 This repo also includes a second automation for placement status transitions:

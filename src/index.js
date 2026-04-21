@@ -24,37 +24,6 @@ function parseIsoDateStart(value) {
   return parsed;
 }
 
-function parseIsoDateEnd(value) {
-  const normalized = String(value || "").trim();
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = new Date(`${normalized.slice(0, 10)}T23:59:59.999Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`Invalid dateTo: ${value}`);
-  }
-
-  return parsed;
-}
-
-function buildManualDateLastModifiedWindow({ dateFrom, dateTo }) {
-  const hasDateFrom = Boolean(String(dateFrom || "").trim());
-  const hasDateTo = Boolean(String(dateTo || "").trim());
-
-  if (!hasDateFrom || !hasDateTo) {
-    throw new Error("candidate-state-sync manualMode requires both dateFrom and dateTo");
-  }
-
-  const from = parseIsoDateStart(dateFrom);
-  const to = parseIsoDateEnd(dateTo);
-  if (from.getTime() > to.getTime()) {
-    throw new Error("candidate-state-sync dateFrom must be before or equal to dateTo");
-  }
-
-  return { from, to };
-}
-
 function buildCandidateDateWindow({ now, lookbackHours, cutoffDateValue }) {
   const lookbackFrom = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000);
   const cutoffDate = parseIsoDateStart(cutoffDateValue);
@@ -66,10 +35,6 @@ function buildCandidateDateWindow({ now, lookbackHours, cutoffDateValue }) {
     to: now,
     cutoffDate,
   };
-}
-
-function parseBooleanFlag(value) {
-  return ["true", "1", "yes", "y"].includes(String(value || "").trim().toLowerCase());
 }
 
 function parseBullhornDateAdded(value) {
@@ -103,6 +68,34 @@ function parseBullhornDateAdded(value) {
   return null;
 }
 
+function parseCandidateIds(value) {
+  if (value === null || value === undefined || value === "") return [];
+
+  const rawValues = Array.isArray(value) ? value : String(value).split(",");
+  const seen = new Set();
+  const candidateIds = [];
+
+  for (const rawValue of rawValues) {
+    const normalized = String(rawValue || "").trim();
+    if (!normalized) continue;
+    if (!/^\d+$/.test(normalized)) {
+      throw new Error(`Invalid candidateIds value: ${rawValue}`);
+    }
+
+    const candidateId = Number(normalized);
+    if (!Number.isSafeInteger(candidateId) || candidateId <= 0) {
+      throw new Error(`Invalid candidateIds value: ${rawValue}`);
+    }
+
+    if (!seen.has(candidateId)) {
+      seen.add(candidateId);
+      candidateIds.push(candidateId);
+    }
+  }
+
+  return candidateIds;
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -122,13 +115,10 @@ async function writeChangesReport({ report }) {
   return writeJsonArtifact({ filePrefix: "changes-report", payload: report });
 }
 
-async function run({ manualMode = false, dateFrom = null, dateTo = null } = {}) {
+async function run({ candidateIds = null } = {}) {
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
-  const isManualMode = parseBooleanFlag(manualMode);
-  const manualDateLastModifiedWindow = isManualMode
-    ? buildManualDateLastModifiedWindow({ dateFrom, dateTo })
-    : null;
+  const explicitCandidateIds = parseCandidateIds(candidateIds);
 
   const now = new Date();
   const dateWindow = buildCandidateDateWindow({
@@ -139,26 +129,17 @@ async function run({ manualMode = false, dateFrom = null, dateTo = null } = {}) 
   const { from, to, cutoffDate } = dateWindow;
   const fromEpoch = epochSecondsFromDate(from);
   const toEpoch = epochSecondsFromDate(to);
-  const manualFromEpoch =
-    manualDateLastModifiedWindow && epochSecondsFromDate(manualDateLastModifiedWindow.from);
-  const manualToEpoch =
-    manualDateLastModifiedWindow && epochSecondsFromDate(manualDateLastModifiedWindow.to);
-  const manualFromMs = manualDateLastModifiedWindow?.from.getTime() ?? null;
-  const manualToMs = manualDateLastModifiedWindow?.to.getTime() ?? null;
   const cutoffMs = cutoffDate?.getTime() ?? null;
 
   logger.info(
     {
       fromEpoch,
       toEpoch,
-      manualMode: isManualMode,
-      manualDateField: isManualMode ? "dateLastModified" : null,
-      manualDateFrom: isManualMode ? dateFrom : null,
-      manualDateTo: isManualMode ? dateTo : null,
       lookbackHours: config.LOOKBACK_HOURS,
       candidateStateSyncCutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
       dryRun: config.DRY_RUN,
       testCandidateId: config.TEST_CANDIDATE_ID || null,
+      explicitCandidateCount: explicitCandidateIds.length,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
       retryBaseDelayMs: config.RETRY_BASE_DELAY_MS,
       updateDelayMs: config.UPDATE_DELAY_MS,
@@ -170,52 +151,42 @@ async function run({ manualMode = false, dateFrom = null, dateTo = null } = {}) 
   const accessToken = await bullhorn.getAccessToken(code);
   const session = await bullhorn.login(accessToken);
 
-  const candidates = await bullhorn.searchCandidates({
-    restUrl: session.restUrl,
-    bhRestToken: session.bhRestToken,
-    fromEpochSeconds: fromEpoch,
-    toEpochSeconds: toEpoch,
-    candidateId: config.TEST_CANDIDATE_ID,
-    manualMode: isManualMode,
-    manualFromEpochSeconds: manualFromEpoch,
-    manualToEpochSeconds: manualToEpoch,
-  });
+  const candidateIdsToFetch = config.TEST_CANDIDATE_ID
+    ? [config.TEST_CANDIDATE_ID]
+    : explicitCandidateIds;
+
+  let candidates;
+  if (candidateIdsToFetch.length > 0) {
+    candidates = [];
+    for (const candidateId of candidateIdsToFetch) {
+      const fetchedCandidates = await bullhorn.searchCandidates({
+        restUrl: session.restUrl,
+        bhRestToken: session.bhRestToken,
+        fromEpochSeconds: fromEpoch,
+        toEpochSeconds: toEpoch,
+        candidateId,
+      });
+      candidates.push(...fetchedCandidates);
+    }
+  } else {
+    candidates = await bullhorn.searchCandidates({
+      restUrl: session.restUrl,
+      bhRestToken: session.bhRestToken,
+      fromEpochSeconds: fromEpoch,
+      toEpochSeconds: toEpoch,
+    });
+  }
 
   logger.info({ candidateCount: candidates.length }, "Fetched candidates");
 
   let updated = 0;
   let skippedBeforeCutoff = 0;
-  let skippedOutsideManualDateLastModified = 0;
   let skippedNoMapping = 0;
   let skippedNoChange = 0;
   const affectedCandidates = [];
   const skippedBeforeCutoffSamples = [];
-  const skippedOutsideManualDateLastModifiedSamples = [];
 
   for (const candidate of candidates) {
-    const candidateDateLastModifiedMs = parseBullhornDateAdded(candidate.dateLastModified);
-    if (
-      isManualMode &&
-      (!Number.isFinite(candidateDateLastModifiedMs) ||
-        candidateDateLastModifiedMs < manualFromMs ||
-        candidateDateLastModifiedMs > manualToMs)
-    ) {
-      if (skippedOutsideManualDateLastModifiedSamples.length < 10) {
-        skippedOutsideManualDateLastModifiedSamples.push({
-          candidateId: candidate.id,
-          rawDateLastModified: candidate.dateLastModified ?? null,
-          rawDateLastModifiedType:
-            candidate.dateLastModified === null ? "null" : typeof candidate.dateLastModified,
-          parsedDateLastModified:
-            Number.isFinite(candidateDateLastModifiedMs)
-              ? new Date(candidateDateLastModifiedMs).toISOString()
-              : null,
-        });
-      }
-      skippedOutsideManualDateLastModified += 1;
-      continue;
-    }
-
     const candidateDateAddedMs = parseBullhornDateAdded(candidate.dateAdded);
     if (
       cutoffMs !== null &&
@@ -331,7 +302,6 @@ async function run({ manualMode = false, dateFrom = null, dateTo = null } = {}) 
     {
       updated,
       skippedBeforeCutoff,
-      skippedOutsideManualDateLastModified,
       skippedNoMapping,
       skippedNoChange,
       totalCandidates: candidates.length,
@@ -343,15 +313,10 @@ async function run({ manualMode = false, dateFrom = null, dateTo = null } = {}) 
     generatedAt: new Date().toISOString(),
     dryRun: config.DRY_RUN,
     testCandidateId: config.TEST_CANDIDATE_ID || null,
+    candidateIds: explicitCandidateIds,
     window: {
       fromEpoch,
       toEpoch,
-      manualMode: isManualMode,
-      manualDateField: isManualMode ? "dateLastModified" : null,
-      manualDateFrom: isManualMode ? dateFrom : null,
-      manualDateTo: isManualMode ? dateTo : null,
-      manualFromEpoch: isManualMode ? manualFromEpoch : null,
-      manualToEpoch: isManualMode ? manualToEpoch : null,
       lookbackHours: config.LOOKBACK_HOURS,
       cutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
     },
@@ -360,14 +325,12 @@ async function run({ manualMode = false, dateFrom = null, dateTo = null } = {}) 
       affectedCandidates: affectedCandidates.length,
       updated,
       skippedBeforeCutoff,
-      skippedOutsideManualDateLastModified,
       skippedNoMapping,
       skippedNoChange,
     },
     affectedCandidates,
     diagnostics: {
       skippedBeforeCutoffSamples,
-      skippedOutsideManualDateLastModifiedSamples,
     },
   };
 
@@ -392,10 +355,8 @@ if (require.main === module) {
 
 module.exports = {
   buildCandidateDateWindow,
-  buildManualDateLastModifiedWindow,
+  parseCandidateIds,
   parseBullhornDateAdded,
-  parseBooleanFlag,
-  parseIsoDateEnd,
   parseIsoDateStart,
   run,
 };

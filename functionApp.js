@@ -275,12 +275,7 @@ function createHttpHandler(definition) {
       const workflowName = request.query.get("workflowName") || null;
       const dateFrom = request.query.get("dateFrom") || null;
       const dateTo = request.query.get("dateTo") || null;
-      const manualMode =
-        ["true", "1", "yes", "y"].includes(
-          String(request.query.get("manualMode") || "")
-            .trim()
-            .toLowerCase(),
-        );
+      const candidateIds = request.query.get("candidateIds") || null;
       const includeRecords =
         ["true", "1", "yes", "y"].includes(
           String(request.query.get("includeRecords") || "")
@@ -292,7 +287,7 @@ function createHttpHandler(definition) {
         workflowName,
         dateFrom,
         dateTo,
-        manualMode,
+        candidateIds,
         includeRecords,
       });
       const finishedAt = new Date().toISOString();

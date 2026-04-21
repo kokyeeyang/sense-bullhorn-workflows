@@ -70,32 +70,4 @@ describe("BullhornClient", () => {
     );
   });
 
-  test("searchCandidates uses dateLastModified query in manual mode", async () => {
-    axios.get.mockResolvedValue({
-      data: {
-        data: [],
-        total: 0,
-      },
-    });
-
-    const client = new BullhornClient({ config, logger });
-    await client.searchCandidates({
-      restUrl: "https://example-rest.bullhornstaffing.com/rest-services/123",
-      bhRestToken: "token",
-      fromEpochSeconds: 1498867200,
-      toEpochSeconds: 1509494399,
-      manualMode: true,
-      manualFromEpochSeconds: 1775942400,
-      manualToEpochSeconds: 1776297599,
-    });
-
-    expect(axios.get).toHaveBeenCalledWith(
-      "https://example-rest.bullhornstaffing.com/rest-services/123/search/Candidate",
-      expect.objectContaining({
-        params: expect.objectContaining({
-          query: "dateLastModified[1775942400 TO 1776297599]",
-        }),
-      }),
-    );
-  });
 });
