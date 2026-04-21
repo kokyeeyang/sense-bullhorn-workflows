@@ -28,4 +28,10 @@ describe("candidate state sync", () => {
       1776764490000,
     );
   });
+
+  test("parses Bullhorn dateAdded Date objects", () => {
+    expect(parseBullhornDateAdded(new Date("2026-04-21T09:41:30.000Z"))).toBe(
+      1776764490000,
+    );
+  });
 });

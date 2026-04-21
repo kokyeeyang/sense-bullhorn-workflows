@@ -27,6 +27,11 @@ function parseIsoDateStart(value) {
 function parseBullhornDateAdded(value) {
   if (value === null || value === undefined || value === "") return null;
 
+  if (value instanceof Date) {
+    const timestamp = value.getTime();
+    return Number.isNaN(timestamp) ? null : timestamp;
+  }
+
   if (typeof value === "number" && Number.isFinite(value)) {
     const milliseconds = value < 100000000000 ? value * 1000 : value;
     return milliseconds;
@@ -116,6 +121,7 @@ async function run() {
   let skippedNoMapping = 0;
   let skippedNoChange = 0;
   const affectedCandidates = [];
+  const skippedBeforeCutoffSamples = [];
 
   for (const candidate of candidates) {
     const candidateDateAddedMs = parseBullhornDateAdded(candidate.dateAdded);
@@ -123,6 +129,17 @@ async function run() {
       cutoffMs !== null &&
       (!Number.isFinite(candidateDateAddedMs) || candidateDateAddedMs < cutoffMs)
     ) {
+      if (skippedBeforeCutoffSamples.length < 10) {
+        skippedBeforeCutoffSamples.push({
+          candidateId: candidate.id,
+          rawDateAdded: candidate.dateAdded ?? null,
+          rawDateAddedType: candidate.dateAdded === null ? "null" : typeof candidate.dateAdded,
+          parsedDateAdded:
+            Number.isFinite(candidateDateAddedMs)
+              ? new Date(candidateDateAddedMs).toISOString()
+              : null,
+        });
+      }
       skippedBeforeCutoff += 1;
       continue;
     }
@@ -248,6 +265,9 @@ async function run() {
       skippedNoChange,
     },
     affectedCandidates,
+    diagnostics: {
+      skippedBeforeCutoffSamples,
+    },
   };
 
   const reportPath = await writeChangesReport({ report });
