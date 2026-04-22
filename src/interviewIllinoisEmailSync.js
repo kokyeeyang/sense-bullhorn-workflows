@@ -6,8 +6,8 @@ const { BullhornClient } = require("./bullhornClient");
 const { SparkPostClient } = require("./sparkPostClient");
 const {
   buildInterviewIllinoisRecipient,
+  getIllinoisInterviewJobOrderMatchDetails,
   isInterviewAppointment,
-  matchesIllinoisInterviewJobOrder,
 } = require("./interviewIllinoisEmailUtils");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
@@ -99,6 +99,7 @@ async function run() {
   const processedAppointmentIds = new Set();
   const ownerCache = new Map();
   const matchedAppointments = [];
+  const skippedAppointments = [];
   const sparkPostRecipients = [];
 
   for (const event of events) {
@@ -124,8 +125,19 @@ async function run() {
       continue;
     }
 
-    if (!matchesIllinoisInterviewJobOrder({ appointment, config })) {
+    const jobOrderMatchDetails = getIllinoisInterviewJobOrderMatchDetails({ appointment, config });
+    if (!jobOrderMatchDetails.matches) {
       skippedJobOrderMismatch += 1;
+      skippedAppointments.push({
+        appointmentId,
+        candidateReference: appointment?.candidateReference || null,
+        reason: "job-order-filter-mismatch",
+        jobOrder: {
+          id: appointment?.jobOrder?.id ?? null,
+          owner: appointment?.jobOrder?.owner || null,
+        },
+        matchDetails: jobOrderMatchDetails,
+      });
       continue;
     }
 
@@ -228,6 +240,7 @@ async function run() {
       skippedMissingOwnerEmail,
       skippedDuplicateAppointment,
     },
+    skippedAppointments,
     sparkPost: {
       templateId,
       recipientCount: sparkPostRecipients.length,

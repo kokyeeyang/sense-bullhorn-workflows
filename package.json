@@ -25,6 +25,7 @@
     "run:daily-workflow-summary": "node src/dailyWorkflowSummary.js",
     "run:daily-workflow-comparison-summary": "node src/dailyWorkflowComparisonSummary.js",
     "run:daily-workflow-email-summary": "node src/dailyWorkflowEmailSummary.js",
+    "cleanup:workflow-daily-changes": "node src/cleanupWorkflowDailyChangeRecords.js",
     "run:check-sparkpost-template": "node src/checkSparkPostTemplate.js",
     "start:azure": "func start",
     "test": "jest"

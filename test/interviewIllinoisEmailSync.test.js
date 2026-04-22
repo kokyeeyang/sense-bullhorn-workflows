@@ -169,6 +169,37 @@ describe("interviewIllinoisEmailSync", () => {
       skippedMissingOwnerEmail: 0,
       skippedDuplicateAppointment: 0,
     });
+    expect(report.skippedAppointments).toEqual([
+      {
+        appointmentId: 702,
+        candidateReference: {
+          id: 516239,
+          firstName: "Ava",
+          lastName: "Tan",
+        },
+        reason: "job-order-filter-mismatch",
+        jobOrder: {
+          id: 49087,
+          owner: { id: 2906869, firstName: "Jazzey", lastName: "Rooney" },
+        },
+        matchDetails: {
+          matches: false,
+          stateMatches: true,
+          dateAddedMatches: true,
+          employmentTypeMatches: false,
+          actual: {
+            state: "Illinois",
+            dateAdded: "2024-05-01T08:30:00.000Z",
+            employmentType: "permanent",
+          },
+          expected: {
+            state: "Illinois",
+            dateAdded: "2024-05-01",
+            employmentType: "contract",
+          },
+        },
+      },
+    ]);
     expect(report.sparkPost.payload).toEqual({
       content: {
         template_id: "interview-illinois-template",

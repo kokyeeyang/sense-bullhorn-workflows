@@ -63,22 +63,42 @@ function matchesOptionalDateFilter(actualValue, expectedValue) {
 }
 
 function matchesIllinoisInterviewJobOrder({ appointment, config }) {
-  const jobOrder = appointment?.jobOrder || {};
+  const matchDetails = getIllinoisInterviewJobOrderMatchDetails({ appointment, config });
 
-  return (
-    matchesOptionalStringFilter(
-      jobOrder?.address?.state,
-      config.INTERVIEW_ILLINOIS_JOB_ORDER_STATE,
-    ) &&
-    matchesOptionalDateFilter(
-      jobOrder?.dateAdded,
-      config.INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED,
-    ) &&
-    matchesOptionalStringFilter(
-      jobOrder?.employmentType,
-      config.INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE,
-    )
+  return matchDetails.matches;
+}
+
+function getIllinoisInterviewJobOrderMatchDetails({ appointment, config }) {
+  const jobOrder = appointment?.jobOrder || {};
+  const stateMatches = matchesOptionalStringFilter(
+    jobOrder?.address?.state,
+    config.INTERVIEW_ILLINOIS_JOB_ORDER_STATE,
   );
+  const dateAddedMatches = matchesOptionalDateFilter(
+    jobOrder?.dateAdded,
+    config.INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED,
+  );
+  const employmentTypeMatches = matchesOptionalStringFilter(
+    jobOrder?.employmentType,
+    config.INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE,
+  );
+
+  return {
+    matches: stateMatches && dateAddedMatches && employmentTypeMatches,
+    stateMatches,
+    dateAddedMatches,
+    employmentTypeMatches,
+    actual: {
+      state: jobOrder?.address?.state ?? null,
+      dateAdded: jobOrder?.dateAdded ?? null,
+      employmentType: jobOrder?.employmentType ?? null,
+    },
+    expected: {
+      state: config.INTERVIEW_ILLINOIS_JOB_ORDER_STATE || null,
+      dateAdded: config.INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED || null,
+      employmentType: config.INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE || null,
+    },
+  };
 }
 
 function buildInterviewIllinoisRecipient({ appointment, owner, recipientEmail }) {
@@ -101,6 +121,7 @@ function buildInterviewIllinoisRecipient({ appointment, owner, recipientEmail })
 module.exports = {
   buildInterviewIllinoisRecipient,
   formatBullhornDateToIsoDate,
+  getIllinoisInterviewJobOrderMatchDetails,
   isInterviewAppointment,
   matchesOptionalDateFilter,
   matchesOptionalStringFilter,
