@@ -7,6 +7,7 @@ const { epochSecondsFromDateString } = require("./clientCorporation360Sync");
 const {
   buildDoNotContactPatch,
   getContactChanges,
+  inferCurrentClientCorporationContactPatch,
   inferEventDrivenContactPatch,
   inferNewContactDoNotContactPatch,
   isBlockedContactName,
@@ -120,7 +121,7 @@ async function loadContactsForDelayedScan({ bullhorn, session, config, fromEpoch
     fromEpochSeconds: delayedScanWindow.fromEpochSeconds,
     toEpochSeconds: delayedScanWindow.toEpochSeconds,
     clientContactId: null,
-    excludeStatus: buildDoNotContactPatch().status,
+    excludeStatus: null,
   });
 }
 
@@ -242,12 +243,21 @@ async function run() {
   const processedContactTargets = new Set();
 
   for (const contact of newContacts) {
-    const patch = inferNewContactDoNotContactPatch(contact, {
-      delayHours: config.CLIENT_CONTACT_DNC_DELAY_HOURS,
-    });
+    let patch = inferCurrentClientCorporationContactPatch(contact);
+    if (
+      patch?.status === buildDoNotContactPatch().status &&
+      !inferNewContactDoNotContactPatch(contact, {
+        delayHours: config.CLIENT_CONTACT_DNC_DELAY_HOURS,
+      })
+    ) {
+      patch = null;
+    }
 
     if (!patch) {
-      if (!isClientCorporationDoNotContact(contact?.clientCorporation)) {
+      if (
+        !isClientCorporationDoNotContact(contact?.clientCorporation) &&
+        !isContactDoNotContact(contact)
+      ) {
         skippedClientNotDoNotContact += 1;
         if (skippedContacts.length < SKIPPED_CONTACTS_PREVIEW_LIMIT) {
           skippedContacts.push(
@@ -258,7 +268,10 @@ async function run() {
             }),
           );
         }
-      } else if (isContactDoNotContact(contact)) {
+      } else if (
+        isClientCorporationDoNotContact(contact?.clientCorporation) &&
+        isContactDoNotContact(contact)
+      ) {
         skippedContactAlreadyDoNotContact += 1;
         if (skippedContacts.length < SKIPPED_CONTACTS_PREVIEW_LIMIT) {
           skippedContacts.push(
@@ -308,12 +321,13 @@ async function run() {
     }
 
     processedContactTargets.add(dedupKey);
+    const patchType = patch.status === "Active" ? "set-active" : "set-do-not-contact";
 
     if (config.DRY_RUN) {
       affectedContacts.push(
         buildAffectedContactRecord({
           contact,
-          patchType: "set-do-not-contact",
+          patchType,
           mode: "dry-run",
           source: "new-contact-delay-scan",
           changes,
@@ -333,7 +347,7 @@ async function run() {
     affectedContacts.push(
       buildAffectedContactRecord({
         contact,
-        patchType: "set-do-not-contact",
+        patchType,
         mode: "updated",
         source: "new-contact-delay-scan",
         changes,
@@ -355,8 +369,15 @@ async function run() {
 
     const clientCorporationId = Number(event.entityId || 0);
     const transactionId = event.entityEvent?.transactionID || event.transactionID || null;
-    if (!clientCorporationId || !transactionId) {
+    if (!clientCorporationId) {
       skippedWrongTransition += 1;
+      skippedTransitions.push({
+        clientCorporationId: null,
+        transactionId,
+        oldValue: null,
+        newValue: null,
+        reason: "missing-client-corporation-id",
+      });
       continue;
     }
 
@@ -364,6 +385,16 @@ async function run() {
       config.TEST_CLIENT_CORPORATION_ID &&
       clientCorporationId !== config.TEST_CLIENT_CORPORATION_ID
     ) {
+      continue;
+    }
+
+    if (!transactionId) {
+      matchedEventsByClientCorporationId.set(clientCorporationId, {
+        clientCorporationId,
+        transactionId: null,
+        statusChange: null,
+        useCurrentClientCorporationStatus: true,
+      });
       continue;
     }
 
@@ -404,10 +435,12 @@ async function run() {
     });
 
     for (const contact of contacts) {
-      const patch = inferEventDrivenContactPatch({
-        statusChange: matchedEvent.statusChange,
-        contact,
-      });
+      const patch = matchedEvent.useCurrentClientCorporationStatus
+        ? inferCurrentClientCorporationContactPatch(contact)
+        : inferEventDrivenContactPatch({
+            statusChange: matchedEvent.statusChange,
+            contact,
+          });
 
       if (!patch) {
         continue;

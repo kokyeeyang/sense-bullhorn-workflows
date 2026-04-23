@@ -2,6 +2,7 @@ const {
   buildContactName,
   getContactChanges,
   hasContactDelayPassed,
+  inferCurrentClientCorporationContactPatch,
   inferEventDrivenContactPatch,
   inferNewContactDoNotContactPatch,
   isBlockedContactName,
@@ -36,8 +37,8 @@ test("detects blocked contact names", () => {
 test("matches client corporation status transitions", () => {
   expect(
     isClientCorporationStatusReactivation({
-      oldValue: "do not contact",
-      newValue: "active",
+      oldValue: "Do Not Contact",
+      newValue: "Active",
     }),
   ).toBe(true);
   expect(
@@ -92,8 +93,8 @@ test("builds delay-based DNC patch only when all conditions match", () => {
 test("builds event-driven patches", () => {
   expect(
     inferEventDrivenContactPatch({
-      statusChange: { oldValue: "do not contact", newValue: "active" },
-      contact: { status: "do not contact", name: "Jane Smith" },
+      statusChange: { oldValue: "Do Not Contact", newValue: "Active" },
+      contact: { status: "Do Not Contact", name: "Jane Smith" },
     }),
   ).toEqual({
     massMailOptOut: false,
@@ -112,7 +113,7 @@ test("builds event-driven patches", () => {
 
   expect(
     inferEventDrivenContactPatch({
-      statusChange: { oldValue: "do not contact", newValue: "active" },
+      statusChange: { oldValue: "Do Not Contact", newValue: "Active" },
       contact: { status: "Active", name: "Jane Smith" },
     }),
   ).toBeNull();
@@ -121,6 +122,38 @@ test("builds event-driven patches", () => {
     inferEventDrivenContactPatch({
       statusChange: { oldValue: "Prospect", newValue: "do not contact" },
       contact: { status: "Active", name: ".. Placeholder" },
+    }),
+  ).toBeNull();
+});
+
+test("builds current client corporation status reconciliation patches", () => {
+  expect(
+    inferCurrentClientCorporationContactPatch({
+      status: "Do Not Contact",
+      name: "Jane Smith",
+      clientCorporation: { status: "Active" },
+    }),
+  ).toEqual({
+    massMailOptOut: false,
+    status: "Active",
+  });
+
+  expect(
+    inferCurrentClientCorporationContactPatch({
+      status: "Active",
+      name: "Jane Smith",
+      clientCorporation: { status: "Do Not Contact" },
+    }),
+  ).toEqual({
+    massMailOptOut: true,
+    status: "Do Not Contact",
+  });
+
+  expect(
+    inferCurrentClientCorporationContactPatch({
+      status: "Do Not Contact",
+      name: ".. Placeholder",
+      clientCorporation: { status: "Active" },
     }),
   ).toBeNull();
 });

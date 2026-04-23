@@ -159,6 +159,24 @@ function inferEventDrivenContactPatch({ statusChange, contact }) {
   return null;
 }
 
+function inferCurrentClientCorporationContactPatch(contact) {
+  if (isBlockedContactName(contact)) {
+    return null;
+  }
+
+  const clientCorporationStatus = normalizeValue(contact?.clientCorporation?.status);
+
+  if (clientCorporationStatus === DNC_STATUS) {
+    return buildDoNotContactPatch();
+  }
+
+  if (clientCorporationStatus === ACTIVE_STATUS && isContactDoNotContact(contact)) {
+    return buildActivePatch();
+  }
+
+  return null;
+}
+
 module.exports = {
   BLOCKED_CONTACT_NAME_PREFIXES,
   buildActivePatch,
@@ -166,6 +184,7 @@ module.exports = {
   buildDoNotContactPatch,
   getContactChanges,
   hasContactDelayPassed,
+  inferCurrentClientCorporationContactPatch,
   inferEventDrivenContactPatch,
   inferNewContactDoNotContactPatch,
   isBlockedContactName,

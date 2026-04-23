@@ -76,6 +76,10 @@ describe("clientContactDncSync", () => {
           transactionID: "tx-2",
           updatedProperties: ["status"],
         },
+        {
+          entityId: 703,
+          updatedProperties: ["status"],
+        },
       ],
     });
 
@@ -104,10 +108,22 @@ describe("clientContactDncSync", () => {
           status: "do not contact",
         },
       },
+      {
+        id: 9009,
+        name: "Pat Active Company",
+        dateAdded: "2026-04-01T00:00:00.000Z",
+        status: "Do Not Contact",
+        massMailOptOut: true,
+        clientCorporation: {
+          id: 704,
+          name: "Umbrella",
+          status: "Active",
+        },
+      },
     ]);
 
     mockBullhornClient.getClientCorporationStatusChange
-      .mockResolvedValueOnce({ oldValue: "do not contact", newValue: "active" })
+      .mockResolvedValueOnce({ oldValue: "Do Not Contact", newValue: "Active" })
       .mockResolvedValueOnce({ oldValue: "active", newValue: "do not contact" });
 
     mockBullhornClient.getClientCorporationContacts
@@ -116,7 +132,7 @@ describe("clientContactDncSync", () => {
           id: 9003,
           name: "Mark Lewis",
           dateAdded: "2026-04-02T00:00:00.000Z",
-          status: "do not contact",
+          status: "Do Not Contact",
           massMailOptOut: true,
           clientCorporation: { id: 701, name: "Acme", status: "Active" },
         },
@@ -146,11 +162,29 @@ describe("clientContactDncSync", () => {
           massMailOptOut: false,
           clientCorporation: { id: 702, name: "Globex", status: "do not contact" },
         },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 9007,
+          name: "Riley Cho",
+          dateAdded: "2026-04-02T00:00:00.000Z",
+          status: "Do Not Contact",
+          massMailOptOut: true,
+          clientCorporation: { id: 703, name: "Initech", status: "Active" },
+        },
+        {
+          id: 9008,
+          name: "Already Active Current State",
+          dateAdded: "2026-04-02T00:00:00.000Z",
+          status: "Active",
+          massMailOptOut: false,
+          clientCorporation: { id: 703, name: "Initech", status: "Active" },
+        },
       ]);
 
     const result = await run();
 
-    expect(mockBullhornClient.updateClientContact).toHaveBeenCalledTimes(3);
+    expect(mockBullhornClient.updateClientContact).toHaveBeenCalledTimes(5);
     expect(mockBullhornClient.updateClientContact).toHaveBeenNthCalledWith(1, {
       restUrl: "https://rest.example.com",
       bhRestToken: "token",
@@ -163,7 +197,7 @@ describe("clientContactDncSync", () => {
     expect(mockBullhornClient.updateClientContact).toHaveBeenNthCalledWith(2, {
       restUrl: "https://rest.example.com",
       bhRestToken: "token",
-      clientContactId: 9003,
+      clientContactId: 9009,
       patch: {
         massMailOptOut: false,
         status: "Active",
@@ -172,18 +206,36 @@ describe("clientContactDncSync", () => {
     expect(mockBullhornClient.updateClientContact).toHaveBeenNthCalledWith(3, {
       restUrl: "https://rest.example.com",
       bhRestToken: "token",
+      clientContactId: 9003,
+      patch: {
+        massMailOptOut: false,
+        status: "Active",
+      },
+    });
+    expect(mockBullhornClient.updateClientContact).toHaveBeenNthCalledWith(4, {
+      restUrl: "https://rest.example.com",
+      bhRestToken: "token",
       clientContactId: 9004,
       patch: {
         massMailOptOut: true,
         status: "Do Not Contact",
       },
     });
+    expect(mockBullhornClient.updateClientContact).toHaveBeenNthCalledWith(5, {
+      restUrl: "https://rest.example.com",
+      bhRestToken: "token",
+      clientContactId: 9007,
+      patch: {
+        massMailOptOut: false,
+        status: "Active",
+      },
+    });
     expect(result.totals).toEqual({
-      totalContactsScanned: 2,
-      totalEvents: 2,
-      matchedClientCorporationTransitions: 2,
-      affectedContacts: 3,
-      updated: 3,
+      totalContactsScanned: 3,
+      totalEvents: 3,
+      matchedClientCorporationTransitions: 3,
+      affectedContacts: 5,
+      updated: 5,
       skippedDelayNotMet: 0,
       skippedBlockedName: 1,
       skippedClientNotDoNotContact: 0,
@@ -197,6 +249,11 @@ describe("clientContactDncSync", () => {
       clientContactId: 9001,
       source: "new-contact-delay-scan",
       patchType: "set-do-not-contact",
+    });
+    expect(result.affectedContacts[1]).toMatchObject({
+      clientContactId: 9009,
+      source: "new-contact-delay-scan",
+      patchType: "set-active",
     });
     expect(result.skippedContacts).toEqual([
       {
@@ -252,7 +309,7 @@ describe("clientContactDncSync", () => {
     expect(result.totals.totalContactsScanned).toBe(0);
   });
 
-  test("broad delayed scan excludes contacts already in do not contact status at query time", async () => {
+  test("broad delayed scan includes do not contact contacts for active-company reactivation", async () => {
     mockBullhornClient.consumeEvents.mockResolvedValue({ events: [] });
     mockBullhornClient.searchClientContacts.mockResolvedValue([]);
 
@@ -264,7 +321,7 @@ describe("clientContactDncSync", () => {
       fromEpochSeconds: expect.any(Number),
       toEpochSeconds: expect.any(Number),
       clientContactId: null,
-      excludeStatus: "Do Not Contact",
+      excludeStatus: null,
     });
   });
 

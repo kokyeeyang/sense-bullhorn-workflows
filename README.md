@@ -72,10 +72,12 @@ It also includes a client contact DNC automation:
 1. Search `ClientContact` records added on or after a cutoff date.
 2. Wait until at least 60 hours have passed since `contact.dateAdded` before enforcing the delayed new-contact rule.
 3. For delayed new contacts, update the contact only when the related `clientCorporation.status = Do Not Contact`, the contact is not already `Do Not Contact`, and the contact name does not start with `..` or `****`.
-4. Subscribe to `ClientCorporation` update events and consume status changes on a schedule.
-5. When `clientCorporation.status` changes from `do not contact -> active`, update related contacts to `massMailOptOut = No` and `status = Active`.
-6. When `clientCorporation.status` changes from anything other than `Do Not Contact` -> `Do Not Contact`, update related contacts to `massMailOptOut = Yes` and `status = Do Not Contact`.
-7. Event-driven updates also skip blocked contact names (`..`, `****`), and reactivation only applies to contacts currently in `Do Not Contact`.
+4. During the scan, if a related `clientCorporation.status = Active`, update `Do Not Contact` contacts to `massMailOptOut = No` and `status = Active`.
+5. Subscribe to `ClientCorporation` update events and consume status changes on a schedule.
+6. When `clientCorporation.status` changes from `Do Not Contact -> Active`, update related contacts to `massMailOptOut = No` and `status = Active`.
+7. When `clientCorporation.status` changes from anything other than `Do Not Contact` -> `Do Not Contact`, update related contacts to `massMailOptOut = Yes` and `status = Do Not Contact`.
+8. If a `ClientCorporation` status event has a company ID but no transaction ID, load the company's contacts and reconcile them from the company's current status.
+9. Event-driven updates also skip blocked contact names (`..`, `****`), and reactivation applies to contacts currently in `Do Not Contact`.
 
 It also includes a client corporation cleanup automation:
 
