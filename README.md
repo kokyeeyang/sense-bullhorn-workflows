@@ -55,13 +55,15 @@ It also includes a placement database enrichment automation:
 3. Fetch each related placement once, even if multiple events for the same placement arrive in the same batch.
 4. For status-change events, inspect `PlacementEditHistory` for the event transaction and keep eligible approved transitions.
 5. For `employmentType` in `perm` or `contract to perm`, update the candidate only when `dateBegin` is today or later.
-6. For all other employment types, skip placements whose status is `terminated`, `rejected`, `fall out`, or `temporarily suspended`.
-7. Update the related candidate:
+6. For `contract` placements whose `dateEnd` is before today, update the related candidate from `Placed by us` back to `Active`.
+7. For all other employment types, skip placements whose status is `terminated`, `rejected`, `fall out`, or `temporarily suspended`.
+8. Update the related candidate for eligible active placements:
    - `companyName` -> placement `clientCorporation.name`
    - `occupation` -> placement `jobOrder.title`
    - `status` -> `Placed by us`
    - `dateAvailable` -> `dateEnd + 1 day` for non-perm placements
    - `hourlyRateLow` -> placement `payRate` for non-perm placements
+9. Update only `status` -> `Active` for finished `contract` placements when the candidate is currently `Placed by us`.
 
 The placement database enrichment workflow is queue-based, not a full placement scan. There is no static placement `dateAdded` cutoff. The `PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS` setting limits the number of queued Bullhorn events consumed in a single run, not the total number that can ever be processed. With the Azure Functions default schedule of every 5 minutes, a backlog should drain over multiple runs as long as new events do not arrive faster than the workflow can consume them. If the queue regularly has more than 100 events per run, increase `PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS`, run the HTTP endpoint manually to drain the backlog, or shorten the schedule interval.
 

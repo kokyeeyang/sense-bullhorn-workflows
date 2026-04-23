@@ -1,4 +1,5 @@
 const PERM_EMPLOYMENT_TYPES = new Set(["perm", "contract to perm"]);
+const CONTRACT_EMPLOYMENT_TYPES = new Set(["contract"]);
 const EXCLUDED_PLACEMENT_STATUSES = new Set([
   "terminated",
   "rejected",
@@ -15,6 +16,10 @@ function normalizeValue(value) {
 
 function isPermEmploymentType(value) {
   return PERM_EMPLOYMENT_TYPES.has(normalizeValue(value));
+}
+
+function isContractEmploymentType(value) {
+  return CONTRACT_EMPLOYMENT_TYPES.has(normalizeValue(value));
 }
 
 function addOneDay(value) {
@@ -117,6 +122,45 @@ function isPlacementDateLastModifiedStatusEligible(placement) {
   return DATE_LAST_MODIFIED_ALLOWED_STATUSES.has(normalizeValue(placement?.status));
 }
 
+function isDateBeforeTodayUtc(value, { baseDate = new Date() } = {}) {
+  if (value === null || value === undefined || value === "") return false;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return false;
+
+  const valueDayStartMs = Date.UTC(
+    parsed.getUTCFullYear(),
+    parsed.getUTCMonth(),
+    parsed.getUTCDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const todayStartMs = Date.UTC(
+    baseDate.getUTCFullYear(),
+    baseDate.getUTCMonth(),
+    baseDate.getUTCDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+
+  return valueDayStartMs < todayStartMs;
+}
+
+function isContractPlacementFinished(placement, { baseDate = new Date() } = {}) {
+  const employmentType = normalizeValue(
+    placement?.employmentType || placement?.jobOrder?.employmentType,
+  );
+
+  return (
+    isContractEmploymentType(employmentType) &&
+    isDateBeforeTodayUtc(placement?.dateEnd, { baseDate })
+  );
+}
+
 function getPlacementDatabaseEnrichmentMatchReason(
   placement,
   statusChange,
@@ -125,6 +169,10 @@ function getPlacementDatabaseEnrichmentMatchReason(
   const employmentType = normalizeValue(
     placement?.employmentType || placement?.jobOrder?.employmentType,
   );
+
+  if (isContractPlacementFinished(placement, { baseDate })) {
+    return "contract-placement-finished";
+  }
 
   if (isPermEmploymentType(employmentType)) {
     if (isPermPlacementDatabaseEnrichmentStatusChange(statusChange)) {
@@ -189,6 +237,20 @@ function buildCandidatePatchFromPlacementForDatabaseEnrichment(
     status: "Placed by us",
   };
 
+  if (isContractPlacementFinished(placement, { baseDate })) {
+    if (normalizeValue(placement?.candidate?.status) !== "placed by us") {
+      return null;
+    }
+
+    return {
+      candidateId,
+      ruleType: "contract-finished-placement",
+      patch: {
+        status: "Active",
+      },
+    };
+  }
+
   if (isPermEmploymentType(employmentType)) {
     if (!isDateOnOrAfterTodayUtc(placement?.dateBegin, { baseDate })) {
       return null;
@@ -242,6 +304,8 @@ module.exports = {
   getPlacementDatabaseEnrichmentMatchReason,
   getStatusChangeFromEditHistory,
   isContractPlacementDatabaseEnrichmentStatusChange,
+  isContractPlacementFinished,
+  isDateBeforeTodayUtc,
   isDateOnOrAfterTodayUtc,
   isPermEmploymentType,
   isPermPlacementDatabaseEnrichmentStatusChange,

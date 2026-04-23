@@ -4,6 +4,8 @@ const {
   getPlacementDatabaseEnrichmentMatchReason,
   getStatusChangeFromEditHistory,
   isContractPlacementDatabaseEnrichmentStatusChange,
+  isContractPlacementFinished,
+  isDateBeforeTodayUtc,
   isDateOnOrAfterTodayUtc,
   isPermPlacementDatabaseEnrichmentStatusChange,
   isPlacementDateLastModifiedMatch,
@@ -93,6 +95,37 @@ test("identifies whether dateBegin is on or after today in UTC", () => {
   expect(isDateOnOrAfterTodayUtc("2026-04-05T23:59:59.000Z", { baseDate })).toBe(false);
 });
 
+test("identifies whether dateEnd is before today in UTC", () => {
+  const baseDate = new Date("2026-04-06T00:01:00.000Z");
+
+  expect(isDateBeforeTodayUtc("2026-04-05T23:59:59.000Z", { baseDate })).toBe(true);
+  expect(isDateBeforeTodayUtc("2026-04-06T00:00:00.000Z", { baseDate })).toBe(false);
+  expect(isDateBeforeTodayUtc("2026-04-07T00:00:00.000Z", { baseDate })).toBe(false);
+});
+
+test("identifies finished contract placements by dateEnd", () => {
+  const baseDate = new Date("2026-04-06T00:01:00.000Z");
+
+  expect(
+    isContractPlacementFinished(
+      {
+        employmentType: "contract",
+        dateEnd: "2026-04-05T00:00:00.000Z",
+      },
+      { baseDate },
+    ),
+  ).toBe(true);
+  expect(
+    isContractPlacementFinished(
+      {
+        employmentType: "perm",
+        dateEnd: "2026-04-05T00:00:00.000Z",
+      },
+      { baseDate },
+    ),
+  ).toBe(false);
+});
+
 test("matches dateLastModified using the timestamp date", () => {
   const baseDate = new Date("2026-04-13T09:30:00.000Z");
 
@@ -142,6 +175,19 @@ test("returns the correct match reason for contract status changes", () => {
       { baseDate: new Date("2026-04-13T09:30:00.000Z") },
     ),
   ).toBe("contract-approved-status-change");
+});
+
+test("returns the correct match reason for finished contract placements", () => {
+  expect(
+    getPlacementDatabaseEnrichmentMatchReason(
+      {
+        employmentType: "contract",
+        dateEnd: "2026-04-05T00:00:00.000Z",
+      },
+      null,
+      { baseDate: new Date("2026-04-06T00:01:00.000Z") },
+    ),
+  ).toBe("contract-placement-finished");
 });
 
 test("returns date-last-modified when status change does not match but the date does", () => {
@@ -210,15 +256,18 @@ test("skips perm enrichment when dateBegin is before today", () => {
 
 test("builds the non-perm enrichment patch for active placements", () => {
   expect(
-    buildCandidatePatchFromPlacementForDatabaseEnrichment({
-      employmentType: "contract",
-      status: "approved",
-      payRate: 42.5,
-      dateEnd: 1_700_000_000_000,
-      candidate: { id: 123 },
-      clientCorporation: { name: "Acme Corp" },
-      jobOrder: { title: "QA Analyst" },
-    }),
+    buildCandidatePatchFromPlacementForDatabaseEnrichment(
+      {
+        employmentType: "contract",
+        status: "approved",
+        payRate: 42.5,
+        dateEnd: 1_700_000_000_000,
+        candidate: { id: 123 },
+        clientCorporation: { name: "Acme Corp" },
+        jobOrder: { title: "QA Analyst" },
+      },
+      { baseDate: new Date("2023-11-01T00:00:00.000Z") },
+    ),
   ).toEqual({
     candidateId: 123,
     ruleType: "non-perm-active-placement",
@@ -230,6 +279,44 @@ test("builds the non-perm enrichment patch for active placements", () => {
       dateAvailable: addOneDay(1_700_000_000_000),
     },
   });
+});
+
+test("builds the contract finished patch when candidate is placed", () => {
+  expect(
+    buildCandidatePatchFromPlacementForDatabaseEnrichment(
+      {
+        employmentType: "contract",
+        dateEnd: "2026-04-05T00:00:00.000Z",
+        candidate: {
+          id: 123,
+          status: "Placed by us",
+        },
+      },
+      { baseDate: new Date("2026-04-06T00:01:00.000Z") },
+    ),
+  ).toEqual({
+    candidateId: 123,
+    ruleType: "contract-finished-placement",
+    patch: {
+      status: "Active",
+    },
+  });
+});
+
+test("skips the contract finished patch when candidate is not placed", () => {
+  expect(
+    buildCandidatePatchFromPlacementForDatabaseEnrichment(
+      {
+        employmentType: "contract",
+        dateEnd: "2026-04-05T00:00:00.000Z",
+        candidate: {
+          id: 123,
+          status: "Available",
+        },
+      },
+      { baseDate: new Date("2026-04-06T00:01:00.000Z") },
+    ),
+  ).toBeNull();
 });
 
 test("skips the non-perm patch for excluded placement statuses", () => {
