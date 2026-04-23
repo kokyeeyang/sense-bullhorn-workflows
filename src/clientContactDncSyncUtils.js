@@ -1,5 +1,6 @@
 const BLOCKED_CONTACT_NAME_PREFIXES = ["..", "****"];
 const DNC_STATUS = "do not contact";
+const DNC_STATUS_PATCH_VALUE = "Do Not Contact";
 const ACTIVE_STATUS = "active";
 
 function normalizeValue(value) {
@@ -61,9 +62,12 @@ function isClientCorporationStatusReactivation(statusChange) {
 }
 
 function isClientCorporationStatusDoNotContactActivation(statusChange) {
+  const oldValue = normalizeValue(statusChange?.oldValue);
+  const newValue = normalizeValue(statusChange?.newValue);
+
   return (
-    normalizeValue(statusChange?.oldValue) === "" &&
-    normalizeValue(statusChange?.newValue) === DNC_STATUS
+    newValue === DNC_STATUS &&
+    oldValue !== DNC_STATUS
   );
 }
 
@@ -80,7 +84,7 @@ function toBullhornOptOutValue(value) {
 function buildDoNotContactPatch() {
   return {
     massMailOptOut: true,
-    status: "do not contact",
+    status: DNC_STATUS_PATCH_VALUE,
   };
 }
 

@@ -46,6 +46,18 @@ test("matches client corporation status transitions", () => {
       newValue: "do not contact",
     }),
   ).toBe(true);
+  expect(
+    isClientCorporationStatusDoNotContactActivation({
+      oldValue: "Active",
+      newValue: "do not contact",
+    }),
+  ).toBe(true);
+  expect(
+    isClientCorporationStatusDoNotContactActivation({
+      oldValue: "do not contact",
+      newValue: "do not contact",
+    }),
+  ).toBe(false);
 });
 
 test("builds delay-based DNC patch only when all conditions match", () => {
@@ -61,7 +73,7 @@ test("builds delay-based DNC patch only when all conditions match", () => {
     ),
   ).toEqual({
     massMailOptOut: true,
-    status: "do not contact",
+    status: "Do Not Contact",
   });
 
   expect(
@@ -90,12 +102,12 @@ test("builds event-driven patches", () => {
 
   expect(
     inferEventDrivenContactPatch({
-      statusChange: { oldValue: "", newValue: "do not contact" },
+      statusChange: { oldValue: "Active", newValue: "do not contact" },
       contact: { status: "Prospect", name: "Jane Smith" },
     }),
   ).toEqual({
     massMailOptOut: true,
-    status: "do not contact",
+    status: "Do Not Contact",
   });
 
   expect(
@@ -107,7 +119,7 @@ test("builds event-driven patches", () => {
 
   expect(
     inferEventDrivenContactPatch({
-      statusChange: { oldValue: "", newValue: "do not contact" },
+      statusChange: { oldValue: "Prospect", newValue: "do not contact" },
       contact: { status: "Active", name: ".. Placeholder" },
     }),
   ).toBeNull();
@@ -121,12 +133,12 @@ test("computes contact field changes and normalizes opt-out values", () => {
         massMailOptOut: "No",
       },
       {
-        status: "do not contact",
+        status: "Do Not Contact",
         massMailOptOut: true,
       },
     ),
   ).toEqual([
-    { field: "status", oldValue: "Active", newValue: "do not contact" },
+    { field: "status", oldValue: "Active", newValue: "Do Not Contact" },
     { field: "massMailOptOut", oldValue: false, newValue: true },
   ]);
 });

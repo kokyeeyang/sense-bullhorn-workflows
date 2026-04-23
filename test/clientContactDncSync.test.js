@@ -108,7 +108,7 @@ describe("clientContactDncSync", () => {
 
     mockBullhornClient.getClientCorporationStatusChange
       .mockResolvedValueOnce({ oldValue: "do not contact", newValue: "active" })
-      .mockResolvedValueOnce({ oldValue: "", newValue: "do not contact" });
+      .mockResolvedValueOnce({ oldValue: "active", newValue: "do not contact" });
 
     mockBullhornClient.getClientCorporationContacts
       .mockResolvedValueOnce([
@@ -157,7 +157,7 @@ describe("clientContactDncSync", () => {
       clientContactId: 9001,
       patch: {
         massMailOptOut: true,
-        status: "do not contact",
+        status: "Do Not Contact",
       },
     });
     expect(mockBullhornClient.updateClientContact).toHaveBeenNthCalledWith(2, {
@@ -175,7 +175,7 @@ describe("clientContactDncSync", () => {
       clientContactId: 9004,
       patch: {
         massMailOptOut: true,
-        status: "do not contact",
+        status: "Do Not Contact",
       },
     });
     expect(result.totals).toEqual({
@@ -264,7 +264,7 @@ describe("clientContactDncSync", () => {
       fromEpochSeconds: expect.any(Number),
       toEpochSeconds: expect.any(Number),
       clientContactId: null,
-      excludeStatus: "do not contact",
+      excludeStatus: "Do Not Contact",
     });
   });
 
