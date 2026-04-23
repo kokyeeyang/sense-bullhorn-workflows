@@ -153,6 +153,18 @@ describe("placementTerminationEmailSync", () => {
       skippedMissingOwnerEmail: 0,
       skippedDuplicatePlacement: 0,
     });
+    expect(report.skippedEvents).toEqual([
+      {
+        placementId: 322,
+        transactionId: 1000,
+        updatedProperties: ["status"],
+        reason: "status-change-not-terminated",
+        statusChange: {
+          oldValue: "approved",
+          newValue: "completed",
+        },
+      },
+    ]);
     expect(report.sparkPost.payload).toEqual({
       content: {
         template_id: "placement-terminated-template",
@@ -178,5 +190,71 @@ describe("placementTerminationEmailSync", () => {
     });
     expect(mockSparkPostClient.sendTransmission).not.toHaveBeenCalled();
     expect(fs.writeFile).toHaveBeenCalledTimes(2);
+  });
+
+  test("falls back to current placement status when a status event has no transaction id", async () => {
+    mockBullhornClient.consumeEvents.mockResolvedValue({
+      events: [
+        {
+          entityId: 321,
+          updatedProperties: ["status"],
+        },
+      ],
+    });
+    mockBullhornClient.getPlacement.mockResolvedValue({
+      id: 321,
+      status: "Terminated",
+      dateBegin: 1774828800000,
+      dateEnd: 1775260800000,
+      candidate: {
+        id: 123,
+        firstName: "Sammy",
+        lastName: "Thackeray",
+      },
+      clientCorporation: { name: "Acme Corp" },
+      jobOrder: {
+        title: "QA Analyst",
+      },
+    });
+    mockBullhornClient.getCandidate.mockResolvedValue({
+      id: 123,
+      firstName: "Sammy",
+      lastName: "Thackeray",
+      email: "sammy@example.com",
+      owner: { id: 2906869, firstName: "Jazzey", lastName: "Rooney" },
+    });
+    mockBullhornClient.getCorporateUser.mockResolvedValue({
+      id: 2906869,
+      firstName: "Jazzey",
+      lastName: "Rooney",
+      email: "owner@example.com",
+    });
+
+    const report = await run();
+
+    expect(mockBullhornClient.getPlacementStatusChange).not.toHaveBeenCalled();
+    expect(report.totals).toEqual({
+      totalEvents: 1,
+      matchedPlacements: 1,
+      recipients: 1,
+      skippedNoStatusChange: 0,
+      skippedWrongTransition: 0,
+      skippedMissingOwnerEmail: 0,
+      skippedDuplicatePlacement: 0,
+    });
+    expect(report.placements[0]).toMatchObject({
+      placementId: 321,
+      transactionId: null,
+      statusChange: null,
+    });
+    expect(report.sparkPost.payload.recipients[0]).toMatchObject({
+      address: {
+        email: "owner@example.com",
+      },
+      substitution_data: {
+        placement_id: "321",
+        placement_status: "Terminated",
+      },
+    });
   });
 });

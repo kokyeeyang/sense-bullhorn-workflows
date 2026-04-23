@@ -10,6 +10,8 @@ const {
 } = require("./placementTerminationEmailUtils");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
+const SKIPPED_EVENTS_PREVIEW_LIMIT = 25;
+
 function getTemplateId(config) {
   return config.PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID || config.SPARKPOST_TEMPLATE_ID || null;
 }
@@ -42,6 +44,25 @@ async function writeSparkPostPayloadReport({ payload }) {
     filePrefix: "placement-termination-email-sparkpost-payload",
     payload,
   });
+}
+
+function buildSkippedEventRecord({ event, reason, statusChange = null }) {
+  return {
+    placementId: Number(event?.entityId || 0) || null,
+    transactionId: event?.entityEvent?.transactionID || event?.transactionID || null,
+    updatedProperties: event?.updatedProperties || [],
+    reason,
+    statusChange: statusChange
+      ? {
+          oldValue: statusChange.oldValue ?? null,
+          newValue: statusChange.newValue ?? null,
+        }
+      : null,
+  };
+}
+
+function isTerminatedPlacementCurrentStatus(placement) {
+  return String(placement?.status || "").trim().toLowerCase() === "terminated";
 }
 
 async function run() {
@@ -93,46 +114,107 @@ async function run() {
   const processedPlacementIds = new Set();
   const matchedPlacements = [];
   const sparkPostRecipients = [];
+  const skippedEvents = [];
 
   for (const event of events) {
     const updatedProperties = event.updatedProperties || [];
     if (!updatedProperties.includes("status")) {
       skippedNoStatusChange += 1;
+      if (skippedEvents.length < SKIPPED_EVENTS_PREVIEW_LIMIT) {
+        skippedEvents.push(
+          buildSkippedEventRecord({
+            event,
+            reason: "event-updated-properties-missing-status",
+          }),
+        );
+      }
       continue;
     }
 
     const placementId = Number(event.entityId || 0);
     const transactionId = event.entityEvent?.transactionID || event.transactionID || null;
-    if (!placementId || !transactionId) {
+    if (!placementId) {
       skippedWrongTransition += 1;
-      continue;
-    }
-
-    const statusChange = await bullhorn.getPlacementStatusChange({
-      restUrl: session.restUrl,
-      bhRestToken: session.bhRestToken,
-      transactionId,
-    });
-
-    if (!isTerminatedPlacementStatusChange(statusChange)) {
-      skippedWrongTransition += 1;
+      if (skippedEvents.length < SKIPPED_EVENTS_PREVIEW_LIMIT) {
+        skippedEvents.push(
+          buildSkippedEventRecord({
+            event,
+            reason: "missing-placement-id",
+          }),
+        );
+      }
       continue;
     }
 
     if (processedPlacementIds.has(placementId)) {
       skippedDuplicatePlacement += 1;
+      if (skippedEvents.length < SKIPPED_EVENTS_PREVIEW_LIMIT) {
+        skippedEvents.push(
+          buildSkippedEventRecord({
+            event,
+            reason: "duplicate-placement-in-batch",
+          }),
+        );
+      }
       continue;
     }
 
-    const placement = await bullhorn.getPlacement({
+    let statusChange = null;
+    let placement = null;
+
+    if (transactionId) {
+      statusChange = await bullhorn.getPlacementStatusChange({
+        restUrl: session.restUrl,
+        bhRestToken: session.bhRestToken,
+        transactionId,
+      });
+
+      if (!isTerminatedPlacementStatusChange(statusChange)) {
+        skippedWrongTransition += 1;
+        if (skippedEvents.length < SKIPPED_EVENTS_PREVIEW_LIMIT) {
+          skippedEvents.push(
+            buildSkippedEventRecord({
+              event,
+              reason: "status-change-not-terminated",
+              statusChange,
+            }),
+          );
+        }
+        continue;
+      }
+    }
+
+    placement = await bullhorn.getPlacement({
       restUrl: session.restUrl,
       bhRestToken: session.bhRestToken,
       placementId,
     });
 
+    if (!transactionId && !isTerminatedPlacementCurrentStatus(placement)) {
+      skippedWrongTransition += 1;
+      if (skippedEvents.length < SKIPPED_EVENTS_PREVIEW_LIMIT) {
+        skippedEvents.push(
+          buildSkippedEventRecord({
+            event,
+            reason: "missing-transaction-id-current-status-not-terminated",
+          }),
+        );
+      }
+      continue;
+    }
+
     const candidateId = placement?.candidate?.id || null;
     if (!candidateId) {
       skippedMissingOwnerEmail += 1;
+      if (skippedEvents.length < SKIPPED_EVENTS_PREVIEW_LIMIT) {
+        skippedEvents.push(
+          buildSkippedEventRecord({
+            event,
+            reason: "missing-candidate-id",
+            statusChange,
+          }),
+        );
+      }
       continue;
     }
 
@@ -149,6 +231,15 @@ async function run() {
     const ownerId = candidate?.owner?.id || null;
     if (!ownerId) {
       skippedMissingOwnerEmail += 1;
+      if (skippedEvents.length < SKIPPED_EVENTS_PREVIEW_LIMIT) {
+        skippedEvents.push(
+          buildSkippedEventRecord({
+            event,
+            reason: "missing-candidate-owner-id",
+            statusChange,
+          }),
+        );
+      }
       continue;
     }
 
@@ -164,6 +255,15 @@ async function run() {
 
     if (!owner?.email) {
       skippedMissingOwnerEmail += 1;
+      if (skippedEvents.length < SKIPPED_EVENTS_PREVIEW_LIMIT) {
+        skippedEvents.push(
+          buildSkippedEventRecord({
+            event,
+            reason: "missing-owner-email",
+            statusChange,
+          }),
+        );
+      }
       continue;
     }
 
@@ -257,6 +357,7 @@ async function run() {
       transmission,
       payload: sparkPostPayload,
     },
+    skippedEvents,
     recipients: sparkPostRecipients,
     placements: matchedPlacements,
   };
