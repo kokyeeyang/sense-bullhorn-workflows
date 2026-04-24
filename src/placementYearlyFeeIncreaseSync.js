@@ -42,6 +42,31 @@ async function writeSparkPostPayloadReport({ payload }) {
   });
 }
 
+async function loadPlacementsForYearlyFeeIncrease({
+  bullhorn,
+  session,
+  config,
+  window,
+}) {
+  if (config.TEST_PLACEMENT_ID) {
+    const placement = await bullhorn.getPlacement({
+      restUrl: session.restUrl,
+      bhRestToken: session.bhRestToken,
+      placementId: config.TEST_PLACEMENT_ID,
+    });
+
+    return placement ? [placement] : [];
+  }
+
+  return bullhorn.queryPlacementsByDateBeginRange({
+    restUrl: session.restUrl,
+    bhRestToken: session.bhRestToken,
+    startMs: window.startMs,
+    endMs: window.endMs,
+    count: config.PLACEMENT_YEARLY_FEE_INCREASE_QUERY_COUNT,
+  });
+}
+
 async function run() {
   const config = loadConfig();
   validateSparkPostConfig(config);
@@ -76,6 +101,7 @@ async function run() {
       startMs: window.startMs,
       endMs: window.endMs,
       queryCount: config.PLACEMENT_YEARLY_FEE_INCREASE_QUERY_COUNT,
+      testPlacementId: config.TEST_PLACEMENT_ID || null,
       sparkPostTemplateId: templateId,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
       retryBaseDelayMs: config.RETRY_BASE_DELAY_MS,
@@ -87,15 +113,21 @@ async function run() {
   const accessToken = await bullhorn.getAccessToken(code);
   const session = await bullhorn.login(accessToken);
 
-  const placements = await bullhorn.queryPlacementsByDateBeginRange({
-    restUrl: session.restUrl,
-    bhRestToken: session.bhRestToken,
-    startMs: window.startMs,
-    endMs: window.endMs,
-    count: config.PLACEMENT_YEARLY_FEE_INCREASE_QUERY_COUNT,
+  const placements = await loadPlacementsForYearlyFeeIncrease({
+    bullhorn,
+    session,
+    config,
+    window,
   });
 
-  logger.info({ placementCount: placements.length }, "Fetched placements for yearly fee increase window");
+  logger.info(
+    {
+      placementCount: placements.length,
+      mode: config.TEST_PLACEMENT_ID ? "test-placement-id" : "date-begin-window",
+      testPlacementId: config.TEST_PLACEMENT_ID || null,
+    },
+    "Fetched placements for yearly fee increase window",
+  );
 
   let skippedNonMatchingPlacement = 0;
   let skippedMissingOwnerId = 0;
@@ -177,6 +209,7 @@ async function run() {
   const report = {
     generatedAt: new Date().toISOString(),
     dryRun: config.DRY_RUN,
+    testPlacementId: config.TEST_PLACEMENT_ID || null,
     window: {
       monthOffset: config.PLACEMENT_YEARLY_FEE_INCREASE_MONTH_OFFSET,
       windowBeforeDays: effectiveWindowBeforeDays,
@@ -229,4 +262,9 @@ if (require.main === module) {
   });
 }
 
-module.exports = { getTemplateId, run, writeSparkPostPayloadReport };
+module.exports = {
+  getTemplateId,
+  loadPlacementsForYearlyFeeIncrease,
+  run,
+  writeSparkPostPayloadReport,
+};
