@@ -52,12 +52,14 @@ class SparkPostClient {
     }
   }
 
-  async sendTransmission({ templateId, recipients, headers }) {
+  async sendTransmission({ templateId, recipients, headers, attachments, from }) {
     const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
     const payload = {
       content: {
         template_id: templateId,
+        ...(from ? { from } : {}),
         ...(headers ? { headers } : {}),
+        ...(attachments?.length ? { attachments } : {}),
       },
       recipients,
     };

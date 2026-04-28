@@ -19,6 +19,7 @@
     "run:placement-start-reminder-sync": "node src/placementStartReminderSync.js",
     "run:placement-benefits-reminder-sync": "node src/placementBenefitsReminderSync.js",
     "run:placement-benefits-reminder-test-send": "node src/placementBenefitsReminderTestSend.js",
+    "run:harassment-training-sync": "node src/harassmentTrainingSync.js",
     "run:placement-yearly-fee-increase-sync": "node src/placementYearlyFeeIncreaseSync.js",
     "run:placement-start-reminder-test-send": "node src/placementStartReminderTestSend.js",
     "run:placement-yearly-fee-increase-test-send": "node src/placementYearlyFeeIncreaseTestSend.js",

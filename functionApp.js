@@ -12,6 +12,8 @@ const { run: runNewJobIllinoisEmailSync } = require("./src/newJobIllinoisEmailSy
 const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
 const { run: runPlacementBenefitsReminderSync } = require("./src/placementBenefitsReminderSync");
 const { run: runPlacementBenefitsReminderTestSend } = require("./src/placementBenefitsReminderTestSend");
+const { run: runHarassmentTrainingSync } = require("./src/harassmentTrainingSync");
+const { handleHarassmentTrainingResponse } = require("./src/harassmentTrainingResponseHandler");
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/placementYearlyFeeIncreaseSync");
 const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/placementYearlyFeeIncreaseTestSend");
 const { run: runDailyWorkflowSummary } = require("./src/dailyWorkflowSummary");
@@ -98,6 +100,15 @@ const workflowDefinitions = [
     run: runPlacementBenefitsReminderTestSend,
     enableTimer: false,
     enabled: false,
+  },
+  {
+    functionName: "harassmentTrainingSync",
+    workflowName: "harassment-training-sync",
+    route: "workflows/harassment-training-sync",
+    scheduleEnv: "AZURE_HARASSMENT_TRAINING_SCHEDULE",
+    defaultSchedule: "0 0 9 * * *",
+    logLabel: "harassment training sync",
+    run: ({ targetDate } = {}) => runHarassmentTrainingSync({ targetDate }),
   },
   {
     functionName: "placementYearlyFeeIncreaseSync",
@@ -387,3 +398,10 @@ for (const definition of workflowDefinitions) {
     handler: createHttpHandler(definition),
   });
 }
+
+app.http("harassmentTrainingResponse", {
+  methods: ["GET", "POST"],
+  authLevel: "anonymous",
+  route: "workflows/harassment-training/respond",
+  handler: handleHarassmentTrainingResponse,
+});
