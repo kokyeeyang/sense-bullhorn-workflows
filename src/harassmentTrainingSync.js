@@ -15,6 +15,7 @@ const {
   findRuleForPlacement,
   getAttachmentPaths,
   getBusinessDateKey,
+  getIllinoisMaineMatchDetails,
 } = require("./harassmentTrainingUtils");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 
@@ -26,9 +27,6 @@ const PLACEMENT_FIELDS = [
   "dateBegin",
   "dateLastModified",
   "employmentType",
-  "workState",
-  "country",
-  "address(state,countryName)",
   "customText1",
   "customText2",
   "customText3",
@@ -74,26 +72,28 @@ function getTemplateId(config, rule = null) {
     "california-training-notice": "HARASSMENT_TRAINING_CALIFORNIA_SPARKPOST_TEMPLATE_ID",
   };
   const variantKey = rule ? variantTemplateKeyByVariant[rule.templateVariant] : null;
-  return (
-    (variantKey ? config[variantKey] : null) ||
+  return (variantKey ? config[variantKey] : null) || config.HARASSMENT_TRAINING_SPARKPOST_TEMPLATE_ID || null;
+}
+
+function hasHarassmentTrainingTemplateConfig(config) {
+  return Boolean(
     config.HARASSMENT_TRAINING_SPARKPOST_TEMPLATE_ID ||
-    config.SPARKPOST_TEMPLATE_ID ||
-    null
+      (
+        config.HARASSMENT_TRAINING_ONBOARDING_SPARKPOST_TEMPLATE_ID &&
+        config.HARASSMENT_TRAINING_STATE_NOTICE_SPARKPOST_TEMPLATE_ID &&
+        config.HARASSMENT_TRAINING_CALIFORNIA_SPARKPOST_TEMPLATE_ID
+      ),
   );
 }
 
 function validateSparkPostConfig(config) {
-  if (config.DRY_RUN) {
-    return;
-  }
-
   const missing = [];
-  if (!config.SPARKPOST_API_KEY) {
+  if (!config.DRY_RUN && !config.SPARKPOST_API_KEY) {
     missing.push("SPARKPOST_API_KEY or BULLHORN_WORKFLOW");
   }
-  if (!getTemplateId(config)) {
+  if (!hasHarassmentTrainingTemplateConfig(config)) {
     missing.push(
-      "HARASSMENT_TRAINING_*_SPARKPOST_TEMPLATE_ID, HARASSMENT_TRAINING_SPARKPOST_TEMPLATE_ID, or SPARKPOST_TEMPLATE_ID",
+      "HARASSMENT_TRAINING_*_SPARKPOST_TEMPLATE_ID or HARASSMENT_TRAINING_SPARKPOST_TEMPLATE_ID",
     );
   }
 
@@ -190,6 +190,10 @@ async function collectDateBeginMatches({ bullhorn, session, config, businessDate
             source: "dateBegin",
             reason: "date-begin-placement-not-eligible",
             queryDate: dateKey,
+            matchDetails: getIllinoisMaineMatchDetails(placement, {
+              flagFields: config.HARASSMENT_TRAINING_FLAG_FIELDS,
+              extraStatuses: config.HARASSMENT_TRAINING_EXTRA_DATE_BEGIN_STATUSES,
+            }),
           });
         }
         continue;
@@ -298,7 +302,7 @@ async function run({ targetDate } = {}) {
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });
-  const businessDateKey = targetDate || getBusinessDateKey();
+  const businessDateKey = targetDate || config.HARASSMENT_TRAINING_TARGET_DATE || getBusinessDateKey();
   const queryPlan = buildQueryPlan({ businessDateKey });
 
   logger.info(

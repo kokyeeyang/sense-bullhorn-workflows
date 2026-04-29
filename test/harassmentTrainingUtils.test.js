@@ -24,14 +24,44 @@ describe("harassmentTrainingUtils", () => {
     expect(findRuleForPlacement({ placement, source: "dateBegin" }).stateLabel).toBe("Illinois");
   });
 
-  test("rejects Illinois and Maine when the training flag is missing", () => {
+  test("treats a known US work state as United States when country is blank", () => {
+    expect(
+      matchesIllinoisMainePlacement({
+        status: "Submitted",
+        jobOrder: {
+          address: {
+            state: "Illinois",
+          },
+        },
+        customText7: "Sexual Harassment Training",
+      }),
+    ).toBe(true);
+  });
+
+  test("does not require Illinois and Maine training flag", () => {
     expect(
       matchesIllinoisMainePlacement({
         status: "Approved",
         workState: "Maine",
         country: "United States",
       }),
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  test("can temporarily include extra date-begin statuses", () => {
+    expect(
+      matchesIllinoisMainePlacement(
+        {
+          status: "Pre-Hire",
+          workState: "Illinois",
+          country: "United States",
+          customText7: "Sexual Harassment Training",
+        },
+        {
+          extraStatuses: "Pre-Hire",
+        },
+      ),
+    ).toBe(true);
   });
 
   test("can use configured Bullhorn fields for the Illinois and Maine training flag", () => {

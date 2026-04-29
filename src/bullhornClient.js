@@ -402,6 +402,23 @@ class BullhornClient {
     return response.data.data;
   }
 
+  async getPlacementByIdWithFields({ restUrl, bhRestToken, placementId, fields }) {
+    const url = `${restUrl}/entity/Placement/${placementId}`;
+
+    const response = await this.requestWithRetry({
+      label: "get_placement_by_id_with_fields",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            fields,
+          },
+        }),
+    });
+
+    return response.data.data;
+  }
+
   async getClientCorporationContacts({
     restUrl,
     bhRestToken,

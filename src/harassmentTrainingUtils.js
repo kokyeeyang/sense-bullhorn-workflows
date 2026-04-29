@@ -106,7 +106,12 @@ function getEmploymentType(placement) {
 }
 
 function isUnitedStatesPlacement(placement) {
-  return normalizeCountry(getPlacementCountry(placement)) === "united states";
+  const country = normalizeCountry(getPlacementCountry(placement));
+  if (country) {
+    return country === "united states";
+  }
+
+  return Boolean(normalizeState(getPlacementWorkState(placement)));
 }
 
 function parseConfiguredFields(value) {
@@ -163,14 +168,45 @@ function isSubmittedOrPreHireStatus(value) {
 }
 
 function matchesIllinoisMainePlacement(placement, options = {}) {
+  const details = getIllinoisMaineMatchDetails(placement, options);
+  return details.matches;
+}
+
+function getIllinoisMaineMatchDetails(placement, options = {}) {
   const state = normalizeState(getPlacementWorkState(placement));
   const status = normalizeStatus(placement?.status);
-  return (
-    ["illinois", "maine"].includes(state) &&
-    ILLINOIS_MAINE_STATUS_VALUES.has(status) &&
-    isUnitedStatesPlacement(placement) &&
-    hasHarassmentTrainingFlag(placement, options)
-  );
+  const acceptedStatuses = new Set([
+    ...ILLINOIS_MAINE_STATUS_VALUES,
+    ...parseConfiguredFields(options.extraStatuses).map((value) => normalizeStatus(value)),
+  ]);
+  const stateMatches = ["illinois", "maine"].includes(state);
+  const statusMatches = acceptedStatuses.has(status);
+  const countryMatches = isUnitedStatesPlacement(placement);
+  const trainingFlagFound = hasHarassmentTrainingFlag(placement, options);
+
+  return {
+    matches: stateMatches && statusMatches && countryMatches,
+    stateMatches,
+    statusMatches,
+    countryMatches,
+    trainingFlagMatches: trainingFlagFound,
+    trainingFlagRequired: false,
+    trainingFlagFound,
+    actual: {
+      state: getPlacementWorkState(placement) || null,
+      country: getPlacementCountry(placement) || null,
+      status: placement?.status || null,
+      employmentType: placement?.employmentType || placement?.jobOrder?.employmentType || null,
+    },
+    expected: {
+      state: "Illinois or Maine",
+      country: "United States",
+      status: Array.from(acceptedStatuses),
+      trainingFlag: "not required",
+      configuredTrainingFlagFields: parseConfiguredFields(options.flagFields),
+      trainingFlagRequired: false,
+    },
+  };
 }
 
 function matchesConnecticutNewYorkPlacement({ placement, statusChange }) {
@@ -203,6 +239,7 @@ function findRuleForPlacement({ placement, statusChange = null, source, config =
   if (rule.source === "dateBegin") {
     return matchesIllinoisMainePlacement(placement, {
       flagFields: config.HARASSMENT_TRAINING_FLAG_FIELDS,
+      extraStatuses: config.HARASSMENT_TRAINING_EXTRA_DATE_BEGIN_STATUSES,
     })
       ? rule
       : null;
@@ -610,6 +647,7 @@ module.exports = {
   findRuleForPlacement,
   getAttachmentPaths,
   getBusinessDateKey,
+  getIllinoisMaineMatchDetails,
   getPlacementCountry,
   getPlacementWorkState,
   hasHarassmentTrainingFlag,
