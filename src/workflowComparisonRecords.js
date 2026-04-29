@@ -383,6 +383,7 @@ function buildWorkflowComparisonRecords({ workflowName, result }) {
       });
     case "placement-start-reminder-sync":
     case "placement-benefits-reminder-sync":
+    case "us-contract-performance-checkin-sync":
     case "harassment-training-sync":
     case "placement-yearly-fee-increase-sync":
       return buildPlacementReminderRecords({ workflowName, generatedAt, report });

@@ -78,6 +78,27 @@ class SparkPostClient {
     return response.data;
   }
 
+  async sendInlineTransmission({ content, recipients }) {
+    const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
+    const payload = {
+      content,
+      recipients,
+    };
+
+    const response = await this.requestWithRetry({
+      label: "sparkpost_send_inline_transmission",
+      fn: () =>
+        axios.post(url, payload, {
+          headers: {
+            Authorization: this.config.SPARKPOST_API_KEY,
+            "Content-Type": "application/json",
+          },
+        }),
+    });
+
+    return response.data;
+  }
+
   async sendMessage({ from, to, subject, text, html }) {
     const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
     const payload = {

@@ -101,6 +101,7 @@ const configSchema = z.object({
   PLACEMENT_BENEFITS_REMINDER_DAY10_SPARKPOST_TEMPLATE_ID: optionalString,
   PLACEMENT_BENEFITS_REMINDER_DAY21_SPARKPOST_TEMPLATE_ID: optionalString,
   PLACEMENT_BENEFITS_REMINDER_DAY26_SPARKPOST_TEMPLATE_ID: optionalString,
+  US_CONTRACT_PERFORMANCE_CHECKIN_QUERY_COUNT: positiveIntWithDefault(200),
   HARASSMENT_TRAINING_QUERY_COUNT: positiveIntWithDefault(200),
   HARASSMENT_TRAINING_TARGET_DATE: optionalString,
   HARASSMENT_TRAINING_EXTRA_DATE_BEGIN_STATUSES: stringWithDefaultPreserveBlank(""),
@@ -145,6 +146,7 @@ const configSchema = z.object({
   AZURE_WORKFLOW_COMPARISON_TABLE_NAME: stringWithDefault("WorkflowComparisonRecords"),
   AZURE_WORKFLOW_DAILY_CHANGE_TABLE_NAME: stringWithDefault("WorkflowDailyChangeRecords"),
   AZURE_WORKFLOW_DAILY_EMAIL_TABLE_NAME: stringWithDefault("WorkflowDailyEmailRecords"),
+  AZURE_WORKFLOW_SEND_LOCK_TABLE_NAME: stringWithDefault("WorkflowSendLocks"),
   AZURE_PLACEMENT_DATABASE_ENRICHMENT_COMPARISON_TABLE_NAME: stringWithDefault(
     "PlacementDatabaseEnrichmentComparisonRecords",
   ),

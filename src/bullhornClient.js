@@ -803,7 +803,7 @@ class BullhornClient {
         axios.get(url, {
           params: {
             BhRestToken: bhRestToken,
-            fields: "id,firstName,lastName,email,primaryDepartment(name)",
+            fields: "id,firstName,lastName,email,pager,primaryDepartment(name),reportToPerson(id,firstName,lastName,email)",
           },
         }),
     });

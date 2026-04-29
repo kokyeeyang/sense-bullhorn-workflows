@@ -12,6 +12,7 @@ const { run: runNewJobIllinoisEmailSync } = require("./src/newJobIllinoisEmailSy
 const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
 const { run: runPlacementBenefitsReminderSync } = require("./src/placementBenefitsReminderSync");
 const { run: runPlacementBenefitsReminderTestSend } = require("./src/placementBenefitsReminderTestSend");
+const { run: runUsContractPerformanceCheckinSync } = require("./src/usContractPerformanceCheckinSync");
 const { run: runHarassmentTrainingSync } = require("./src/harassmentTrainingSync");
 const { handleHarassmentTrainingResponse } = require("./src/harassmentTrainingResponseHandler");
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/placementYearlyFeeIncreaseSync");
@@ -100,6 +101,15 @@ const workflowDefinitions = [
     run: runPlacementBenefitsReminderTestSend,
     enableTimer: false,
     enabled: false,
+  },
+  {
+    functionName: "usContractPerformanceCheckinSync",
+    workflowName: "us-contract-performance-checkin-sync",
+    route: "workflows/us-contract-performance-checkin-sync",
+    scheduleEnv: "AZURE_US_CONTRACT_PERFORMANCE_CHECKIN_SCHEDULE",
+    defaultSchedule: "0 0 9 * * *",
+    logLabel: "US contract performance check-in sync",
+    run: ({ targetDate } = {}) => runUsContractPerformanceCheckinSync({ targetDate }),
   },
   {
     functionName: "harassmentTrainingSync",
