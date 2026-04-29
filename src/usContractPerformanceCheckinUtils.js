@@ -36,6 +36,7 @@ const HTML_TEMPLATE_PATH = path.join(
   "templates",
   "us-contract-performance-checkin.html",
 );
+const SKIPPED_PREVIEW_LIMIT = 25;
 
 let cachedHtmlTemplate = null;
 
@@ -138,25 +139,69 @@ function hasClientCorporationOverride(placement) {
   return normalizeLower(placement?.clientCorporation?.customText16) === "yes";
 }
 
-function matchesStandardCriteria(placement) {
+function getPerformanceCheckinMatchDetails(placement) {
   const ownerPager = normalizeString(placement?.owner?.pager || placement?.jobOrder?.owner?.pager);
   const employmentType = normalizeLower(placement?.employmentType);
   const status = normalizeLower(placement?.status);
   const clientCorporationId = normalizeString(placement?.clientCorporation?.id);
   const dateBegin = Number(placement?.dateBegin || 0);
   const minDateBegin = dateKeyToUtcDate(STANDARD_CRITERIA_MIN_DATE_BEGIN).getTime();
+  const clientCorporationOverride = hasClientCorporationOverride(placement);
+  const standardChecks = {
+    ownerPagerIs500: ownerPager === "500",
+    dateBeginOnOrAfterMinimum: dateBegin >= minDateBegin,
+    employmentTypeAllowed: INCLUDED_EMPLOYMENT_TYPES.has(employmentType),
+    clientCorporationAllowed: !EXCLUDED_CLIENT_CORPORATION_IDS.has(clientCorporationId),
+    statusAllowed: !EXCLUDED_STATUS_VALUES.has(status),
+  };
+  const standardCriteria = Object.values(standardChecks).every(Boolean);
 
-  return (
-    ownerPager === "500" &&
-    dateBegin >= minDateBegin &&
-    INCLUDED_EMPLOYMENT_TYPES.has(employmentType) &&
-    !EXCLUDED_CLIENT_CORPORATION_IDS.has(clientCorporationId) &&
-    !EXCLUDED_STATUS_VALUES.has(status)
-  );
+  return {
+    matched: clientCorporationOverride || standardCriteria,
+    clientCorporationOverride,
+    standardCriteria,
+    standardChecks,
+    values: {
+      ownerPager: ownerPager || null,
+      minimumDateBegin: STANDARD_CRITERIA_MIN_DATE_BEGIN,
+      dateBegin: placement?.dateBegin ?? null,
+      dateBeginFormatted: formatDateBegin(placement?.dateBegin) || null,
+      employmentType: placement?.employmentType || null,
+      status: placement?.status || null,
+      clientCorporationId: placement?.clientCorporation?.id ?? null,
+      clientCorporationName: placement?.clientCorporation?.name || null,
+      clientCorporationCustomText16: placement?.clientCorporation?.customText16 || null,
+      excludedStatuses: Array.from(EXCLUDED_STATUS_VALUES),
+    },
+    failedStandardChecks: Object.entries(standardChecks)
+      .filter(([, passed]) => !passed)
+      .map(([key]) => key),
+  };
 }
 
 function matchesPerformanceCheckinPlacement(placement) {
-  return hasClientCorporationOverride(placement) || matchesStandardCriteria(placement);
+  return getPerformanceCheckinMatchDetails(placement).matched;
+}
+
+function buildSkippedPlacementPreview({ placement, queryDateBegin, reason, matchDetails = null }) {
+  return {
+    placementId: placement?.id ?? null,
+    queryDateBegin,
+    reason,
+    matchDetails,
+    placement: {
+      id: placement?.id ?? null,
+      status: placement?.status || null,
+      employmentType: placement?.employmentType || null,
+      dateBegin: placement?.dateBegin ?? null,
+      dateBeginFormatted: formatDateBegin(placement?.dateBegin) || null,
+      owner: placement?.owner || null,
+      candidate: placement?.candidate || null,
+      clientContact: placement?.clientContact || placement?.billingClientContact || null,
+      clientCorporation: placement?.clientCorporation || null,
+      jobOrder: placement?.jobOrder || null,
+    },
+  };
 }
 
 function buildRecipientEnvelope({ placement }) {
@@ -284,11 +329,14 @@ function buildPlacementReportRecord({
 module.exports = {
   CHECKIN_DAY_OFFSET,
   PERFORMANCE_CHECKIN_TIME_ZONE,
+  SKIPPED_PREVIEW_LIMIT,
   buildDateBeginQueryDates,
   buildPerformanceCheckinTransmission,
   buildPlacementReportRecord,
+  buildSkippedPlacementPreview,
   buildUtcDayWindowFromDateKey,
   getBusinessDateKey,
+  getPerformanceCheckinMatchDetails,
   matchesPerformanceCheckinPlacement,
   renderHtmlTemplate,
 };

@@ -8,9 +8,12 @@ const {
   buildDateBeginQueryDates,
   buildPerformanceCheckinTransmission,
   buildPlacementReportRecord,
+  buildSkippedPlacementPreview,
   buildUtcDayWindowFromDateKey,
   getBusinessDateKey,
+  getPerformanceCheckinMatchDetails,
   matchesPerformanceCheckinPlacement,
+  SKIPPED_PREVIEW_LIMIT,
 } = require("./usContractPerformanceCheckinUtils");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
 const {
@@ -153,6 +156,7 @@ async function run({ targetDate } = {}) {
   let sendLockUnavailable = 0;
   const ownerCache = new Map();
   const matchedPlacements = [];
+  const skippedPlacements = [];
   const sparkPostPayload = [];
   const transmissions = [];
 
@@ -164,18 +168,43 @@ async function run({ targetDate } = {}) {
       ownerCache,
     });
 
+    const matchDetails = getPerformanceCheckinMatchDetails(placement);
     if (!matchesPerformanceCheckinPlacement(placement)) {
       skippedNonMatchingPlacement += 1;
+      if (skippedPlacements.length < SKIPPED_PREVIEW_LIMIT) {
+        skippedPlacements.push(buildSkippedPlacementPreview({
+          placement,
+          queryDateBegin: item.queryDateBegin,
+          reason: "placement-not-eligible",
+          matchDetails,
+        }));
+      }
       continue;
     }
 
     const transmissionPayload = buildPerformanceCheckinTransmission({ placement });
     if (transmissionPayload.recipientEnvelope.missingClientContactEmail) {
       skippedMissingClientContactEmail += 1;
+      if (skippedPlacements.length < SKIPPED_PREVIEW_LIMIT) {
+        skippedPlacements.push(buildSkippedPlacementPreview({
+          placement,
+          queryDateBegin: item.queryDateBegin,
+          reason: "missing-client-contact-email",
+          matchDetails,
+        }));
+      }
       continue;
     }
     if (transmissionPayload.recipientEnvelope.missingJobOrderOwnerEmail) {
       skippedMissingJobOrderOwnerEmail += 1;
+      if (skippedPlacements.length < SKIPPED_PREVIEW_LIMIT) {
+        skippedPlacements.push(buildSkippedPlacementPreview({
+          placement,
+          queryDateBegin: item.queryDateBegin,
+          reason: "missing-job-order-owner-email",
+          matchDetails,
+        }));
+      }
       continue;
     }
 
@@ -195,6 +224,14 @@ async function run({ targetDate } = {}) {
 
       if (!sendLock.reserved) {
         skippedAlreadySent += 1;
+        if (skippedPlacements.length < SKIPPED_PREVIEW_LIMIT) {
+          skippedPlacements.push(buildSkippedPlacementPreview({
+            placement,
+            queryDateBegin: item.queryDateBegin,
+            reason: "already-sent",
+            matchDetails,
+          }));
+        }
         continue;
       }
       if (sendLock.skipped) {
@@ -253,6 +290,7 @@ async function run({ targetDate } = {}) {
       skippedMissingJobOrderOwnerEmail,
       skippedAlreadySent,
       sendLockUnavailable,
+      skippedPreviewCount: skippedPlacements.length,
     },
     sparkPost: {
       sent: !config.DRY_RUN && matchedPlacements.length > 0,
@@ -261,6 +299,7 @@ async function run({ targetDate } = {}) {
       transmissions,
       payload: sparkPostPayload,
     },
+    skippedPlacements,
     placements: matchedPlacements,
   };
 

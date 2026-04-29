@@ -1,6 +1,7 @@
 const {
   buildDateBeginQueryDates,
   buildPerformanceCheckinTransmission,
+  getPerformanceCheckinMatchDetails,
   matchesPerformanceCheckinPlacement,
   renderHtmlTemplate,
 } = require("../src/usContractPerformanceCheckinUtils");
@@ -42,6 +43,47 @@ describe("usContractPerformanceCheckinUtils", () => {
       ...standardPlacement,
       clientCorporation: { id: 142049, customText16: "no" },
     })).toBe(false);
+  });
+
+  test("explains failed eligibility checks", () => {
+    const details = getPerformanceCheckinMatchDetails({
+      id: 1001,
+      owner: { pager: "100" },
+      dateBegin: Date.UTC(2026, 3, 1),
+      employmentType: "Permanent",
+      status: "Submitted",
+      clientCorporation: { id: 142049, name: "Excluded", customText16: "no" },
+    });
+
+    expect(details.matched).toBe(false);
+    expect(details.failedStandardChecks).toEqual([
+      "ownerPagerIs500",
+      "employmentTypeAllowed",
+      "clientCorporationAllowed",
+      "statusAllowed",
+    ]);
+    expect(details.values).toMatchObject({
+      ownerPager: "100",
+      employmentType: "Permanent",
+      status: "Submitted",
+      clientCorporationId: 142049,
+      clientCorporationCustomText16: "no",
+    });
+  });
+
+  test("shows client corporation override in eligibility details", () => {
+    const details = getPerformanceCheckinMatchDetails({
+      id: 1001,
+      owner: { pager: "100" },
+      dateBegin: Date.UTC(2026, 3, 1),
+      employmentType: "Permanent",
+      status: "Submitted",
+      clientCorporation: { id: 142049, customText16: "yes" },
+    });
+
+    expect(details.matched).toBe(true);
+    expect(details.clientCorporationOverride).toBe(true);
+    expect(details.standardCriteria).toBe(false);
   });
 
   test("builds inline SparkPost payload with cc and owner sender", () => {

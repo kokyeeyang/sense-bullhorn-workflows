@@ -103,6 +103,7 @@ describe("usContractPerformanceCheckinSync", () => {
       skippedMissingJobOrderOwnerEmail: 0,
       skippedAlreadySent: 0,
       sendLockUnavailable: 0,
+      skippedPreviewCount: 0,
     });
     expect(result.placements[0].recipient).toEqual({
       toEmail: "maya@example.com",
@@ -167,6 +168,48 @@ describe("usContractPerformanceCheckinSync", () => {
     expect(mockSparkPostClient.sendInlineTransmission).toHaveBeenCalledTimes(1);
     expect(result.totals.matchedPlacements).toBe(1);
     expect(result.totals.skippedAlreadySent).toBe(1);
+    expect(result.totals.skippedPreviewCount).toBe(1);
+    expect(result.skippedPlacements[0]).toMatchObject({
+      placementId: 5002,
+      queryDateBegin: "2026-04-06",
+      reason: "already-sent",
+    });
     expect(result.sparkPost.sent).toBe(true);
+  });
+
+  test("includes skipped placement eligibility diagnostics", async () => {
+    mockBullhornClient.queryPlacementsByDateBeginRange.mockResolvedValueOnce([
+      {
+        id: 5003,
+        status: "Submitted",
+        dateBegin: Date.UTC(2026, 3, 21),
+        employmentType: "Permanent",
+        owner: { pager: "100" },
+        candidate: { id: 7003, firstName: "Chris", lastName: "Fox" },
+        clientContact: { id: 8003, firstName: "Nora", email: "nora@example.com" },
+        clientCorporation: { id: 142049, name: "Excluded", customText16: "no" },
+        jobOrder: { id: 9003, owner: { id: 903 } },
+      },
+    ]);
+
+    const result = await run({ targetDate: "2026-04-29" });
+
+    expect(result.totals.matchedPlacements).toBe(0);
+    expect(result.totals.skippedNonMatchingPlacement).toBe(1);
+    expect(result.skippedPlacements).toHaveLength(1);
+    expect(result.skippedPlacements[0]).toMatchObject({
+      placementId: 5003,
+      queryDateBegin: "2026-04-01",
+      reason: "placement-not-eligible",
+      matchDetails: {
+        matched: false,
+        failedStandardChecks: [
+          "ownerPagerIs500",
+          "employmentTypeAllowed",
+          "clientCorporationAllowed",
+          "statusAllowed",
+        ],
+      },
+    });
   });
 });
