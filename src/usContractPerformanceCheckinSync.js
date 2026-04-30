@@ -30,9 +30,9 @@ const PLACEMENT_FIELDS = [
   "employmentType",
   "owner(id,firstName,lastName,email,pager)",
   "candidate(id,firstName,lastName,email)",
-  "clientContact(id,firstName,lastName,email)",
-  "billingClientContact(id,firstName,lastName,email)",
-  "clientCorporation(id,name,customText16)",
+  "clientContact(id,firstName,lastName,email,status)",
+  "billingClientContact(id,firstName,lastName,email,status)",
+  "clientCorporation(id,name,status,customText16)",
   "jobOrder(id,title,owner(id,firstName,lastName,email,pager,reportToPerson(id,firstName,lastName,email)))",
 ].join(",");
 

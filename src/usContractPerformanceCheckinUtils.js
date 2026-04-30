@@ -30,6 +30,7 @@ const EXCLUDED_STATUS_VALUES = new Set([
   "pre-hire",
   "submitted",
 ]);
+const DO_NOT_CONTACT_STATUS = "do not contact";
 const HTML_TEMPLATE_PATH = path.join(
   __dirname,
   "..",
@@ -139,14 +140,26 @@ function hasClientCorporationOverride(placement) {
   return normalizeLower(placement?.clientCorporation?.customText16) === "yes";
 }
 
+function isDoNotContactStatus(value) {
+  return normalizeLower(value) === DO_NOT_CONTACT_STATUS;
+}
+
 function getPerformanceCheckinMatchDetails(placement) {
   const ownerPager = normalizeString(placement?.owner?.pager || placement?.jobOrder?.owner?.pager);
+  const clientContact = placement?.clientContact || placement?.billingClientContact || {};
+  const clientContactStatus = normalizeLower(clientContact.status);
+  const clientCorporationStatus = normalizeLower(placement?.clientCorporation?.status);
   const employmentType = normalizeLower(placement?.employmentType);
   const status = normalizeLower(placement?.status);
   const clientCorporationId = normalizeString(placement?.clientCorporation?.id);
   const dateBegin = Number(placement?.dateBegin || 0);
   const minDateBegin = dateKeyToUtcDate(STANDARD_CRITERIA_MIN_DATE_BEGIN).getTime();
   const clientCorporationOverride = hasClientCorporationOverride(placement);
+  const contactComplianceChecks = {
+    clientContactStatusAllowed: !isDoNotContactStatus(clientContactStatus),
+    clientCorporationStatusAllowed: !isDoNotContactStatus(clientCorporationStatus),
+  };
+  const contactCompliance = Object.values(contactComplianceChecks).every(Boolean);
   const standardChecks = {
     ownerPagerIs500: ownerPager === "500",
     dateBeginOnOrAfterMinimum: dateBegin >= minDateBegin,
@@ -157,8 +170,10 @@ function getPerformanceCheckinMatchDetails(placement) {
   const standardCriteria = Object.values(standardChecks).every(Boolean);
 
   return {
-    matched: clientCorporationOverride || standardCriteria,
+    matched: contactCompliance && (clientCorporationOverride || standardCriteria),
     clientCorporationOverride,
+    contactCompliance,
+    contactComplianceChecks,
     standardCriteria,
     standardChecks,
     values: {
@@ -168,12 +183,18 @@ function getPerformanceCheckinMatchDetails(placement) {
       dateBeginFormatted: formatDateBegin(placement?.dateBegin) || null,
       employmentType: placement?.employmentType || null,
       status: placement?.status || null,
+      clientContactStatus: clientContact.status || null,
       clientCorporationId: placement?.clientCorporation?.id ?? null,
       clientCorporationName: placement?.clientCorporation?.name || null,
+      clientCorporationStatus: placement?.clientCorporation?.status || null,
       clientCorporationCustomText16: placement?.clientCorporation?.customText16 || null,
       excludedStatuses: Array.from(EXCLUDED_STATUS_VALUES),
+      doNotContactStatus: DO_NOT_CONTACT_STATUS,
     },
     failedStandardChecks: Object.entries(standardChecks)
+      .filter(([, passed]) => !passed)
+      .map(([key]) => key),
+    failedContactComplianceChecks: Object.entries(contactComplianceChecks)
       .filter(([, passed]) => !passed)
       .map(([key]) => key),
   };

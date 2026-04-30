@@ -45,6 +45,35 @@ describe("usContractPerformanceCheckinUtils", () => {
     })).toBe(false);
   });
 
+  test("does not match do not contact client contact or client corporation statuses", () => {
+    const standardPlacement = {
+      id: 1001,
+      owner: { pager: "500" },
+      dateBegin: Date.UTC(2026, 3, 1),
+      employmentType: "Contract",
+      status: "Approved",
+      clientContact: { status: "Do Not Contact" },
+      clientCorporation: { id: 123, status: "Active", customText16: "no" },
+    };
+
+    expect(matchesPerformanceCheckinPlacement(standardPlacement)).toBe(false);
+
+    const overrideDetails = getPerformanceCheckinMatchDetails({
+      ...standardPlacement,
+      owner: { pager: "100" },
+      employmentType: "Permanent",
+      status: "Submitted",
+      clientContact: { status: "Active" },
+      clientCorporation: { id: 142049, status: "do not contact", customText16: "yes" },
+    });
+
+    expect(overrideDetails.matched).toBe(false);
+    expect(overrideDetails.clientCorporationOverride).toBe(true);
+    expect(overrideDetails.failedContactComplianceChecks).toEqual([
+      "clientCorporationStatusAllowed",
+    ]);
+  });
+
   test("explains failed eligibility checks", () => {
     const details = getPerformanceCheckinMatchDetails({
       id: 1001,
@@ -52,6 +81,7 @@ describe("usContractPerformanceCheckinUtils", () => {
       dateBegin: Date.UTC(2026, 3, 1),
       employmentType: "Permanent",
       status: "Submitted",
+      clientContact: { status: "Do Not Contact" },
       clientCorporation: { id: 142049, name: "Excluded", customText16: "no" },
     });
 
@@ -68,7 +98,11 @@ describe("usContractPerformanceCheckinUtils", () => {
       status: "Submitted",
       clientCorporationId: 142049,
       clientCorporationCustomText16: "no",
+      clientContactStatus: "Do Not Contact",
     });
+    expect(details.failedContactComplianceChecks).toEqual([
+      "clientContactStatusAllowed",
+    ]);
   });
 
   test("shows client corporation override in eligibility details", () => {
