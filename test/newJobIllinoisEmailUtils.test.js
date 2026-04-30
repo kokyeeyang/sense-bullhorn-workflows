@@ -2,7 +2,7 @@ const {
   buildNewJobIllinoisRecipient,
   buildUtcAgeWindow,
   matchesNewJobIllinoisJobOrder,
-} = require("../src/newJobIllinoisEmailUtils");
+} = require("../src/utils/newJobIllinoisEmailUtils");
 
 describe("newJobIllinoisEmailUtils", () => {
   test("builds a 24-to-48 hour old window by default", () => {

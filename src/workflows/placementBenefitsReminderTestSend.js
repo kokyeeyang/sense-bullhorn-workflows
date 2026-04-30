@@ -1,11 +1,11 @@
 require("dotenv").config();
 const fs = require("node:fs/promises");
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { SparkPostClient } = require("./sparkPostClient");
-const { BENEFITS_REMINDER_STAGES } = require("./placementBenefitsReminderUtils");
-const { buildJsonArtifactPath } = require("./workflowRuntime");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { SparkPostClient } = require("../clients/sparkPostClient");
+const { BENEFITS_REMINDER_STAGES } = require("../utils/placementBenefitsReminderUtils");
+const { buildJsonArtifactPath } = require("../utils/workflowRuntime");
 
 function buildDummyPlacements() {
   return [

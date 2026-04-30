@@ -1,14 +1,14 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
-const { SparkPostClient } = require("./sparkPostClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
+const { SparkPostClient } = require("../clients/sparkPostClient");
 const {
   buildPlacementTerminationRecipient,
   isTerminatedPlacementStatusChange,
-} = require("./placementTerminationEmailUtils");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+} = require("../utils/placementTerminationEmailUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 const SKIPPED_EVENTS_PREVIEW_LIMIT = 25;
 

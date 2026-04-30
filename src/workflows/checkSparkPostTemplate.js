@@ -1,8 +1,8 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { SparkPostClient } = require("./sparkPostClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { SparkPostClient } = require("../clients/sparkPostClient");
 
 async function run() {
   const config = loadConfig();

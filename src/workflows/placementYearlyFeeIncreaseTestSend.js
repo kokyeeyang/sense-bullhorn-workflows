@@ -1,10 +1,10 @@
 require("dotenv").config();
 const fs = require("node:fs/promises");
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { SparkPostClient } = require("./sparkPostClient");
-const { buildJsonArtifactPath } = require("./workflowRuntime");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { SparkPostClient } = require("../clients/sparkPostClient");
+const { buildJsonArtifactPath } = require("../utils/workflowRuntime");
 
 function buildTestSparkPostPayload(config) {
   return {

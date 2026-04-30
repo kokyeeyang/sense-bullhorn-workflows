@@ -618,32 +618,32 @@ Notes:
 
 ## Files
 
-- `src/index.js`: Main runner.
-- `src/clientContactDncSync.js`: Combined client contact DNC runner.
-- `src/placementDatabaseEnrichmentSync.js`: Daily placement database enrichment runner.
-- `src/placementStatusSync.js`: Placement status transition runner.
-- `src/placementTerminationEmailSync.js`: Placement termination email runner.
-- `src/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
-- `src/placementStartReminderSync.js`: Placement start reminder enrichment runner.
-- `src/placementBenefitsReminderSync.js`: Combined day 10 / day 21 / day 26 placement benefits reminder runner.
-- `src/placementYearlyFeeIncreaseSync.js`: Placement yearly fee increase reminder runner.
-- `src/placementStartReminderUtils.js`: Placement reminder substitution and formatting helpers.
-- `src/placementBenefitsReminderUtils.js`: Placement benefits reminder date planning, filters, and SparkPost helpers.
-- `src/placementYearlyFeeIncreaseUtils.js`: Placement yearly fee increase filters and SparkPost helpers.
-- `src/placementTerminationEmailUtils.js`: Placement termination email helpers.
-- `src/interviewIllinoisEmailUtils.js`: Illinois interview filter and substitution helpers.
-- `src/sparkPostClient.js`: SparkPost transmission client.
-- `src/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
-- `src/clientCorporationKeyAccountSync.js`: Client corporation `customText7 -> Key Account` cleanup runner.
+- `src/workflows/index.js`: Main runner.
+- `src/workflows/clientContactDncSync.js`: Combined client contact DNC runner.
+- `src/workflows/placementDatabaseEnrichmentSync.js`: Daily placement database enrichment runner.
+- `src/workflows/placementStatusSync.js`: Placement status transition runner.
+- `src/workflows/placementTerminationEmailSync.js`: Placement termination email runner.
+- `src/workflows/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
+- `src/workflows/placementStartReminderSync.js`: Placement start reminder enrichment runner.
+- `src/workflows/placementBenefitsReminderSync.js`: Combined day 10 / day 21 / day 26 placement benefits reminder runner.
+- `src/workflows/placementYearlyFeeIncreaseSync.js`: Placement yearly fee increase reminder runner.
+- `src/utils/placementStartReminderUtils.js`: Placement reminder substitution and formatting helpers.
+- `src/utils/placementBenefitsReminderUtils.js`: Placement benefits reminder date planning, filters, and SparkPost helpers.
+- `src/utils/placementYearlyFeeIncreaseUtils.js`: Placement yearly fee increase filters and SparkPost helpers.
+- `src/utils/placementTerminationEmailUtils.js`: Placement termination email helpers.
+- `src/utils/interviewIllinoisEmailUtils.js`: Illinois interview filter and substitution helpers.
+- `src/clients/sparkPostClient.js`: SparkPost transmission client.
+- `src/workflows/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
+- `src/workflows/clientCorporationKeyAccountSync.js`: Client corporation `customText7 -> Key Account` cleanup runner.
 - `functionApp.js`: Azure Functions timer and HTTP entrypoints.
-- `src/workflowRuntime.js`: Shared workflow result, HTTP response, and JSON artifact helpers.
-- `src/bullhornClient.js`: Bullhorn auth/search/update calls.
-- `src/phoneUtils.js`: Phone parsing and mapping logic.
-- `src/clientContactDncSyncUtils.js`: Client contact DNC filters, transition checks, and patch helpers.
-- `src/placementDatabaseEnrichmentUtils.js`: Placement database enrichment filters and patch helpers.
-- `src/placementUtils.js`: Placement transition mapping helpers.
-- `src/clientCorporation360Utils.js`: Client corporation cleanup filters and patch helpers.
-- `src/clientCorporationKeyAccountUtils.js`: Client corporation key account cleanup filters and patch helpers.
-- `src/areaCodeToState.js`: Area-code -> state map.
-- `src/callingCodeToCountryId.js`: Calling-code -> countryID map.
-- `src/countryIdToCountry.js`: CountryID -> `{ countryCode, countryName }` map.
+- `src/utils/workflowRuntime.js`: Shared workflow result, HTTP response, and JSON artifact helpers.
+- `src/clients/bullhornClient.js`: Bullhorn auth/search/update calls.
+- `src/helpers/phoneUtils.js`: Phone parsing and mapping logic.
+- `src/utils/clientContactDncSyncUtils.js`: Client contact DNC filters, transition checks, and patch helpers.
+- `src/utils/placementDatabaseEnrichmentUtils.js`: Placement database enrichment filters and patch helpers.
+- `src/utils/placementUtils.js`: Placement transition mapping helpers.
+- `src/utils/clientCorporation360Utils.js`: Client corporation cleanup filters and patch helpers.
+- `src/utils/clientCorporationKeyAccountUtils.js`: Client corporation key account cleanup filters and patch helpers.
+- `src/helpers/areaCodeToState.js`: Area-code -> state map.
+- `src/helpers/callingCodeToCountryId.js`: Calling-code -> countryID map.
+- `src/helpers/countryIdToCountry.js`: CountryID -> `{ countryCode, countryName }` map.

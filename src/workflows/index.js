@@ -1,10 +1,10 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
-const { inferAddressUpdateFromCandidate } = require("./phoneUtils");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
+const { inferAddressUpdateFromCandidate } = require("../helpers/phoneUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 function epochSecondsFromDate(date) {
   return Math.floor(date.getTime() / 1000);

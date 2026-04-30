@@ -1,4 +1,4 @@
-const { buildDailyEmailRecords } = require("../src/workflowDailyEmailStore");
+const { buildDailyEmailRecords } = require("../src/stores/workflowDailyEmailStore");
 
 describe("workflowDailyEmailStore", () => {
   test("extracts email-oriented records from workflow comparison records", () => {

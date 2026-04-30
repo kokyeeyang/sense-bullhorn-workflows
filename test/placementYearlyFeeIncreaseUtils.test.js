@@ -2,7 +2,7 @@ const {
   buildPlacementYearlyFeeIncreaseRecipient,
   buildUtcMonthOffsetDayWindow,
   matchesYearlyFeeIncreasePlacement,
-} = require("../src/placementYearlyFeeIncreaseUtils");
+} = require("../src/utils/placementYearlyFeeIncreaseUtils");
 
 test("builds an 11-month offset UTC day window", () => {
   expect(

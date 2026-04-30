@@ -1,4 +1,4 @@
-const { buildTestSparkPostPayload } = require("../src/placementYearlyFeeIncreaseTestSend");
+const { buildTestSparkPostPayload } = require("../src/workflows/placementYearlyFeeIncreaseTestSend");
 
 describe("placementYearlyFeeIncreaseTestSend", () => {
   test("builds the expected SparkPost payload", () => {

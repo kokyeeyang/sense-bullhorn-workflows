@@ -34,6 +34,7 @@ const DO_NOT_CONTACT_STATUS = "do not contact";
 const HTML_TEMPLATE_PATH = path.join(
   __dirname,
   "..",
+  "..",
   "templates",
   "us-contract-performance-checkin.html",
 );

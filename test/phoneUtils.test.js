@@ -1,4 +1,4 @@
-const { inferAddressUpdateFromCandidate } = require("../src/phoneUtils");
+const { inferAddressUpdateFromCandidate } = require("../src/helpers/phoneUtils");
 
 test("maps US +1 number by area code", () => {
   const result = inferAddressUpdateFromCandidate({

@@ -2,9 +2,9 @@ require("dotenv").config();
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { SparkPostClient } = require("./sparkPostClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { SparkPostClient } = require("../clients/sparkPostClient");
 
 function buildTestSparkPostPayload(config) {
   return {

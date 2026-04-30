@@ -3,7 +3,7 @@ const {
   buildBenefitsReminderTransmission,
   buildDateBeginQueryDatesForStage,
   matchesBenefitsReminderPlacement,
-} = require("../src/placementBenefitsReminderUtils");
+} = require("../src/utils/placementBenefitsReminderUtils");
 
 describe("placementBenefitsReminderUtils", () => {
   test("builds the exact weekday query date for a normal business day", () => {

@@ -1,11 +1,11 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
-const { SparkPostClient } = require("./sparkPostClient");
-const { buildSparkPostRecipient } = require("./placementStartReminderUtils");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
+const { SparkPostClient } = require("../clients/sparkPostClient");
+const { buildSparkPostRecipient } = require("../utils/placementStartReminderUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 function buildUtcDayWindow({
   baseDate = new Date(),

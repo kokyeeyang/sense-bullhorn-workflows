@@ -3,7 +3,7 @@ const {
   buildFullName,
   buildSparkPostRecipient,
   formatDateBegin,
-} = require("../src/placementStartReminderUtils");
+} = require("../src/utils/placementStartReminderUtils");
 
 describe("placementStartReminderUtils", () => {
   test("formats names, addresses, and SparkPost substitution data", () => {

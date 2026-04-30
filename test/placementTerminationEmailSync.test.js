@@ -3,11 +3,11 @@ jest.mock("node:fs/promises", () => ({
   writeFile: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("../src/config", () => ({
+jest.mock("../src/helpers/config", () => ({
   loadConfig: jest.fn(),
 }));
 
-jest.mock("../src/logger", () => ({
+jest.mock("../src/helpers/logger", () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -31,17 +31,17 @@ const mockSparkPostClient = {
   sendTransmission: jest.fn(),
 };
 
-jest.mock("../src/bullhornClient", () => ({
+jest.mock("../src/clients/bullhornClient", () => ({
   BullhornClient: jest.fn(() => mockBullhornClient),
 }));
 
-jest.mock("../src/sparkPostClient", () => ({
+jest.mock("../src/clients/sparkPostClient", () => ({
   SparkPostClient: jest.fn(() => mockSparkPostClient),
 }));
 
 const fs = require("node:fs/promises");
-const { loadConfig } = require("../src/config");
-const { getTemplateId, run } = require("../src/placementTerminationEmailSync");
+const { loadConfig } = require("../src/helpers/config");
+const { getTemplateId, run } = require("../src/workflows/placementTerminationEmailSync");
 
 describe("placementTerminationEmailSync", () => {
   beforeEach(() => {

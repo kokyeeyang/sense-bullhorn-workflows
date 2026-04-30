@@ -3,7 +3,7 @@ const {
   buildCandidatePatchFromPlacement,
   getFieldChanges,
   isTargetPlacementStatusChange,
-} = require("../src/placementUtils");
+} = require("../src/utils/placementUtils");
 
 test("matches qc approved to approved transition", () => {
   expect(

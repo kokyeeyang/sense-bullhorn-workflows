@@ -4,7 +4,7 @@ const {
   inferClientCorporation360Patch,
   isEmptyCustomText7,
   isExcludedClientCorporationName,
-} = require("../src/clientCorporation360Utils");
+} = require("../src/utils/clientCorporation360Utils");
 
 test("treats null and blank customText7 as empty", () => {
   expect(isEmptyCustomText7(null)).toBe(true);

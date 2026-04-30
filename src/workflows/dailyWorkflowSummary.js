@@ -1,14 +1,14 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { SparkPostClient } = require("./sparkPostClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { SparkPostClient } = require("../clients/sparkPostClient");
 const {
   buildHumanReadableDateTime,
   getEnvironmentLabel,
   listWorkflowRunLogsForDate,
-} = require("./workflowRunLogStore");
-const { serializeError, writeJsonArtifact } = require("./workflowRuntime");
+} = require("../stores/workflowRunLogStore");
+const { serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 const DAILY_SUMMARY_WORKFLOWS = [
   "placement-status-sync",

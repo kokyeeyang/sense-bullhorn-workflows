@@ -1,4 +1,4 @@
-﻿const countryIdToCountry = {
+const countryIdToCountry = {
   1: { countryCode: 'US', countryName: 'United States' },
   2185: { countryCode: 'AF', countryName: 'Afghanistan' },
   2186: { countryCode: 'AL', countryName: 'Albania' },

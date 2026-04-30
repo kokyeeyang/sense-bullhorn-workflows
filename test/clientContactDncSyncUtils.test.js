@@ -8,7 +8,7 @@ const {
   isBlockedContactName,
   isClientCorporationStatusDoNotContactActivation,
   isClientCorporationStatusReactivation,
-} = require("../src/clientContactDncSyncUtils");
+} = require("../src/utils/clientContactDncSyncUtils");
 
 test("waits until 60 hours have passed since contact dateAdded", () => {
   expect(

@@ -2,11 +2,11 @@ require("dotenv").config();
 
 const { TableClient } = require("@azure/data-tables");
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { buildPartitionKey, getEnvironmentLabel } = require("./workflowRunLogStore");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { buildPartitionKey, getEnvironmentLabel } = require("../stores/workflowRunLogStore");
 const { DAILY_COMPARISON_WORKFLOWS, resolveSummaryDates } = require("./dailyWorkflowComparisonSummary");
-const { serializeError } = require("./workflowRuntime");
+const { serializeError } = require("../utils/workflowRuntime");
 
 function isLikelyConnectionString(value) {
   return (

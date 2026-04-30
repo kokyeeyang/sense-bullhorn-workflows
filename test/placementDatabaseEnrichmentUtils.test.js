@@ -10,7 +10,7 @@ const {
   isPermPlacementDatabaseEnrichmentStatusChange,
   isPlacementDateLastModifiedMatch,
   isPlacementDateLastModifiedStatusEligible,
-} = require("../src/placementDatabaseEnrichmentUtils");
+} = require("../src/utils/placementDatabaseEnrichmentUtils");
 
 test("matches contract status changes from qc approved, submitted, or null to approved", () => {
   expect(

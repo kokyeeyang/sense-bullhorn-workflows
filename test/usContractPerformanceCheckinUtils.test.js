@@ -4,7 +4,7 @@ const {
   getPerformanceCheckinMatchDetails,
   matchesPerformanceCheckinPlacement,
   renderHtmlTemplate,
-} = require("../src/usContractPerformanceCheckinUtils");
+} = require("../src/utils/usContractPerformanceCheckinUtils");
 
 describe("usContractPerformanceCheckinUtils", () => {
   test("queries Friday dateBegin candidates for Saturday check-ins", () => {

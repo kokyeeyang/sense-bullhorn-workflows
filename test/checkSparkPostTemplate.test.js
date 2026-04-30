@@ -1,8 +1,8 @@
-jest.mock("../src/config", () => ({
+jest.mock("../src/helpers/config", () => ({
   loadConfig: jest.fn(),
 }));
 
-jest.mock("../src/logger", () => ({
+jest.mock("../src/helpers/logger", () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -14,12 +14,12 @@ const mockSparkPostClient = {
   getTemplate: jest.fn(),
 };
 
-jest.mock("../src/sparkPostClient", () => ({
+jest.mock("../src/clients/sparkPostClient", () => ({
   SparkPostClient: jest.fn(() => mockSparkPostClient),
 }));
 
-const { loadConfig } = require("../src/config");
-const { run } = require("../src/checkSparkPostTemplate");
+const { loadConfig } = require("../src/helpers/config");
+const { run } = require("../src/workflows/checkSparkPostTemplate");
 
 describe("checkSparkPostTemplate", () => {
   beforeEach(() => {

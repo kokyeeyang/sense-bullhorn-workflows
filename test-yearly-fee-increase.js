@@ -12,7 +12,7 @@
 
 require("dotenv").config();
 
-const { run } = require("./src/placementYearlyFeeIncreaseSync");
+const { run } = require("./src/workflows/placementYearlyFeeIncreaseSync");
 
 async function main() {
   console.log("🧪 Running placement yearly fee increase sync in TEST MODE");

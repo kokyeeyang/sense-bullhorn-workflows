@@ -3,11 +3,11 @@ jest.mock("node:fs/promises", () => ({
   writeFile: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("../src/config", () => ({
+jest.mock("../src/helpers/config", () => ({
   loadConfig: jest.fn(),
 }));
 
-jest.mock("../src/logger", () => ({
+jest.mock("../src/helpers/logger", () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -27,13 +27,13 @@ const mockBullhornClient = {
   updateClientContact: jest.fn(),
 };
 
-jest.mock("../src/bullhornClient", () => ({
+jest.mock("../src/clients/bullhornClient", () => ({
   BullhornClient: jest.fn(() => mockBullhornClient),
 }));
 
 const fs = require("node:fs/promises");
-const { loadConfig } = require("../src/config");
-const { buildDelayedScanWindow, run } = require("../src/clientContactDncSync");
+const { loadConfig } = require("../src/helpers/config");
+const { buildDelayedScanWindow, run } = require("../src/workflows/clientContactDncSync");
 
 describe("clientContactDncSync", () => {
   beforeEach(() => {

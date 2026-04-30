@@ -1,8 +1,8 @@
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { verifyResponseToken } = require("./harassmentTrainingUtils");
-const { saveHarassmentTrainingResponse } = require("./harassmentTrainingResponseStore");
-const { serializeError } = require("./workflowRuntime");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { verifyResponseToken } = require("../utils/harassmentTrainingUtils");
+const { saveHarassmentTrainingResponse } = require("../stores/harassmentTrainingResponseStore");
+const { serializeError } = require("../utils/workflowRuntime");
 
 function escapeHtml(value) {
   return String(value ?? "")

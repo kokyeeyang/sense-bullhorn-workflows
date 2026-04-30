@@ -1,4 +1,4 @@
-const { applyBullhornEnvironment } = require("../src/config");
+const { applyBullhornEnvironment } = require("../src/helpers/config");
 
 describe("config environment selection", () => {
   test("uses production Bullhorn variables when BULLHORN_ENV=production", () => {
@@ -104,7 +104,7 @@ describe("config environment selection", () => {
   });
 
   test("preserves blank Illinois interview filters so they can be disabled explicitly", () => {
-    const { loadConfig } = require("../src/config");
+    const { loadConfig } = require("../src/helpers/config");
 
     const originalEnv = process.env;
     process.env = {

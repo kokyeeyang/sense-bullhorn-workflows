@@ -1,7 +1,7 @@
 const {
   getIllinoisInterviewJobOrderMatchDetails,
   matchesIllinoisInterviewJobOrder,
-} = require("../src/interviewIllinoisEmailUtils");
+} = require("../src/utils/interviewIllinoisEmailUtils");
 
 describe("interviewIllinoisEmailUtils", () => {
   test("matches when jobOrder dateAdded is on or after the configured date", () => {

@@ -1,7 +1,7 @@
 const {
   buildTestSparkPostPayload,
   getTemplateId,
-} = require("../src/interviewIllinoisEmailTestSend");
+} = require("../src/workflows/interviewIllinoisEmailTestSend");
 
 describe("interviewIllinoisEmailTestSend", () => {
   test("prefers the dedicated Illinois interview template id", () => {

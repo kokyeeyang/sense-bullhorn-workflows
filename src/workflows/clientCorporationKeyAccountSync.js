@@ -1,16 +1,16 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
 const {
   getClientCorporationChanges,
   hasClientCorporationDelayPassed,
   inferClientCorporationKeyAccountPatch,
   isListedClientCorporationName,
-} = require("./clientCorporationKeyAccountUtils");
+} = require("../utils/clientCorporationKeyAccountUtils");
 const { calculateRollingFromEpoch, epochSecondsFromDateString } = require("./clientCorporation360Sync");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

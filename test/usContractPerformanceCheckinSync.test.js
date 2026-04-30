@@ -3,11 +3,11 @@ jest.mock("node:fs/promises", () => ({
   writeFile: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("../src/config", () => ({
+jest.mock("../src/helpers/config", () => ({
   loadConfig: jest.fn(),
 }));
 
-jest.mock("../src/logger", () => ({
+jest.mock("../src/helpers/logger", () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -30,22 +30,22 @@ const mockSparkPostClient = {
 const mockReserveWorkflowSend = jest.fn();
 const mockReleaseWorkflowSend = jest.fn();
 
-jest.mock("../src/bullhornClient", () => ({
+jest.mock("../src/clients/bullhornClient", () => ({
   BullhornClient: jest.fn(() => mockBullhornClient),
 }));
 
-jest.mock("../src/sparkPostClient", () => ({
+jest.mock("../src/clients/sparkPostClient", () => ({
   SparkPostClient: jest.fn(() => mockSparkPostClient),
 }));
 
-jest.mock("../src/workflowSendLockStore", () => ({
+jest.mock("../src/stores/workflowSendLockStore", () => ({
   reserveWorkflowSend: (...args) => mockReserveWorkflowSend(...args),
   releaseWorkflowSend: (...args) => mockReleaseWorkflowSend(...args),
 }));
 
 const fs = require("node:fs/promises");
-const { loadConfig } = require("../src/config");
-const { run } = require("../src/usContractPerformanceCheckinSync");
+const { loadConfig } = require("../src/helpers/config");
+const { run } = require("../src/workflows/usContractPerformanceCheckinSync");
 
 describe("usContractPerformanceCheckinSync", () => {
   beforeEach(() => {

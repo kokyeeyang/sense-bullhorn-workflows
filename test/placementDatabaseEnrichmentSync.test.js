@@ -3,11 +3,11 @@ jest.mock("node:fs/promises", () => ({
   writeFile: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("../src/config", () => ({
+jest.mock("../src/helpers/config", () => ({
   loadConfig: jest.fn(),
 }));
 
-jest.mock("../src/logger", () => ({
+jest.mock("../src/helpers/logger", () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -26,13 +26,13 @@ const mockBullhornClient = {
   updateCandidate: jest.fn(),
 };
 
-jest.mock("../src/bullhornClient", () => ({
+jest.mock("../src/clients/bullhornClient", () => ({
   BullhornClient: jest.fn(() => mockBullhornClient),
 }));
 
 const fs = require("node:fs/promises");
-const { loadConfig } = require("../src/config");
-const { run } = require("../src/placementDatabaseEnrichmentSync");
+const { loadConfig } = require("../src/helpers/config");
+const { run } = require("../src/workflows/placementDatabaseEnrichmentSync");
 
 describe("placementDatabaseEnrichmentSync", () => {
   beforeEach(() => {

@@ -1,15 +1,15 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
-const { SparkPostClient } = require("./sparkPostClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
+const { SparkPostClient } = require("../clients/sparkPostClient");
 const {
   buildNewJobIllinoisRecipient,
   buildUtcAgeWindow,
   matchesNewJobIllinoisJobOrder,
-} = require("./newJobIllinoisEmailUtils");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+} = require("../utils/newJobIllinoisEmailUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 function getTemplateId(config) {
   return config.NEW_JOB_ILLINOIS_SPARKPOST_TEMPLATE_ID || config.SPARKPOST_TEMPLATE_ID || null;

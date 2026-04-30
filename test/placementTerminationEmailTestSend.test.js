@@ -1,4 +1,4 @@
-const { buildTestSparkPostPayload } = require("../src/placementTerminationEmailTestSend");
+const { buildTestSparkPostPayload } = require("../src/workflows/placementTerminationEmailTestSend");
 
 describe("placementTerminationEmailTestSend", () => {
   test("builds the expected dummy payload for the termination template", () => {

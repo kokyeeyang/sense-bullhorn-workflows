@@ -1,4 +1,4 @@
-const { buildDailyEmailSummary } = require("../src/dailyWorkflowEmailSummary");
+const { buildDailyEmailSummary } = require("../src/workflows/dailyWorkflowEmailSummary");
 
 describe("dailyWorkflowEmailSummary", () => {
   test("builds per-workflow and aggregate email totals", () => {

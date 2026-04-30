@@ -1,39 +1,39 @@
 require("dotenv").config();
 
 const { app } = require("@azure/functions");
-const { loadConfig } = require("./src/config");
-const { logger } = require("./src/logger");
-const { run: runCandidateStateSync } = require("./src/index");
-const { run: runPlacementDatabaseEnrichmentSync } = require("./src/placementDatabaseEnrichmentSync");
-const { run: runPlacementStatusSync } = require("./src/placementStatusSync");
-const { run: runPlacementTerminationEmailSync } = require("./src/placementTerminationEmailSync");
-const { run: runInterviewIllinoisEmailSync } = require("./src/interviewIllinoisEmailSync");
-const { run: runNewJobIllinoisEmailSync } = require("./src/newJobIllinoisEmailSync");
-const { run: runPlacementStartReminderSync } = require("./src/placementStartReminderSync");
-const { run: runPlacementBenefitsReminderSync } = require("./src/placementBenefitsReminderSync");
-const { run: runPlacementBenefitsReminderTestSend } = require("./src/placementBenefitsReminderTestSend");
-const { run: runUsContractPerformanceCheckinSync } = require("./src/usContractPerformanceCheckinSync");
-const { run: runHarassmentTrainingSync } = require("./src/harassmentTrainingSync");
-const { handleHarassmentTrainingResponse } = require("./src/harassmentTrainingResponseHandler");
-const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/placementYearlyFeeIncreaseSync");
-const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/placementYearlyFeeIncreaseTestSend");
-const { run: runDailyWorkflowSummary } = require("./src/dailyWorkflowSummary");
-const { run: runDailyWorkflowComparisonSummary } = require("./src/dailyWorkflowComparisonSummary");
-const { run: runDailyWorkflowEmailSummary } = require("./src/dailyWorkflowEmailSummary");
-const { run: runClientContactDncSync } = require("./src/clientContactDncSync");
-const { run: runClientCorporation360Sync } = require("./src/clientCorporation360Sync");
-const { run: runClientCorporationKeyAccountSync } = require("./src/clientCorporationKeyAccountSync");
+const { loadConfig } = require("./src/helpers/config");
+const { logger } = require("./src/helpers/logger");
+const { run: runCandidateStateSync } = require("./src/workflows/index");
+const { run: runPlacementDatabaseEnrichmentSync } = require("./src/workflows/placementDatabaseEnrichmentSync");
+const { run: runPlacementStatusSync } = require("./src/workflows/placementStatusSync");
+const { run: runPlacementTerminationEmailSync } = require("./src/workflows/placementTerminationEmailSync");
+const { run: runInterviewIllinoisEmailSync } = require("./src/workflows/interviewIllinoisEmailSync");
+const { run: runNewJobIllinoisEmailSync } = require("./src/workflows/newJobIllinoisEmailSync");
+const { run: runPlacementStartReminderSync } = require("./src/workflows/placementStartReminderSync");
+const { run: runPlacementBenefitsReminderSync } = require("./src/workflows/placementBenefitsReminderSync");
+const { run: runPlacementBenefitsReminderTestSend } = require("./src/workflows/placementBenefitsReminderTestSend");
+const { run: runUsContractPerformanceCheckinSync } = require("./src/workflows/usContractPerformanceCheckinSync");
+const { run: runHarassmentTrainingSync } = require("./src/workflows/harassmentTrainingSync");
+const { handleHarassmentTrainingResponse } = require("./src/workflows/harassmentTrainingResponseHandler");
+const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/workflows/placementYearlyFeeIncreaseSync");
+const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/workflows/placementYearlyFeeIncreaseTestSend");
+const { run: runDailyWorkflowSummary } = require("./src/workflows/dailyWorkflowSummary");
+const { run: runDailyWorkflowComparisonSummary } = require("./src/workflows/dailyWorkflowComparisonSummary");
+const { run: runDailyWorkflowEmailSummary } = require("./src/workflows/dailyWorkflowEmailSummary");
+const { run: runClientContactDncSync } = require("./src/workflows/clientContactDncSync");
+const { run: runClientCorporation360Sync } = require("./src/workflows/clientCorporation360Sync");
+const { run: runClientCorporationKeyAccountSync } = require("./src/workflows/clientCorporationKeyAccountSync");
 const {
   buildHttpErrorPayload,
   buildHttpSuccessPayload,
   serializeError,
-} = require("./src/workflowRuntime");
-const { buildWorkflowComparisonRecords } = require("./src/workflowComparisonRecords");
-const { writeWorkflowComparisonRecordsSafe } = require("./src/workflowComparisonStore");
-const { writeWorkflowDailyChangeRecordsSafe } = require("./src/workflowDailyChangeStore");
-const { writeWorkflowDailyEmailRecordsSafe } = require("./src/workflowDailyEmailStore");
-const { buildWorkflowRunSummary } = require("./src/workflowRunSummary");
-const { writeWorkflowRunLogSafe } = require("./src/workflowRunLogStore");
+} = require("./src/utils/workflowRuntime");
+const { buildWorkflowComparisonRecords } = require("./src/utils/workflowComparisonRecords");
+const { writeWorkflowComparisonRecordsSafe } = require("./src/stores/workflowComparisonStore");
+const { writeWorkflowDailyChangeRecordsSafe } = require("./src/stores/workflowDailyChangeStore");
+const { writeWorkflowDailyEmailRecordsSafe } = require("./src/stores/workflowDailyEmailStore");
+const { buildWorkflowRunSummary } = require("./src/utils/workflowRunSummary");
+const { writeWorkflowRunLogSafe } = require("./src/stores/workflowRunLogStore");
 
 const config = loadConfig();
 

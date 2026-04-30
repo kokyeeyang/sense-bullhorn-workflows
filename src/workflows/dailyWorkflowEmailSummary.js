@@ -1,10 +1,10 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { getEnvironmentLabel } = require("./workflowRunLogStore");
-const { listWorkflowDailyEmailRecordsForDate } = require("./workflowDailyEmailStore");
-const { serializeError, writeJsonArtifact } = require("./workflowRuntime");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { getEnvironmentLabel } = require("../stores/workflowRunLogStore");
+const { listWorkflowDailyEmailRecordsForDate } = require("../stores/workflowDailyEmailStore");
+const { serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 const DAILY_EMAIL_WORKFLOWS = [
   "placement-termination-email-sync",

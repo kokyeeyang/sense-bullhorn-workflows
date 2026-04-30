@@ -1,7 +1,7 @@
 const {
   inferClientCorporationKeyAccountPatch,
   isListedClientCorporationName,
-} = require("../src/clientCorporationKeyAccountUtils");
+} = require("../src/utils/clientCorporationKeyAccountUtils");
 
 test("matches listed client corporation prefixes case-insensitively", () => {
   expect(isListedClientCorporationName("Siemens Energy APAC")).toBe(true);

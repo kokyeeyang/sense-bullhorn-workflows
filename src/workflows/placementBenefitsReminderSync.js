@@ -1,9 +1,9 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
-const { SparkPostClient } = require("./sparkPostClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
+const { SparkPostClient } = require("../clients/sparkPostClient");
 const {
   BENEFITS_REMINDER_STAGES,
   buildBenefitsReminderTransmission,
@@ -13,8 +13,8 @@ const {
   getBusinessDateKey,
   getStageTemplateId,
   matchesBenefitsReminderPlacement,
-} = require("./placementBenefitsReminderUtils");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+} = require("../utils/placementBenefitsReminderUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 function validateSparkPostConfig(config) {
   if (config.DRY_RUN) {

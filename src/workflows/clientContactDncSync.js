@@ -1,8 +1,8 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
 const { epochSecondsFromDateString } = require("./clientCorporation360Sync");
 const {
   buildDoNotContactPatch,
@@ -15,8 +15,8 @@ const {
   isClientCorporationStatusDoNotContactActivation,
   isClientCorporationStatusReactivation,
   isContactDoNotContact,
-} = require("./clientContactDncSyncUtils");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+} = require("../utils/clientContactDncSyncUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 const SKIPPED_CONTACTS_PREVIEW_LIMIT = 25;
 

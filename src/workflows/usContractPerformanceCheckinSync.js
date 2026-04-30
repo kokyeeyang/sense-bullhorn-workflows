@@ -1,9 +1,9 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
-const { SparkPostClient } = require("./sparkPostClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
+const { SparkPostClient } = require("../clients/sparkPostClient");
 const {
   buildDateBeginQueryDates,
   buildPerformanceCheckinTransmission,
@@ -14,12 +14,12 @@ const {
   getPerformanceCheckinMatchDetails,
   matchesPerformanceCheckinPlacement,
   SKIPPED_PREVIEW_LIMIT,
-} = require("./usContractPerformanceCheckinUtils");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+} = require("../utils/usContractPerformanceCheckinUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 const {
   releaseWorkflowSend,
   reserveWorkflowSend,
-} = require("./workflowSendLockStore");
+} = require("../stores/workflowSendLockStore");
 
 const WORKFLOW_NAME = "us-contract-performance-checkin-sync";
 

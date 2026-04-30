@@ -8,7 +8,7 @@ const {
   matchesConnecticutNewYorkPlacement,
   matchesIllinoisMainePlacement,
   verifyResponseToken,
-} = require("../src/harassmentTrainingUtils");
+} = require("../src/utils/harassmentTrainingUtils");
 
 describe("harassmentTrainingUtils", () => {
   test("matches Illinois and Maine onboarding placements case-insensitively", () => {

@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { BullhornClient } = require("../src/bullhornClient");
+const { BullhornClient } = require("../src/clients/bullhornClient");
 
 jest.mock("axios");
 

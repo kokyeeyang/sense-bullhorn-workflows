@@ -1,7 +1,7 @@
 const {
   buildPlacementTerminationRecipient,
   isTerminatedPlacementStatusChange,
-} = require("../src/placementTerminationEmailUtils");
+} = require("../src/utils/placementTerminationEmailUtils");
 
 test("matches any transition whose new placement status is terminated", () => {
   expect(

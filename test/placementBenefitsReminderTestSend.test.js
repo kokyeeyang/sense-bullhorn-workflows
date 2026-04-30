@@ -1,4 +1,4 @@
-const { buildTestSparkPostPayloads } = require("../src/placementBenefitsReminderTestSend");
+const { buildTestSparkPostPayloads } = require("../src/workflows/placementBenefitsReminderTestSend");
 
 describe("placementBenefitsReminderTestSend", () => {
   test("builds three stage payloads using the configured template ids", () => {

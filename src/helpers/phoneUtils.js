@@ -1,4 +1,4 @@
-﻿const { areaCodeToState } = require("./areaCodeToState");
+const { areaCodeToState } = require("./areaCodeToState");
 const { callingCodeToCountryId } = require("./callingCodeToCountryId");
 const { countryIdToCountry } = require("./countryIdToCountry");
 

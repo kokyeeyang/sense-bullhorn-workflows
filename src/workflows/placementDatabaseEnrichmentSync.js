@@ -1,17 +1,17 @@
 require("dotenv").config();
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
 const {
   buildCandidatePatchFromPlacementForDatabaseEnrichment,
   getFieldChanges,
   getPlacementDatabaseEnrichmentMatchReason,
-} = require("./placementDatabaseEnrichmentUtils");
+} = require("../utils/placementDatabaseEnrichmentUtils");
 const {
   writeComparisonRecordsSafe,
-} = require("./placementDatabaseEnrichmentComparisonStore");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+} = require("../stores/placementDatabaseEnrichmentComparisonStore");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 const SKIPPED_TRANSITIONS_PREVIEW_LIMIT = 25;
 

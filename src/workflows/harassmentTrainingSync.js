@@ -2,10 +2,10 @@ require("dotenv").config();
 
 const fs = require("node:fs/promises");
 
-const { loadConfig } = require("./config");
-const { logger } = require("./logger");
-const { BullhornClient } = require("./bullhornClient");
-const { SparkPostClient } = require("./sparkPostClient");
+const { loadConfig } = require("../helpers/config");
+const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
+const { SparkPostClient } = require("../clients/sparkPostClient");
 const {
   buildAttachmentName,
   buildHarassmentTrainingTransmission,
@@ -16,8 +16,8 @@ const {
   getAttachmentPaths,
   getBusinessDateKey,
   getIllinoisMaineMatchDetails,
-} = require("./harassmentTrainingUtils");
-const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("./workflowRuntime");
+} = require("../utils/harassmentTrainingUtils");
+const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 const SKIPPED_PREVIEW_LIMIT = 25;
 
