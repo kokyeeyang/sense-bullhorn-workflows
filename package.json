@@ -12,6 +12,7 @@
     "run:placement-database-enrichment-sync": "node src/workflows/placementDatabaseEnrichmentSync.js",
     "run:placement-status-sync": "node src/workflows/placementStatusSync.js",
     "run:placement-termination-email-sync": "node src/workflows/placementTerminationEmailSync.js",
+    "run:placement-termination-workflows-sync": "node src/workflows/placementTerminationWorkflowsSync.js",
     "run:placement-termination-email-test-send": "node src/workflows/placementTerminationEmailTestSend.js",
     "run:interview-illinois-email-sync": "node src/workflows/interviewIllinoisEmailSync.js",
     "run:new-job-illinois-email-sync": "node src/workflows/newJobIllinoisEmailSync.js",

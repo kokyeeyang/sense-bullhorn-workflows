@@ -7,6 +7,7 @@ const { run: runCandidateStateSync } = require("./src/workflows/index");
 const { run: runPlacementDatabaseEnrichmentSync } = require("./src/workflows/placementDatabaseEnrichmentSync");
 const { run: runPlacementStatusSync } = require("./src/workflows/placementStatusSync");
 const { run: runPlacementTerminationEmailSync } = require("./src/workflows/placementTerminationEmailSync");
+const { run: runPlacementTerminationWorkflowsSync } = require("./src/workflows/placementTerminationWorkflowsSync");
 const { run: runInterviewIllinoisEmailSync } = require("./src/workflows/interviewIllinoisEmailSync");
 const { run: runNewJobIllinoisEmailSync } = require("./src/workflows/newJobIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/workflows/placementStartReminderSync");
@@ -73,6 +74,15 @@ const workflowDefinitions = [
     logLabel: "placement termination email sync",
     run: runPlacementTerminationEmailSync,
     enableTimer: false,
+  },
+  {
+    functionName: "placementTerminationWorkflowsSync",
+    workflowName: "placement-termination-workflows-sync",
+    route: "workflows/placement-termination-workflows-sync",
+    scheduleEnv: "AZURE_PLACEMENT_TERMINATION_WORKFLOWS_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "placement termination workflows sync",
+    run: ({ targetDate } = {}) => runPlacementTerminationWorkflowsSync({ targetDate }),
   },
   {
     functionName: "placementStartReminderSync",

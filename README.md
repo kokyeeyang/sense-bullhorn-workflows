@@ -130,6 +130,15 @@ It also includes a placement termination email automation:
 5. Transform each matched placement into one SparkPost recipient for the owner.
 6. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
 
+It also includes a combined placement termination workflows automation for the 12 migrated Sense termination workflows:
+
+1. Runs as one Azure Function workflow with separate rule definitions for each state/process.
+2. Scans `Placement.dateEnd` windows and `PlacementEditHistory` status / termination-reason changes according to each rule.
+3. Applies lowercase-style comparisons for state, country, status, employment type, termination reason, and owner department checks.
+4. Handles Pacific-time 9am rules, one-day/hour delays, and Friday/Monday weekend adjustments per workflow.
+5. Sends SparkPost inline transmissions with attachments from `attachments/`.
+6. Keeps email bodies in dedicated HTML templates under `templates/termination-*.html`; exact duplicate copy is shared through reusable templates such as `termination-generic-unemployment-notice.html`, and plain-text content is derived from the same HTML so copy changes only need to be made once.
+
 It also includes an Illinois interview notification automation:
 
 1. Subscribe to Bullhorn `Appointment` insert events with a dedicated subscription queue.
@@ -209,6 +218,7 @@ npm run run:client-contact-dnc-sync
 npm run run:placement-database-enrichment-sync
 npm run run:placement-status-sync
 npm run run:placement-termination-email-sync
+npm run run:placement-termination-workflows-sync
 npm run run:interview-illinois-email-test-send
 npm run run:interview-illinois-email-sync
 npm run run:placement-start-reminder-sync
@@ -229,6 +239,7 @@ Placement benefits reminder test sends write `reports/placement-benefits-reminde
 Placement yearly fee increase runs write both `reports/placement-yearly-fee-increase-report-<timestamp>.json` and `reports/placement-yearly-fee-increase-sparkpost-payload-<timestamp>.json`.
 Placement yearly fee increase test sends write `reports/placement-yearly-fee-increase-sparkpost-test-payload-<timestamp>.json`.
 Placement termination email runs write both `reports/placement-termination-email-report-<timestamp>.json` and `reports/placement-termination-email-sparkpost-payload-<timestamp>.json`.
+Placement termination workflows runs write both `reports/placement-termination-workflows-report-<timestamp>.json` and `reports/placement-termination-workflows-sparkpost-payload-<timestamp>.json`.
 Illinois interview email runs write both `reports/interview-illinois-email-report-<timestamp>.json` and `reports/interview-illinois-email-sparkpost-payload-<timestamp>.json`.
 Illinois interview test sends write `reports/interview-illinois-email-sparkpost-test-payload-<timestamp>.json`.
 New Jobs Illinois email runs write both `reports/new-job-illinois-email-report-<timestamp>.json` and `reports/new-job-illinois-email-sparkpost-payload-<timestamp>.json`.
@@ -298,6 +309,8 @@ Optional:
 - `PLACEMENT_EVENT_MAX_EVENTS` (default: `100`)
 - `PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-termination-email`)
 - `PLACEMENT_TERMINATION_EVENT_MAX_EVENTS` (default: `100`)
+- `PLACEMENT_TERMINATION_WORKFLOWS_QUERY_COUNT` (default: `200`)
+- `PLACEMENT_TERMINATION_WORKFLOWS_TARGET_DATE` (optional; `YYYY-MM-DD` override for dry-run/backfill testing)
 - `INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID` (default: `sense-interview-illinois-email`)
 - `INTERVIEW_ILLINOIS_EVENT_MAX_EVENTS` (default: `100`)
 - `INTERVIEW_ILLINOIS_JOB_ORDER_STATE` (default: `Illinois`)
@@ -464,6 +477,7 @@ Azure schedules:
 - `AZURE_PLACEMENT_DATABASE_ENRICHMENT_SYNC_SCHEDULE` default: `0 1 0 * * *`
 - `AZURE_PLACEMENT_STATUS_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
+- `AZURE_PLACEMENT_TERMINATION_WORKFLOWS_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
 - `AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE` default: `0 0 17 * * *`
@@ -519,6 +533,7 @@ Routes:
 - `POST /api/workflows/placement-database-enrichment-sync`
 - `POST /api/workflows/placement-status-sync`
 - `POST /api/workflows/placement-termination-email-sync`
+- `POST /api/workflows/placement-termination-workflows-sync`
 - `POST /api/workflows/interview-illinois-email-sync`
 - `POST /api/workflows/placement-start-reminder-sync`
 - `POST /api/workflows/placement-benefits-reminder-sync`
@@ -623,6 +638,7 @@ Notes:
 - `src/workflows/placementDatabaseEnrichmentSync.js`: Daily placement database enrichment runner.
 - `src/workflows/placementStatusSync.js`: Placement status transition runner.
 - `src/workflows/placementTerminationEmailSync.js`: Placement termination email runner.
+- `src/workflows/placementTerminationWorkflowsSync.js`: Combined state/perm termination workflow runner.
 - `src/workflows/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
 - `src/workflows/placementStartReminderSync.js`: Placement start reminder enrichment runner.
 - `src/workflows/placementBenefitsReminderSync.js`: Combined day 10 / day 21 / day 26 placement benefits reminder runner.
@@ -631,6 +647,7 @@ Notes:
 - `src/utils/placementBenefitsReminderUtils.js`: Placement benefits reminder date planning, filters, and SparkPost helpers.
 - `src/utils/placementYearlyFeeIncreaseUtils.js`: Placement yearly fee increase filters and SparkPost helpers.
 - `src/utils/placementTerminationEmailUtils.js`: Placement termination email helpers.
+- `src/utils/placementTerminationWorkflowsUtils.js`: Termination workflow rules, scheduling, attachments, templates, and inline SparkPost helpers.
 - `src/utils/interviewIllinoisEmailUtils.js`: Illinois interview filter and substitution helpers.
 - `src/clients/sparkPostClient.js`: SparkPost transmission client.
 - `src/workflows/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
