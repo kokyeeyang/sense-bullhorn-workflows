@@ -769,6 +769,55 @@ class BullhornClient {
     return all;
   }
 
+  async queryPlacementsByDateEndRange({
+    restUrl,
+    bhRestToken,
+    startMs,
+    endMs,
+    count = 200,
+    fieldsOverride,
+  }) {
+    const fields = fieldsOverride || [
+      "id",
+      "status",
+      "dateBegin",
+      "dateEnd",
+      "employmentType",
+      "candidate(id,firstName,lastName,email)",
+      "clientCorporation(id,name)",
+      "jobOrder(id,title,owner(id,firstName,lastName,email))",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "query_placements_by_date_end_range",
+        fn: () =>
+          axios.get(`${restUrl}/query/Placement`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `dateEnd>=${startMs} AND dateEnd<${endMs}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
   async getCandidate({ restUrl, bhRestToken, candidateId }) {
     const url = `${restUrl}/entity/Candidate/${candidateId}`;
 
