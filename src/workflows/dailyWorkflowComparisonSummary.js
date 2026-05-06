@@ -3,19 +3,11 @@ require("dotenv").config();
 const { loadConfig } = require("../helpers/config");
 const { logger } = require("../helpers/logger");
 const { getEnvironmentLabel } = require("../stores/workflowRunLogStore");
-const { listWorkflowDailyChangeRecordsForDate } = require("../stores/workflowDailyChangeStore");
+const { listWorkflowDashboardMetricsByDateRange } = require("../stores/workflowDashboardStore");
+const { DASHBOARD_WORKFLOWS } = require("../utils/dashboardWorkflows");
 const { serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
-const DAILY_COMPARISON_WORKFLOWS = [
-  "candidate-state-sync",
-  "placement-status-sync",
-  "placement-database-enrichment-sync",
-  "placement-termination-email-sync",
-  "interview-illinois-email-sync",
-  "client-contact-dnc-sync",
-  "client-corporation-360-sync",
-  "client-corporation-key-account-sync",
-];
+const DAILY_COMPARISON_WORKFLOWS = DASHBOARD_WORKFLOWS;
 
 function resolveSummaryDate(targetDate) {
   if (targetDate) {
@@ -81,9 +73,9 @@ function resolveWorkflowNames(workflowName) {
   return [normalized];
 }
 
-function summarizeWorkflowRecords(records) {
+function summarizeWorkflowMetrics(records) {
   const totals = {
-    totalRecords: records.length,
+    totalRecords: 0,
     wouldUpdate: 0,
     updated: 0,
     wouldSendEmail: 0,
@@ -92,25 +84,12 @@ function summarizeWorkflowRecords(records) {
   };
 
   for (const record of records) {
-    switch (record.actionDecision) {
-      case "would-update":
-        totals.wouldUpdate += 1;
-        break;
-      case "updated":
-        totals.updated += 1;
-        break;
-      case "would-send-email":
-        totals.wouldSendEmail += 1;
-        break;
-      case "sent-email":
-        totals.sentEmail += 1;
-        break;
-      default:
-        if (record.actionDecision && record.actionDecision.startsWith("skipped")) {
-          totals.skipped += 1;
-        }
-        break;
-    }
+    totals.totalRecords += Number(record.comparisonRecordCount || 0);
+    totals.wouldUpdate += Number(record.wouldUpdateCount || 0);
+    totals.updated += Number(record.updatedCount || 0);
+    totals.wouldSendEmail += Number(record.wouldSendEmailCount || 0);
+    totals.sentEmail += Number(record.sentEmailCount || 0);
+    totals.skipped += Number(record.skippedActionCount || record.skippedCount || 0);
   }
 
   return totals;
@@ -120,9 +99,15 @@ function buildDailyComparisonSummary({ environment, summaryDate, workflowRecords
   const workflows = workflowRecords.map(({ workflowName, records }) => {
     return {
       workflowName,
-      totals: summarizeWorkflowRecords(records),
-      rawRecordCount: records.length,
-      dedupedRecordCount: records.length,
+      totals: summarizeWorkflowMetrics(records),
+      rawRecordCount: records.reduce(
+        (sum, record) => sum + Number(record.comparisonRecordCount || 0),
+        0,
+      ),
+      dedupedRecordCount: records.reduce(
+        (sum, record) => sum + Number(record.comparisonRecordCount || 0),
+        0,
+      ),
       ...(includeRecords ? { comparisonRecords: records } : {}),
     };
   });
@@ -212,10 +197,11 @@ async function run({ targetDate, workflowName, dateFrom, dateTo, includeRecords 
   for (const summaryDate of summaryDates) {
     const workflowRecords = [];
     for (const currentWorkflowName of workflowNames) {
-      const records = await listWorkflowDailyChangeRecordsForDate({
+      const records = await listWorkflowDashboardMetricsByDateRange({
         config,
         workflowName: currentWorkflowName,
-        runDate: summaryDate,
+        dateFrom: summaryDate,
+        dateTo: summaryDate,
       });
       workflowRecords.push({
         workflowName: currentWorkflowName,

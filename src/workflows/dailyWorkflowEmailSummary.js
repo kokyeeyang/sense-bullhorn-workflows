@@ -3,17 +3,11 @@ require("dotenv").config();
 const { loadConfig } = require("../helpers/config");
 const { logger } = require("../helpers/logger");
 const { getEnvironmentLabel } = require("../stores/workflowRunLogStore");
-const { listWorkflowDailyEmailRecordsForDate } = require("../stores/workflowDailyEmailStore");
+const { listWorkflowDashboardMetricsByDateRange } = require("../stores/workflowDashboardStore");
+const { DASHBOARD_EMAIL_WORKFLOWS } = require("../utils/dashboardWorkflows");
 const { serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
-const DAILY_EMAIL_WORKFLOWS = [
-  "placement-termination-email-sync",
-  "interview-illinois-email-sync",
-  "new-job-illinois-email-sync",
-  "placement-start-reminder-sync",
-  "placement-yearly-fee-increase-sync",
-  "placement-benefits-reminder-sync",
-];
+const DAILY_EMAIL_WORKFLOWS = DASHBOARD_EMAIL_WORKFLOWS;
 
 function resolveSummaryDate(targetDate) {
   if (targetDate) {
@@ -38,17 +32,15 @@ function resolveWorkflowNames(workflowName) {
 
 function summarizeWorkflowRecords(records) {
   const totals = {
-    totalEmails: records.length,
+    totalEmails: 0,
     wouldSendEmail: 0,
     sentEmail: 0,
   };
 
   for (const record of records) {
-    if (record.actionDecision === "would-send-email") {
-      totals.wouldSendEmail += 1;
-    } else if (record.actionDecision === "sent-email") {
-      totals.sentEmail += 1;
-    }
+    totals.totalEmails += Number(record.totalEmailCount || 0);
+    totals.wouldSendEmail += Number(record.wouldSendEmailCount || 0);
+    totals.sentEmail += Number(record.sentEmailCount || 0);
   }
 
   return totals;
@@ -58,7 +50,10 @@ function buildDailyEmailSummary({ environment, summaryDate, workflowRecords, inc
   const workflows = workflowRecords.map(({ workflowName, records }) => ({
     workflowName,
     totals: summarizeWorkflowRecords(records),
-    totalRecipientRows: records.length,
+    totalRecipientRows: records.reduce(
+      (sum, record) => sum + Number(record.totalEmailCount || 0),
+      0,
+    ),
     ...(includeRecords ? { emailRecords: records } : {}),
   }));
 
@@ -114,10 +109,11 @@ async function run({ targetDate, workflowName, includeRecords = false } = {}) {
   );
 
   for (const currentWorkflowName of workflowNames) {
-    const records = await listWorkflowDailyEmailRecordsForDate({
+    const records = await listWorkflowDashboardMetricsByDateRange({
       config,
       workflowName: currentWorkflowName,
-      runDate: summaryDate,
+      dateFrom: summaryDate,
+      dateTo: summaryDate,
     });
     workflowRecords.push({
       workflowName: currentWorkflowName,

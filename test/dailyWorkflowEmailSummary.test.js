@@ -10,13 +10,13 @@ describe("dailyWorkflowEmailSummary", () => {
         {
           workflowName: "placement-termination-email-sync",
           records: [
-            { actionDecision: "would-send-email" },
-            { actionDecision: "sent-email" },
+            { totalEmailCount: 1, wouldSendEmailCount: 1, sentEmailCount: 0 },
+            { totalEmailCount: 1, wouldSendEmailCount: 0, sentEmailCount: 1 },
           ],
         },
         {
           workflowName: "placement-start-reminder-sync",
-          records: [{ actionDecision: "would-send-email" }],
+          records: [{ totalEmailCount: 1, wouldSendEmailCount: 1, sentEmailCount: 0 }],
         },
       ],
     });

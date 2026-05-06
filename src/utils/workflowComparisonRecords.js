@@ -295,7 +295,7 @@ function buildPlacementEmailRecords({ workflowName, generatedAt, report, entityK
 }
 
 function buildPlacementReminderRecords({ workflowName, generatedAt, report }) {
-  return (report.placements || []).map((record) => ({
+  const matched = (report.placements || []).map((record) => ({
     ...buildCommonRecord({
       workflowName,
       generatedAt,
@@ -317,6 +317,29 @@ function buildPlacementReminderRecords({ workflowName, generatedAt, report }) {
     candidateId: record.placement?.candidate?.id || null,
     relatedId: record.owner?.id || null,
   }));
+
+  const skipped = (report.skippedPlacements || report.skippedItems || []).map((record) => ({
+    ...buildCommonRecord({
+      workflowName,
+      generatedAt,
+      recordType: "skipped-placement",
+      actionDecision: `skipped-${record.reason || "unknown"}`,
+      details: {
+        recipientEmail: record.recipient?.toEmail || null,
+        ccEmails: record.recipient?.ccEmails || [],
+        stage: record.stage?.label || null,
+        statusChange: record.change || record.statusChange || null,
+        changes: [],
+      },
+    }),
+    entityType: "placement",
+    entityId: record.placementId ?? record.placement?.id ?? null,
+    transactionId: record.transactionId || null,
+    candidateId: record.placement?.candidate?.id || null,
+    relatedId: record.owner?.id || null,
+  }));
+
+  return [...matched, ...skipped];
 }
 
 function buildJobOrderEmailRecords({ workflowName, generatedAt, report }) {
@@ -386,6 +409,7 @@ function buildWorkflowComparisonRecords({ workflowName, result }) {
     case "us-contract-performance-checkin-sync":
     case "harassment-training-sync":
     case "placement-yearly-fee-increase-sync":
+    case "placement-termination-workflows-sync":
       return buildPlacementReminderRecords({ workflowName, generatedAt, report });
     case "new-job-illinois-email-sync":
       return buildJobOrderEmailRecords({ workflowName, generatedAt, report });

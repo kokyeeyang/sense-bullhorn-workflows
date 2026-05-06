@@ -24,15 +24,14 @@ const { run: runDailyWorkflowEmailSummary } = require("./src/workflows/dailyWork
 const { run: runClientContactDncSync } = require("./src/workflows/clientContactDncSync");
 const { run: runClientCorporation360Sync } = require("./src/workflows/clientCorporation360Sync");
 const { run: runClientCorporationKeyAccountSync } = require("./src/workflows/clientCorporationKeyAccountSync");
+const { run: runWorkflowDashboardRetentionCleanup } = require("./src/workflows/workflowDashboardRetentionCleanup");
 const {
   buildHttpErrorPayload,
   buildHttpSuccessPayload,
   serializeError,
 } = require("./src/utils/workflowRuntime");
 const { buildWorkflowComparisonRecords } = require("./src/utils/workflowComparisonRecords");
-const { writeWorkflowComparisonRecordsSafe } = require("./src/stores/workflowComparisonStore");
-const { writeWorkflowDailyChangeRecordsSafe } = require("./src/stores/workflowDailyChangeStore");
-const { writeWorkflowDailyEmailRecordsSafe } = require("./src/stores/workflowDailyEmailStore");
+const { writeWorkflowDashboardMetricsSafe } = require("./src/stores/workflowDashboardStore");
 const { buildWorkflowRunSummary } = require("./src/utils/workflowRunSummary");
 const { writeWorkflowRunLogSafe } = require("./src/stores/workflowRunLogStore");
 
@@ -226,6 +225,15 @@ const workflowDefinitions = [
       runDailyWorkflowEmailSummary({ targetDate, workflowName, includeRecords }),
     enableTimer: false,
   },
+  {
+    functionName: "workflowDashboardRetentionCleanup",
+    workflowName: "workflow-dashboard-retention-cleanup",
+    route: "workflows/workflow-dashboard-retention-cleanup",
+    scheduleEnv: "AZURE_WORKFLOW_RETENTION_CLEANUP_SCHEDULE",
+    defaultSchedule: "0 45 23 * * *",
+    logLabel: "workflow dashboard retention cleanup",
+    run: runWorkflowDashboardRetentionCleanup,
+  },
 ];
 
 function createTimerHandler(definition) {
@@ -255,20 +263,14 @@ function createTimerHandler(definition) {
         status: "success",
         summary,
       });
-      await writeWorkflowComparisonRecordsSafe({
+      await writeWorkflowDashboardMetricsSafe({
         config,
         logger,
-        records: comparisonRecords,
-      });
-      await writeWorkflowDailyChangeRecordsSafe({
-        config,
-        logger,
-        records: comparisonRecords,
-      });
-      await writeWorkflowDailyEmailRecordsSafe({
-        config,
-        logger,
-        records: comparisonRecords,
+        workflowName: definition.workflowName,
+        finishedAt,
+        status: "success",
+        summary,
+        comparisonRecords,
       });
     } catch (error) {
       const finishedAt = new Date().toISOString();
@@ -341,20 +343,14 @@ function createHttpHandler(definition) {
         status: "success",
         summary,
       });
-      await writeWorkflowComparisonRecordsSafe({
+      await writeWorkflowDashboardMetricsSafe({
         config,
         logger,
-        records: comparisonRecords,
-      });
-      await writeWorkflowDailyChangeRecordsSafe({
-        config,
-        logger,
-        records: comparisonRecords,
-      });
-      await writeWorkflowDailyEmailRecordsSafe({
-        config,
-        logger,
-        records: comparisonRecords,
+        workflowName: definition.workflowName,
+        finishedAt,
+        status: "success",
+        summary,
+        comparisonRecords,
       });
 
       return {

@@ -8,16 +8,10 @@ const {
   getEnvironmentLabel,
   listWorkflowRunLogsForDate,
 } = require("../stores/workflowRunLogStore");
+const { DASHBOARD_WORKFLOWS } = require("../utils/dashboardWorkflows");
 const { serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
-const DAILY_SUMMARY_WORKFLOWS = [
-  "placement-status-sync",
-  "placement-termination-email-sync",
-  "interview-illinois-email-sync",
-  "client-contact-dnc-sync",
-  "client-corporation-360-sync",
-  "client-corporation-key-account-sync",
-];
+const DAILY_SUMMARY_WORKFLOWS = DASHBOARD_WORKFLOWS;
 
 function resolveSummaryDate(targetDate) {
   if (targetDate) {

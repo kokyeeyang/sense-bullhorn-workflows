@@ -185,21 +185,41 @@ If an Illinois job is not visible in the daily email summary yet, check these in
 - `WEBSITE_TIME_ZONE` changes when the daily timer fires.
 - `AZURE_NEW_JOB_ILLINOIS_EMAIL_SCHEDULE` overrides the default `07:00` schedule.
 - `DRY_RUN=true` records the email as `would-send-email`; `DRY_RUN=false` records it as `sent-email`.
-- `AZURE_WORKFLOW_DAILY_EMAIL_TABLE_NAME` controls which table the summary API reads. The default is `WorkflowDailyEmailRecords`.
+- `AZURE_WORKFLOW_DASHBOARD_BY_DAY_TABLE_NAME` controls the aggregate day table that the summary API reads.
 
-The `daily-workflow-email-summary` API does not read the JSON files in `reports/`. It reads normalized recipient-level rows from Azure Table Storage. The partition key for this workflow is:
+The `daily-workflow-email-summary` API does not read the JSON files in `reports/`. It reads aggregate workflow/day rows from Azure Table Storage. The month partition key for dashboard-by-day reads is:
 
 ```text
-{environment}|new-job-illinois-email-sync|{YYYY-MM-DD}
+{environment}|{YYYY-MM}
 ```
 
 For example:
 
 ```text
-production|new-job-illinois-email-sync|2026-04-17
+production|2026-04
 ```
 
-Local runs such as `npm run run:new-job-illinois-email-sync` write report JSON files, but they do not write `WorkflowDailyEmailRecords`. Those table rows are written by the Azure Functions wrapper in `functionApp.js` after the workflow runs through the timer or HTTP endpoint.
+Within that partition, each row key is:
+
+```text
+{YYYY-MM-DD}|{workflowName}
+```
+
+For example:
+
+```text
+2026-04-17|new-job-illinois-email-sync
+```
+
+Local runs such as `npm run run:new-job-illinois-email-sync` write report JSON files, but they do not write dashboard table rows. Those aggregate rows are written by the Azure Functions wrapper in `functionApp.js` after the workflow runs through the timer or HTTP endpoint.
+
+Dashboard storage now uses an aggregate-first model. Instead of persisting raw comparison rows, field-level change rows, and recipient-level email rows for the frontend, the Azure Functions wrapper writes:
+
+1. `WorkflowRunLogs` for lightweight recent run history
+2. `WorkflowDashboardByDay` for per-day, per-workflow dashboard reads
+3. `WorkflowDashboardByWorkflow` for per-workflow trend reads
+
+These aggregate tables keep the same core meanings such as successful items, failed items, skipped items, update counts, email counts, field counts, skip reason counts, and action-decision counts, but they store them precomputed per workflow/day instead of as raw event rows.
 
 ## Important security note
 
