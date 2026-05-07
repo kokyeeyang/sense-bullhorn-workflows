@@ -118,7 +118,7 @@ const workflowDefinitions = [
     workflowName: "so-how-did-we-do-feedback-sync",
     route: "workflows/so-how-did-we-do-feedback-sync",
     scheduleEnv: "AZURE_SO_HOW_DID_WE_DO_FEEDBACK_SCHEDULE",
-    defaultSchedule: "0 0 * * * *",
+    defaultSchedule: "0 0 11 * * *",
     logLabel: "SO How Did We Do feedback sync",
     run: ({ targetDate } = {}) => runSoHowDidWeDoFeedbackSync({ targetDate }),
   },

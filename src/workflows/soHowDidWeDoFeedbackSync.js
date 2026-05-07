@@ -197,14 +197,12 @@ async function run({ targetDate } = {}) {
   const sparkPost = new SparkPostClient({ config, logger });
   const business = getBusinessDateParts();
   const businessDateKey = targetDate || config.SO_HOW_DID_WE_DO_TARGET_DATE || business.dateKey;
-  const forceTimedRules = Boolean(targetDate || config.SO_HOW_DID_WE_DO_TARGET_DATE);
   const queryCount = config.SO_HOW_DID_WE_DO_QUERY_COUNT || 200;
 
   logger.info(
     {
       dryRun: config.DRY_RUN,
       businessDate: businessDateKey,
-      businessHour: business.hour,
       ruleCount: RULES.length,
       queryCount,
     },
@@ -229,12 +227,10 @@ async function run({ targetDate } = {}) {
     const rulePlan = buildRuleExecutionPlan({
       rule,
       businessDateKey,
-      businessHour: business.hour,
-      force: forceTimedRules,
     });
     rulePlans.push(rulePlan);
 
-    if (!rulePlan.timedRuleDue || !rulePlan.queryDate) {
+    if (!rulePlan.queryDate) {
       continue;
     }
 
@@ -453,7 +449,6 @@ async function run({ targetDate } = {}) {
     generatedAt: new Date().toISOString(),
     dryRun: config.DRY_RUN,
     businessDate: businessDateKey,
-    businessHour: business.hour,
     rulePlans,
     querySummaries,
     reminderQuerySummaries,

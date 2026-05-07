@@ -58,7 +58,7 @@ describe("soHowDidWeDoFeedbackUtils", () => {
     ]);
   });
 
-  test("builds 1-10 survey links that verify against the generic workflow token helper", () => {
+  test("builds a single survey link that verifies against the generic workflow token helper", () => {
     const rule = RULES.find((item) => item.key === "candidate-start-contract");
     const transmission = buildInitialTransmission({
       rule,
@@ -83,17 +83,19 @@ describe("soHowDidWeDoFeedbackUtils", () => {
       },
     });
 
-    const url = new URL(transmission.tracking.linksByAnswer["10"]);
+    const url = new URL(transmission.tracking.surveyUrl);
     const payload = verifyWorkflowSurveyToken({
       token: url.searchParams.get("token"),
       secret: "secret",
       expectedWorkflow: WORKFLOW_NAME,
-      expectedAnswer: "10",
+      allowMissingAnswer: true,
     });
 
     expect(SCORE_OPTIONS).toHaveLength(10);
     expect(transmission.content.html).toContain(SURVEY_QUESTION_TEXT);
-    expect(payload.answer).toBe("10");
+    expect(transmission.content.html).toContain("Share feedback");
+    expect(transmission.tracking.surveyUrl).toContain("token=");
+    expect(payload.answer).toBeNull();
     expect(payload.surveyKey).toBeTruthy();
     expect(payload.trackingPartitionKey).toContain(WORKFLOW_NAME);
   });

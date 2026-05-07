@@ -290,10 +290,6 @@ function buildReminderDueDates({ businessDateKey }) {
   return [businessDateKey];
 }
 
-function isTimedRuleDue({ businessHour, force = false }) {
-  return force || Number(businessHour) === SEND_HOUR;
-}
-
 function normalizeEmploymentType(value) {
   return normalizeLower(value).replace(/\s+/g, "");
 }
@@ -350,10 +346,10 @@ function buildSurveyKey({ ruleKey, placementId, recipientType, recipientEmail })
   return crypto.createHash("sha256").update(fingerprint).digest("hex");
 }
 
-function buildSurveyLinks({ surveyKey, ruleKey, placement, recipientEmail, config, reminderDueDate }) {
+function buildSurveyUrl({ surveyKey, ruleKey, placement, recipientEmail, config, reminderDueDate }) {
   const baseUrl = normalizeString(config.WORKFLOW_SURVEY_RESPONSE_BASE_URL);
   if (!baseUrl) {
-    return {};
+    return "";
   }
 
   const partitionKey = buildTrackingPartitionKey({
@@ -365,44 +361,39 @@ function buildSurveyLinks({ surveyKey, ruleKey, placement, recipientEmail, confi
     surveyKey,
   });
 
-  return Object.fromEntries(
-    SCORE_OPTIONS.map((answer) => {
-      const token = buildWorkflowSurveyToken({
-        secret: config.WORKFLOW_SURVEY_RESPONSE_SIGNING_SECRET,
-        payload: {
-          workflowName: WORKFLOW_NAME,
-          placementId: placement?.id ?? null,
-          candidateId: placement?.candidate?.id ?? null,
-          ownerId: getOwner(placement)?.id ?? null,
-          ownerEmail: normalizeLower(getOwner(placement)?.email) || null,
-          recipientEmail,
-          questionId: SURVEY_QUESTION_ID,
-          questionText: SURVEY_QUESTION_TEXT,
-          answer,
-          issuedAt: new Date().toISOString(),
-          surveyKey,
-          trackingPartitionKey: partitionKey,
-          trackingRowKey: rowKey,
-          metadata: {
-            ruleKey,
-            recipientType: placement?.candidate?.email && normalizeLower(placement.candidate.email) === recipientEmail
-              ? "candidate"
-              : "client-contact",
-          },
-        },
-      });
-      const url = new URL(baseUrl);
-      url.searchParams.set("token", token);
-      url.searchParams.set("answer", answer);
-      return [answer, url.toString()];
-    }),
-  );
+  const token = buildWorkflowSurveyToken({
+    secret: config.WORKFLOW_SURVEY_RESPONSE_SIGNING_SECRET,
+    payload: {
+      workflowName: WORKFLOW_NAME,
+      placementId: placement?.id ?? null,
+      candidateId: placement?.candidate?.id ?? null,
+      ownerId: getOwner(placement)?.id ?? null,
+      ownerEmail: normalizeLower(getOwner(placement)?.email) || null,
+      recipientEmail,
+      questionId: SURVEY_QUESTION_ID,
+      questionText: SURVEY_QUESTION_TEXT,
+      issuedAt: new Date().toISOString(),
+      surveyKey,
+      trackingPartitionKey: partitionKey,
+      trackingRowKey: rowKey,
+      metadata: {
+        ruleKey,
+        recipientType:
+          placement?.candidate?.email && normalizeLower(placement.candidate.email) === recipientEmail
+            ? "candidate"
+            : "client-contact",
+      },
+    },
+  });
+  const url = new URL(baseUrl);
+  url.searchParams.set("token", token);
+  return url.toString();
 }
 
-function buildScoreScaleHtml(linksByAnswer) {
+function buildScoreScalePreviewHtml() {
   const cells = SCORE_OPTIONS.map((answer) => `
     <td style="padding:4px;">
-      <a href="${escapeHtml(linksByAnswer[answer] || "#")}" style="display:inline-block;min-width:34px;padding:10px 8px;border:1px solid #c7ced8;border-radius:6px;text-align:center;text-decoration:none;color:#202124;font-weight:700;background:#ffffff;">${answer}</a>
+      <span style="display:inline-block;min-width:34px;padding:10px 8px;border:1px solid #c7ced8;border-radius:6px;text-align:center;color:#202124;font-weight:700;background:#ffffff;">${answer}</span>
     </td>
   `).join("");
 
@@ -419,20 +410,32 @@ function buildScoreScaleHtml(linksByAnswer) {
   `;
 }
 
+function buildSurveyButtonHtml(surveyUrl, buttonLabel) {
+  const safeUrl = escapeHtml(surveyUrl || "#");
+  return `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0 12px;">
+      <tr>
+        <td>
+          <a href="${safeUrl}" style="display:inline-block;padding:12px 20px;border-radius:6px;background:#5630d3;color:#ffffff;text-decoration:none;font-weight:700;">${escapeHtml(buttonLabel)}</a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 12px;font-size:14px;line-height:21px;color:#667085;">You will be able to select a score from 1 to 10 on the next page.</p>
+    ${buildScoreScalePreviewHtml()}
+    <p style="margin:14px 0 0;font-size:12px;line-height:18px;color:#667085;">If the button does not open, use this link:<br><span style="word-break:break-all;">${safeUrl}</span></p>
+  `;
+}
+
 function getInitialQueryDate({ businessDateKey, rule }) {
   return addDays(businessDateKey, -Number(rule.delayDays || 0));
 }
 
-function buildRuleExecutionPlan({ rule, businessDateKey, businessHour, force = false }) {
-  const timedRuleDue = isTimedRuleDue({ businessHour, force });
+function buildRuleExecutionPlan({ rule, businessDateKey }) {
   return {
     ruleKey: rule.key,
     source: rule.source,
-    timedRuleDue,
     expectedPacificHour: SEND_HOUR,
-    businessHour: Number(businessHour),
-    queryDate: timedRuleDue ? getInitialQueryDate({ businessDateKey, rule }) : null,
-    skippedReason: timedRuleDue ? null : "outside-send-hour",
+    queryDate: getInitialQueryDate({ businessDateKey, rule }),
   };
 }
 
@@ -504,9 +507,9 @@ function buildIntroHtml(paragraphs) {
     .join("");
 }
 
-function buildInitialHtml({ rule, placement, linksByAnswer }) {
+function buildInitialHtml({ rule, placement, surveyUrl }) {
   const introHtml = buildIntroHtml(rule.introParagraphs || []);
-  const scaleHtml = buildScoreScaleHtml(linksByAnswer);
+  const scaleHtml = buildSurveyButtonHtml(surveyUrl, "Share feedback");
   const callToAction = rule.recipientType === "candidate"
     ? "Please click the link below to share your experience."
     : "Please click on the below link to share your experience.";
@@ -520,15 +523,15 @@ function buildInitialHtml({ rule, placement, linksByAnswer }) {
   });
 }
 
-function buildReminderHtml({ placement, rule, linksByAnswer }) {
+function buildReminderHtml({ placement, rule, surveyUrl }) {
   return renderTemplate(loadReminderTemplate(), {
     greeting_name: escapeHtml(resolveRecipientFirstName(placement, rule)),
-    scale_html: buildScoreScaleHtml(linksByAnswer),
+    scale_html: buildSurveyButtonHtml(surveyUrl, "Open feedback form"),
     question_text: escapeHtml(SURVEY_QUESTION_TEXT),
   });
 }
 
-function buildInitialText({ rule }) {
+function buildInitialText({ rule, surveyUrl }) {
   return [
     "Thank you for choosing to work with Spencer Ogden.",
     "",
@@ -537,18 +540,22 @@ function buildInitialText({ rule }) {
     SURVEY_QUESTION_TEXT,
     SCORE_OPTIONS.join(" "),
     `${SCORE_LEFT_LABEL} ... ${SCORE_RIGHT_LABEL}`,
+    "",
+    surveyUrl,
   ].filter(Boolean).join("\n");
 }
 
-function buildReminderText() {
+function buildReminderText({ surveyUrl }) {
   return [
     "Just a quick reminder to share your feedback on your recent experience with Spencer Ogden.",
     "",
-    "We would really appreciate it if you could take a moment to answer one simple question using the links below.",
+    "We would really appreciate it if you could take a moment to answer one simple question using the link below.",
     "",
     SURVEY_QUESTION_TEXT,
     SCORE_OPTIONS.join(" "),
     `${SCORE_LEFT_LABEL} ... ${SCORE_RIGHT_LABEL}`,
+    "",
+    surveyUrl,
     "",
     "Thank you,",
     "Spencer Ogden",
@@ -564,7 +571,7 @@ function buildInitialTransmission({ placement, rule, config, businessDateKey }) 
     recipientEmail: toEmail,
   });
   const reminderDueDate = addDays(businessDateKey, 3);
-  const linksByAnswer = buildSurveyLinks({
+  const surveyUrl = buildSurveyUrl({
     surveyKey,
     ruleKey: rule.key,
     placement,
@@ -579,8 +586,8 @@ function buildInitialTransmission({ placement, rule, config, businessDateKey }) 
       email: rule.senderEmail,
     },
     subject: rule.subject,
-    text: buildInitialText({ rule }),
-    html: buildInitialHtml({ rule, placement, linksByAnswer }),
+    text: buildInitialText({ rule, surveyUrl }),
+    html: buildInitialHtml({ rule, placement, surveyUrl }),
   };
 
   return {
@@ -592,7 +599,7 @@ function buildInitialTransmission({ placement, rule, config, businessDateKey }) 
     },
     tracking: {
       surveyKey,
-      linksByAnswer,
+      surveyUrl,
       reminderDueDate,
       recipientEmail: toEmail,
       recipientFirstName: resolveRecipientFirstName(placement, rule),
@@ -602,7 +609,7 @@ function buildInitialTransmission({ placement, rule, config, businessDateKey }) 
 
 function buildReminderTransmission({ entity }) {
   const context = JSON.parse(entity.contextJson || "{}");
-  const linksByAnswer = context.linksByAnswer || {};
+  const surveyUrl = normalizeString(context.surveyUrl);
   const rule = RULES.find((item) => item.key === entity.ruleKey);
 
   return {
@@ -612,14 +619,14 @@ function buildReminderTransmission({ entity }) {
         email: "sohowdidwedo@spencer-ogden.com",
       },
       subject: "Reminder: SO.... How did we do?",
-      text: buildReminderText(),
+      text: buildReminderText({ surveyUrl }),
       html: buildReminderHtml({
         placement: {
           candidate: { firstName: entity.recipientFirstName },
           clientContact: { firstName: entity.recipientFirstName },
         },
         rule,
-        linksByAnswer,
+        surveyUrl,
       }),
     },
     recipients: [{ address: { email: normalizeLower(entity.recipientEmail) } }],
@@ -629,7 +636,7 @@ function buildReminderTransmission({ entity }) {
     },
     tracking: {
       surveyKey: entity.surveyKey,
-      linksByAnswer,
+      surveyUrl,
       reminderDueDate: entity.reminderDueDate,
       recipientEmail: normalizeLower(entity.recipientEmail),
       recipientFirstName: entity.recipientFirstName || "",
@@ -677,7 +684,7 @@ function buildTrackingRecord({ placement, rule, businessDateKey, transmissionPay
     trackingStatus: "pending",
     tokenIssuedAt: initialSentAt,
     context: {
-      linksByAnswer: tracking.linksByAnswer,
+      surveyUrl: tracking.surveyUrl,
       ruleKey: rule.key,
       subject: rule.subject,
     },
@@ -755,5 +762,4 @@ module.exports = {
   buildUtcDayWindowFromDateKey,
   getBusinessDateParts,
   getMatchDetails,
-  isTimedRuleDue,
 };

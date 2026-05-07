@@ -40,7 +40,11 @@ function buildHtmlPage({ title, body }) {
     button { background: #5630d3; border: 0; color: #fff; padding: 12px 18px; border-radius: 6px; font-weight: 700; cursor: pointer; }
     .scale { display:grid; grid-template-columns:repeat(10, minmax(0, 1fr)); gap:8px; margin:16px 0 10px; }
     .scale div { border:1px solid #d0d5dd; border-radius:6px; padding:10px 0; text-align:center; font-weight:700; background:#f8fafc; }
+    .scale-option input { position:absolute; opacity:0; pointer-events:none; }
+    .scale-option label { display:block; border:1px solid #d0d5dd; border-radius:6px; padding:10px 0; text-align:center; font-weight:700; background:#f8fafc; cursor:pointer; }
+    .scale-option input:checked + label { background:#5630d3; color:#fff; border-color:#5630d3; }
     .labels { display:flex; justify-content:space-between; font-size:12px; color:#667085; }
+    .helper { font-size: 14px; color:#667085; }
   </style>
 </head>
 <body>
@@ -85,6 +89,26 @@ function buildScalePreview(answer) {
   `;
 }
 
+function buildScalePicker(selectedAnswer = "") {
+  return `
+    <div class="scale">
+      ${SCORE_OPTIONS.map(
+        (value) => `
+          <div class="scale-option">
+            <input type="radio" id="score-${value}" name="answer" value="${value}"${value === selectedAnswer ? " checked" : ""}>
+            <label for="score-${value}">${value}</label>
+          </div>
+        `,
+      ).join("")}
+    </div>
+    <div class="labels"><span>${escapeHtml(SCORE_LEFT_LABEL)}</span><span>${escapeHtml(SCORE_RIGHT_LABEL)}</span></div>
+  `;
+}
+
+function isValidScoreAnswer(answer) {
+  return SCORE_OPTIONS.includes(String(answer || ""));
+}
+
 async function handleSoHowDidWeDoFeedbackResponse(request, context) {
   const config = loadConfig();
 
@@ -92,12 +116,12 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
     const isPost = request.method.toUpperCase() === "POST";
     const form = isPost ? await readForm(request) : {};
     const token = isPost ? form.token : getQueryValue(request, "token");
-    const answer = isPost ? form.answer : getQueryValue(request, "answer");
+    const answer = isPost ? String(form.answer || "") : "";
     const payload = verifyWorkflowSurveyToken({
       token,
       secret: config.WORKFLOW_SURVEY_RESPONSE_SIGNING_SECRET,
-      expectedAnswer: answer,
       expectedWorkflow: WORKFLOW_NAME,
+      allowMissingAnswer: true,
     });
 
     if (payload.questionId && payload.questionId !== SURVEY_QUESTION_ID) {
@@ -106,16 +130,33 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
 
     if (!isPost) {
       return htmlResponse({
-        title: "Confirm response",
+        title: "Share feedback",
         body: `
-          <h1>Confirm your response</h1>
-          <p>Please confirm your answer before we record it.</p>
+          <h1>Share your feedback</h1>
+          <p>Please choose a score below and submit your response.</p>
           <p><strong>Question:</strong> ${escapeHtml(payload.questionText || SURVEY_QUESTION_TEXT)}</p>
-          ${buildScalePreview(payload.answer)}
+          <p class="helper">1 means ${escapeHtml(SCORE_LEFT_LABEL.toLowerCase())}. 10 means ${escapeHtml(SCORE_RIGHT_LABEL.toLowerCase())}.</p>
           <form method="post">
             <input type="hidden" name="token" value="${escapeHtml(token)}">
-            <input type="hidden" name="answer" value="${escapeHtml(payload.answer)}">
-            <button type="submit">Confirm response</button>
+            ${buildScalePicker()}
+            <button type="submit">Submit response</button>
+          </form>
+        `,
+      });
+    }
+
+    if (!isValidScoreAnswer(answer)) {
+      return htmlResponse({
+        status: 400,
+        title: "Choose a score",
+        body: `
+          <h1>Please choose a score</h1>
+          <p>Select a score from 1 to 10 before submitting your response.</p>
+          <p><strong>Question:</strong> ${escapeHtml(payload.questionText || SURVEY_QUESTION_TEXT)}</p>
+          <form method="post">
+            <input type="hidden" name="token" value="${escapeHtml(token)}">
+            ${buildScalePicker(answer)}
+            <button type="submit">Submit response</button>
           </form>
         `,
       });
@@ -131,6 +172,7 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
       config,
       response: {
         ...payload,
+        answer,
         submittedAt: new Date().toISOString(),
         userAgent,
         remoteAddress,
@@ -171,7 +213,7 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
             reminderDueDate: entity.reminderDueDate || "",
             reminderSentAt: entity.reminderSentAt || "",
             respondedAt: new Date().toISOString(),
-            responseAnswer: payload.answer,
+            responseAnswer: answer,
             trackingStatus: "responded",
             tokenIssuedAt: entity.tokenIssuedAt || "",
             context: JSON.parse(entity.contextJson || "{}"),
@@ -186,7 +228,7 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
       {
         workflowName: WORKFLOW_NAME,
         placementId: payload.placementId,
-        answer: payload.answer,
+        answer,
         surveyKey: payload.surveyKey || null,
       },
       "SO How Did We Do feedback response captured",
@@ -198,7 +240,7 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
         <h1>Thank you</h1>
         <p>Your response has been recorded.</p>
         <p><strong>Question:</strong> ${escapeHtml(payload.questionText || SURVEY_QUESTION_TEXT)}</p>
-        ${buildScalePreview(payload.answer)}
+        ${buildScalePreview(answer)}
       `,
     });
   } catch (error) {

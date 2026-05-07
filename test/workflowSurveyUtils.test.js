@@ -42,6 +42,35 @@ describe("workflowSurveyUtils", () => {
     );
   });
 
+  test("allows workflow survey tokens without an embedded answer when requested", () => {
+    const token = buildWorkflowSurveyToken({
+      secret: "secret",
+      payload: {
+        workflowName: "so-how-did-we-do-feedback-sync",
+        placementId: 123,
+        questionId: "so-how-did-we-do-nps",
+        questionText: "How likely are you to recommend Spencer Ogden to a friend or colleague?",
+        surveyKey: "abc123",
+      },
+    });
+
+    expect(
+      verifyWorkflowSurveyToken({
+        token,
+        secret: "secret",
+        expectedWorkflow: "so-how-did-we-do-feedback-sync",
+        allowMissingAnswer: true,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        workflowName: "so-how-did-we-do-feedback-sync",
+        placementId: 123,
+        answer: null,
+        surveyKey: "abc123",
+      }),
+    );
+  });
+
   test("builds stable survey response entities", () => {
     const entity = buildEntity({
       workflowName: "start-date-approval-reminder-sync",

@@ -37,7 +37,13 @@ function safeEqual(left, right) {
   return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function verifyWorkflowSurveyToken({ token, secret, expectedAnswer = null, expectedWorkflow = null }) {
+function verifyWorkflowSurveyToken({
+  token,
+  secret,
+  expectedAnswer = null,
+  expectedWorkflow = null,
+  allowMissingAnswer = false,
+}) {
   if (!secret) {
     throw new Error("Missing WORKFLOW_SURVEY_RESPONSE_SIGNING_SECRET");
   }
@@ -60,7 +66,7 @@ function verifyWorkflowSurveyToken({ token, secret, expectedAnswer = null, expec
   }
 
   const answer = normalizeSurveyAnswer(payload?.answer);
-  if (!answer) {
+  if (!answer && !allowMissingAnswer) {
     throw new Error("Invalid survey answer");
   }
 
@@ -82,7 +88,7 @@ function verifyWorkflowSurveyToken({ token, secret, expectedAnswer = null, expec
     recipientEmail: normalizeLower(payload?.recipientEmail || payload?.ownerEmail) || null,
     questionId: normalizeString(payload?.questionId) || null,
     questionText: normalizeString(payload?.questionText) || null,
-    answer,
+    answer: answer || null,
     issuedAt: normalizeString(payload?.issuedAt) || null,
     surveyKey: normalizeString(payload?.surveyKey) || null,
     trackingPartitionKey: normalizeString(payload?.trackingPartitionKey) || null,
