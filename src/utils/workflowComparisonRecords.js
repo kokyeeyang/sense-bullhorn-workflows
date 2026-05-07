@@ -405,6 +405,7 @@ function buildWorkflowComparisonRecords({ workflowName, result }) {
         entityType: "appointment",
       });
     case "placement-start-reminder-sync":
+    case "start-date-approval-reminder-sync":
     case "placement-benefits-reminder-sync":
     case "us-contract-performance-checkin-sync":
     case "harassment-training-sync":

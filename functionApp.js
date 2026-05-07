@@ -11,11 +11,15 @@ const { run: runPlacementTerminationWorkflowsSync } = require("./src/workflows/p
 const { run: runInterviewIllinoisEmailSync } = require("./src/workflows/interviewIllinoisEmailSync");
 const { run: runNewJobIllinoisEmailSync } = require("./src/workflows/newJobIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/workflows/placementStartReminderSync");
+const { run: runStartDateApprovalReminderSync } = require("./src/workflows/startDateApprovalReminderSync");
 const { run: runPlacementBenefitsReminderSync } = require("./src/workflows/placementBenefitsReminderSync");
 const { run: runPlacementBenefitsReminderTestSend } = require("./src/workflows/placementBenefitsReminderTestSend");
 const { run: runUsContractPerformanceCheckinSync } = require("./src/workflows/usContractPerformanceCheckinSync");
 const { run: runHarassmentTrainingSync } = require("./src/workflows/harassmentTrainingSync");
 const { handleHarassmentTrainingResponse } = require("./src/workflows/harassmentTrainingResponseHandler");
+const {
+  handleStartDateApprovalReminderResponse,
+} = require("./src/workflows/startDateApprovalReminderResponseHandler");
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/workflows/placementYearlyFeeIncreaseSync");
 const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/workflows/placementYearlyFeeIncreaseTestSend");
 const { run: runDailyWorkflowSummary } = require("./src/workflows/dailyWorkflowSummary");
@@ -91,6 +95,15 @@ const workflowDefinitions = [
     logLabel: "placement start reminder sync",
     run: runPlacementStartReminderSync,
     enableTimer: false,
+  },
+  {
+    functionName: "startDateApprovalReminderSync",
+    workflowName: "start-date-approval-reminder-sync",
+    route: "workflows/start-date-approval-reminder-sync",
+    scheduleEnv: "AZURE_START_DATE_APPROVAL_REMINDER_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "start date approval reminder sync",
+    run: ({ targetDate } = {}) => runStartDateApprovalReminderSync({ targetDate }),
   },
   {
     functionName: "placementBenefitsReminderSync",
@@ -420,4 +433,11 @@ app.http("harassmentTrainingResponse", {
   authLevel: "anonymous",
   route: "workflows/harassment-training/respond",
   handler: handleHarassmentTrainingResponse,
+});
+
+app.http("startDateApprovalReminderResponse", {
+  methods: ["GET", "POST"],
+  authLevel: "anonymous",
+  route: "workflows/start-date-approval-reminder/respond",
+  handler: handleStartDateApprovalReminderResponse,
 });
