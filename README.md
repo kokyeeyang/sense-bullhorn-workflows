@@ -245,6 +245,8 @@ Dashboard storage now uses an aggregate-first model. Instead of persisting raw c
 
 These aggregate tables keep the same core meanings such as successful items, failed items, skipped items, update counts, email counts, field counts, skip reason counts, and action-decision counts, but they store them precomputed per workflow/day instead of as raw event rows.
 
+PostgreSQL reporting is also supported through `POSTGRES_CONNECTION_STRING`. When it is configured, the repo dual-writes workflow run logs, dashboard aggregates, generic workflow survey tracking, generic workflow survey responses, and workflow comparison records to PostgreSQL while keeping the existing Azure Table operational writes in place. The daily summary and dashboard summary readers prefer PostgreSQL when rows are available and fall back to Azure Tables otherwise.
+
 ## Important security note
 
 The credentials shared in chat should be treated as compromised. Rotate all Bullhorn `client_secret`, user password, access tokens, and any related secrets before using this in production.

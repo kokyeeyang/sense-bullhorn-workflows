@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 
 const { TableClient } = require("@azure/data-tables");
+const { saveWorkflowSurveyResponsePostgres } = require("./postgresWorkflowSurveyStore");
 
 const { normalizeString } = require("../utils/workflowSurveyUtils");
 
@@ -92,22 +93,66 @@ function buildEntity(response) {
 }
 
 async function saveWorkflowSurveyResponse({ config, response }) {
+  const entity = buildEntity(response);
   const client = getClient({ config });
-  if (!client) {
-    return {
+  const results = [];
+  const errors = [];
+
+  if (client) {
+    try {
+      await ensureTable({ client });
+      await client.upsertEntity(entity, "Merge");
+      results.push({
+        target: "azure-table",
+        skipped: false,
+        partitionKey: entity.partitionKey,
+        rowKey: entity.rowKey,
+      });
+    } catch (error) {
+      errors.push(error);
+      results.push({
+        target: "azure-table",
+        skipped: true,
+        reason: "write-failed",
+        error: error.message,
+      });
+    }
+  } else {
+    results.push({
+      target: "azure-table",
       skipped: true,
       reason: "missing-azure-table-storage-connection-string",
-    };
+    });
   }
 
-  await ensureTable({ client });
-  const entity = buildEntity(response);
-  await client.upsertEntity(entity, "Merge");
+  if (config.POSTGRES_CONNECTION_STRING) {
+    try {
+      const postgresResult = await saveWorkflowSurveyResponsePostgres({
+        config,
+        response,
+        entity,
+      });
+      results.push({ target: "postgres", ...postgresResult });
+    } catch (error) {
+      errors.push(error);
+      results.push({
+        target: "postgres",
+        skipped: true,
+        reason: "write-failed",
+        error: error.message,
+      });
+    }
+  }
+
+  if (results.every((result) => result.skipped) && errors.length > 0) {
+    throw errors[0];
+  }
 
   return {
-    skipped: false,
+    skipped: results.every((result) => result.skipped),
     partitionKey: entity.partitionKey,
     rowKey: entity.rowKey,
+    results,
   };
 }
 

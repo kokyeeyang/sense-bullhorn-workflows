@@ -2,6 +2,10 @@ const crypto = require("node:crypto");
 const path = require("node:path");
 
 const { TableClient } = require("@azure/data-tables");
+const {
+  listWorkflowRunLogsForDatePostgres,
+  writeWorkflowRunLogPostgres,
+} = require("./postgresWorkflowRunLogStore");
 
 function getEnvironmentLabel(config) {
   return String(config.BULLHORN_ENV || "production").trim().toLowerCase();
@@ -163,6 +167,17 @@ async function writeWorkflowRunLog({
 }
 
 async function listWorkflowRunLogsForDate({ config, workflowName, runDate }) {
+  if (config.POSTGRES_CONNECTION_STRING) {
+    const postgresEntities = await listWorkflowRunLogsForDatePostgres({
+      config,
+      workflowName,
+      runDate,
+    });
+    if (postgresEntities.length > 0) {
+      return postgresEntities;
+    }
+  }
+
   const client = getClient({ config });
   if (!client) {
     return [];
@@ -188,24 +203,59 @@ async function listWorkflowRunLogsForDate({ config, workflowName, runDate }) {
 }
 
 async function writeWorkflowRunLogSafe(args) {
+  const results = [];
+  const errors = [];
+
   try {
-    return await writeWorkflowRunLog(args);
+    const azureResult = await writeWorkflowRunLog(args);
+    results.push({ target: "azure-table", ...azureResult });
   } catch (error) {
+    errors.push(error);
+    results.push({
+      target: "azure-table",
+      skipped: true,
+      reason: "table-storage-write-failed",
+      error: error.message,
+    });
+  }
+
+  if (args.config.POSTGRES_CONNECTION_STRING) {
+    try {
+      const postgresResult = await writeWorkflowRunLogPostgres(args);
+      results.push({ target: "postgres", ...postgresResult });
+    } catch (error) {
+      errors.push(error);
+      results.push({
+        target: "postgres",
+        skipped: true,
+        reason: "postgres-write-failed",
+        error: error.message,
+      });
+    }
+  }
+
+  if (results.some((result) => !result.skipped)) {
+    return {
+      skipped: false,
+      results,
+    };
+  }
+
+  if (errors.length > 0) {
     args.logger.warn(
       {
         workflowName: args.workflowName,
         status: args.status,
-        message: error.message,
+        message: errors[0].message,
       },
-      "Skipping workflow run log because Azure Table Storage write failed",
+      "Skipping workflow run log because all reporting writes failed",
     );
-
-    return {
-      skipped: true,
-      reason: "table-storage-write-failed",
-      error: error.message,
-    };
   }
+
+  return {
+    skipped: true,
+    results,
+  };
 }
 
 module.exports = {

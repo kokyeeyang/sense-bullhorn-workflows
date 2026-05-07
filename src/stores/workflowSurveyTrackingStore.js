@@ -2,6 +2,7 @@ const { TableClient } = require("@azure/data-tables");
 
 const { normalizeString } = require("../utils/workflowSurveyUtils");
 const { getEnvironmentLabel } = require("./workflowRunLogStore");
+const { upsertWorkflowSurveyTrackingPostgres } = require("./postgresWorkflowSurveyStore");
 
 function isLikelyConnectionString(value) {
   return (
@@ -106,18 +107,63 @@ function buildTrackingEntity({ config, tracking }) {
 
 async function upsertWorkflowSurveyTracking({ config, tracking }) {
   const client = getClient({ config });
-  if (!client) {
-    return { skipped: true, reason: "missing-table-config" };
+  const entity = buildTrackingEntity({ config, tracking });
+  const results = [];
+  const errors = [];
+
+  if (client) {
+    try {
+      await ensureTable({ client });
+      await client.upsertEntity(entity, "Merge");
+      results.push({
+        target: "azure-table",
+        skipped: false,
+        partitionKey: entity.partitionKey,
+        rowKey: entity.rowKey,
+      });
+    } catch (error) {
+      errors.push(error);
+      results.push({
+        target: "azure-table",
+        skipped: true,
+        reason: "write-failed",
+        error: error.message,
+      });
+    }
+  } else {
+    results.push({ target: "azure-table", skipped: true, reason: "missing-table-config" });
   }
 
-  await ensureTable({ client });
-  const entity = buildTrackingEntity({ config, tracking });
-  await client.upsertEntity(entity, "Merge");
+  if (config.POSTGRES_CONNECTION_STRING) {
+    try {
+      const postgresResult = await upsertWorkflowSurveyTrackingPostgres({
+        config,
+        tracking: {
+          ...tracking,
+          environment: entity.environment,
+        },
+      });
+      results.push({ target: "postgres", ...postgresResult });
+    } catch (error) {
+      errors.push(error);
+      results.push({
+        target: "postgres",
+        skipped: true,
+        reason: "write-failed",
+        error: error.message,
+      });
+    }
+  }
+
+  if (results.every((result) => result.skipped) && errors.length > 0) {
+    throw errors[0];
+  }
 
   return {
-    skipped: false,
+    skipped: results.every((result) => result.skipped),
     partitionKey: entity.partitionKey,
     rowKey: entity.rowKey,
+    results,
   };
 }
 

@@ -148,6 +148,7 @@ const configSchema = z.object({
   AMERICAS_ONBOARDING_NOTICES_EXTRA_DATE_BEGIN_STATUSES: stringWithDefaultPreserveBlank(""),
   SO_HOW_DID_WE_DO_QUERY_COUNT: positiveIntWithDefault(200),
   SO_HOW_DID_WE_DO_TARGET_DATE: optionalString,
+  POSTGRES_CONNECTION_STRING: optionalString,
   START_DATE_APPROVAL_REMINDER_QUERY_COUNT: positiveIntWithDefault(200),
   START_DATE_APPROVAL_REMINDER_TARGET_DATE: optionalString,
   AZURE_TABLE_STORAGE_CONNECTION_STRING: optionalString,

@@ -263,8 +263,8 @@ function buildCombinedSummaryEmailContent({ summaryDate, summaries }) {
 
 function validateSummaryConfig(config) {
   const missing = [];
-  if (!config.AZURE_TABLE_STORAGE_CONNECTION_STRING) {
-    missing.push("AZURE_TABLE_STORAGE_CONNECTION_STRING");
+  if (!config.AZURE_TABLE_STORAGE_CONNECTION_STRING && !config.POSTGRES_CONNECTION_STRING) {
+    missing.push("AZURE_TABLE_STORAGE_CONNECTION_STRING or POSTGRES_CONNECTION_STRING");
   }
   if (!config.DAILY_SUMMARY_RECIPIENT_EMAIL) {
     missing.push("DAILY_SUMMARY_RECIPIENT_EMAIL");

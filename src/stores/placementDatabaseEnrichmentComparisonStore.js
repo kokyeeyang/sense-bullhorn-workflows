@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 
 const { TableClient } = require("@azure/data-tables");
+const { writeWorkflowComparisonRecordsPostgres } = require("./postgresWorkflowComparisonStore");
 
 const {
   buildRunDate,
@@ -124,23 +125,66 @@ async function writeComparisonRecords({ config, logger, records }) {
 }
 
 async function writeComparisonRecordsSafe(args) {
-  try {
-    return await writeComparisonRecords(args);
-  } catch (error) {
-    args.logger.warn(
-      {
-        message: error.message,
-        tableName: args.config.AZURE_PLACEMENT_DATABASE_ENRICHMENT_COMPARISON_TABLE_NAME,
-      },
-      "Skipping placement database enrichment comparison table write because it failed",
-    );
+  const results = [];
+  const errors = [];
 
-    return {
+  try {
+    const azureResult = await writeComparisonRecords(args);
+    results.push({ target: "azure-table", ...azureResult });
+  } catch (error) {
+    errors.push(error);
+    results.push({
+      target: "azure-table",
       skipped: true,
       count: 0,
+      reason: "table-storage-write-failed",
       error: error.message,
+    });
+  }
+
+  if (args.config.POSTGRES_CONNECTION_STRING) {
+    try {
+      const postgresResult = await writeWorkflowComparisonRecordsPostgres({
+        config: args.config,
+        logger: args.logger,
+        records: args.records,
+      });
+      results.push({ target: "postgres", ...postgresResult });
+    } catch (error) {
+      errors.push(error);
+      results.push({
+        target: "postgres",
+        skipped: true,
+        count: 0,
+        reason: "postgres-write-failed",
+        error: error.message,
+      });
+    }
+  }
+
+  if (results.some((result) => !result.skipped)) {
+    return {
+      skipped: false,
+      count: results.reduce((sum, result) => sum + Number(result.count || 0), 0),
+      results,
     };
   }
+
+  if (errors.length > 0) {
+    args.logger.warn(
+      {
+        message: errors[0].message,
+        tableName: args.config.AZURE_PLACEMENT_DATABASE_ENRICHMENT_COMPARISON_TABLE_NAME,
+      },
+      "Skipping placement database enrichment comparison writes because all reporting writes failed",
+    );
+  }
+
+  return {
+    skipped: true,
+    count: 0,
+    results,
+  };
 }
 
 module.exports = {

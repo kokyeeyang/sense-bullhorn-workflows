@@ -1,4 +1,9 @@
 const { TableClient } = require("@azure/data-tables");
+const {
+  listWorkflowDashboardMetricsByDateRangePostgres,
+  listWorkflowDashboardMetricsByWorkflowRangePostgres,
+  upsertWorkflowDashboardMetricsPostgres,
+} = require("./postgresWorkflowDashboardStore");
 
 const {
   buildHumanReadableDateTime,
@@ -441,23 +446,103 @@ async function writeWorkflowDashboardMetrics({
 }
 
 async function writeWorkflowDashboardMetricsSafe(args) {
-  try {
-    return await writeWorkflowDashboardMetrics(args);
-  } catch (error) {
-    args.logger.warn(
-      {
-        workflowName: args.workflowName,
-        message: error.message,
-      },
-      "Skipping workflow dashboard metrics write because it failed",
-    );
+  const results = [];
+  const errors = [];
+  const environment = getEnvironmentLabel(args.config);
+  const delta = buildDashboardRunDelta({
+    workflowName: args.workflowName,
+    finishedAt: args.finishedAt,
+    status: args.status,
+    summary: args.summary,
+    comparisonRecords: args.comparisonRecords,
+  });
 
-    return {
+  try {
+    const azureResult = await writeWorkflowDashboardMetrics(args);
+    results.push({ target: "azure-table", ...azureResult });
+  } catch (error) {
+    errors.push(error);
+    results.push({
+      target: "azure-table",
       skipped: true,
       reason: "table-storage-write-failed",
       error: error.message,
+    });
+  }
+
+  if (args.config.POSTGRES_CONNECTION_STRING) {
+    try {
+      const existingByDay = await listWorkflowDashboardMetricsByDateRangePostgres({
+        config: args.config,
+        dateFrom: delta.runDate,
+        dateTo: delta.runDate,
+        workflowName: args.workflowName,
+      });
+      const existingByWorkflow = await listWorkflowDashboardMetricsByWorkflowRangePostgres({
+        config: args.config,
+        workflowName: args.workflowName,
+        dateFrom: delta.runDate,
+        dateTo: delta.runDate,
+      });
+
+      const mergedByDay = mergeMetrics(
+        existingByDay.find(
+          (record) =>
+            record.environment === environment &&
+            record.runDate === delta.runDate &&
+            record.workflowName === args.workflowName,
+        ) || null,
+        delta,
+      );
+      const mergedByWorkflow = mergeMetrics(
+        existingByWorkflow.find(
+          (record) =>
+            record.environment === environment &&
+            record.runDate === delta.runDate &&
+            record.workflowName === args.workflowName,
+        ) || null,
+        delta,
+      );
+
+      const postgresResult = await upsertWorkflowDashboardMetricsPostgres({
+        config: args.config,
+        logger: args.logger,
+        byDayMetrics: mergedByDay,
+        byWorkflowMetrics: mergedByWorkflow,
+      });
+      results.push({ target: "postgres", ...postgresResult });
+    } catch (error) {
+      errors.push(error);
+      results.push({
+        target: "postgres",
+        skipped: true,
+        reason: "postgres-write-failed",
+        error: error.message,
+      });
+    }
+  }
+
+  if (results.some((result) => !result.skipped)) {
+    return {
+      skipped: false,
+      results,
     };
   }
+
+  if (errors.length > 0) {
+    args.logger.warn(
+      {
+        workflowName: args.workflowName,
+        message: errors[0].message,
+      },
+      "Skipping workflow dashboard metrics write because all reporting writes failed",
+    );
+  }
+
+  return {
+    skipped: true,
+    results,
+  };
 }
 
 function formatDateOnly(value) {
@@ -498,6 +583,18 @@ async function listWorkflowDashboardMetricsByDateRange({
   dateTo,
   workflowName = null,
 }) {
+  if (config.POSTGRES_CONNECTION_STRING) {
+    const postgresEntities = await listWorkflowDashboardMetricsByDateRangePostgres({
+      config,
+      dateFrom,
+      dateTo,
+      workflowName,
+    });
+    if (postgresEntities.length > 0) {
+      return postgresEntities;
+    }
+  }
+
   const client = getClient({
     config,
     tableName: config.AZURE_WORKFLOW_DASHBOARD_BY_DAY_TABLE_NAME,
@@ -548,6 +645,18 @@ async function listWorkflowDashboardMetricsByWorkflowRange({
   dateFrom,
   dateTo,
 }) {
+  if (config.POSTGRES_CONNECTION_STRING) {
+    const postgresEntities = await listWorkflowDashboardMetricsByWorkflowRangePostgres({
+      config,
+      workflowName,
+      dateFrom,
+      dateTo,
+    });
+    if (postgresEntities.length > 0) {
+      return postgresEntities;
+    }
+  }
+
   const client = getClient({
     config,
     tableName: config.AZURE_WORKFLOW_DASHBOARD_BY_WORKFLOW_TABLE_NAME,
