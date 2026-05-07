@@ -406,6 +406,7 @@ function buildWorkflowComparisonRecords({ workflowName, result }) {
       });
     case "placement-start-reminder-sync":
     case "americas-onboarding-notices-sync":
+    case "so-how-did-we-do-feedback-sync":
     case "start-date-approval-reminder-sync":
     case "placement-benefits-reminder-sync":
     case "us-contract-performance-checkin-sync":

@@ -146,6 +146,14 @@ It also includes a combined Americas onboarding notices automation:
 4. Sends Colorado and Michigan sick-time notices to the candidate with the required attachment.
 5. Sends the New York City Hero Act notice to the candidate from the candidate owner, CCs onboarding, records the yes/no survey response in the shared `WorkflowSurveyResponses` table, and separately notifies the candidate owner one day after a placement moves to `qc approved` for New York commuter-benefit review.
 
+It also includes a combined SO How Did We Do feedback automation:
+
+1. Runs as one Azure Function workflow for 5 migrated Sense feedback surveys covering candidate and client-contact sends at both placement start and placement end.
+2. Sends the initial survey email at `11:00 AM` Pacific based on `placement.dateBegin` or `placement.dateEnd` plus each rule's configured delay, without weekend suppression for the initial send.
+3. Uses a signed 1-to-10 survey link pattern backed by the shared `WorkflowSurveyResponses` table and a dedicated `WorkflowSurveyTracking` table for reminder lifecycle state.
+4. Sends at most one reminder email 3 calendar days after the initial send, skips weekend reminder sends, and catches weekend-due reminders on Monday.
+5. Writes dry-run reports with matched initial sends, reminder candidates, skips, and SparkPost payload previews even when no Azure rows are persisted.
+
 It also includes a combined placement termination workflows automation for the 12 migrated Sense termination workflows:
 
 1. Runs as one Azure Function workflow with separate rule definitions for each state/process.
@@ -259,6 +267,7 @@ npm run run:interview-illinois-email-test-send
 npm run run:interview-illinois-email-sync
 npm run run:placement-start-reminder-sync
 npm run run:americas-onboarding-notices-sync
+npm run run:so-how-did-we-do-feedback-sync
 npm run run:start-date-approval-reminder-sync
 npm run run:placement-benefits-reminder-sync
 npm run run:placement-benefits-reminder-test-send
@@ -273,6 +282,7 @@ npm run run:client-corporation-key-account-sync
 Each run writes `reports/changes-report-<timestamp>.json` with all affected candidates and field-level changes.
 Placement start reminder runs write both `reports/placement-start-reminder-report-<timestamp>.json` and `reports/placement-start-reminder-sparkpost-payload-<timestamp>.json`.
 Americas onboarding notices runs write both `reports/americas-onboarding-notices-report-<timestamp>.json` and `reports/americas-onboarding-notices-sparkpost-payload-<timestamp>.json`.
+SO How Did We Do feedback runs write both `reports/so-how-did-we-do-feedback-report-<timestamp>.json` and `reports/so-how-did-we-do-feedback-sparkpost-payload-<timestamp>.json`.
 Start date approval reminder runs write both `reports/start-date-approval-reminder-report-<timestamp>.json` and `reports/start-date-approval-reminder-sparkpost-payload-<timestamp>.json`.
 Placement benefits reminder runs write both `reports/placement-benefits-reminder-report-<timestamp>.json` and `reports/placement-benefits-reminder-sparkpost-payload-<timestamp>.json`.
 Placement benefits reminder test sends write `reports/placement-benefits-reminder-sparkpost-test-payload-<timestamp>.json`.
@@ -354,6 +364,8 @@ Optional:
 - `AMERICAS_ONBOARDING_NOTICES_QUERY_COUNT` (default: `200`)
 - `AMERICAS_ONBOARDING_NOTICES_TARGET_DATE` (optional; `YYYY-MM-DD` override for dry-run/backfill testing)
 - `AMERICAS_ONBOARDING_NOTICES_EXTRA_DATE_BEGIN_STATUSES` (optional comma-separated extra statuses for temporary testing, for example `submitted,pre-hire`)
+- `SO_HOW_DID_WE_DO_QUERY_COUNT` (default: `200`)
+- `SO_HOW_DID_WE_DO_TARGET_DATE` (optional; `YYYY-MM-DD` override for dry-run/backfill testing)
 - `START_DATE_APPROVAL_REMINDER_QUERY_COUNT` (default: `200`)
 - `START_DATE_APPROVAL_REMINDER_TARGET_DATE` (optional; `YYYY-MM-DD` override for dry-run/backfill testing)
 - `INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID` (default: `sense-interview-illinois-email`)
@@ -524,6 +536,7 @@ Azure schedules:
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_TERMINATION_WORKFLOWS_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_AMERICAS_ONBOARDING_NOTICES_SCHEDULE` default: `0 0 * * * *`
+- `AZURE_SO_HOW_DID_WE_DO_FEEDBACK_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_START_DATE_APPROVAL_REMINDER_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
@@ -584,6 +597,7 @@ Routes:
 - `POST /api/workflows/interview-illinois-email-sync`
 - `POST /api/workflows/placement-start-reminder-sync`
 - `POST /api/workflows/americas-onboarding-notices-sync`
+- `POST /api/workflows/so-how-did-we-do-feedback-sync`
 - `POST /api/workflows/start-date-approval-reminder-sync`
 - `POST /api/workflows/placement-benefits-reminder-sync`
 - `POST /api/workflows/placement-benefits-reminder-test-send`
@@ -691,11 +705,13 @@ Notes:
 - `src/workflows/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
 - `src/workflows/placementStartReminderSync.js`: Placement start reminder enrichment runner.
 - `src/workflows/americasOnboardingNoticesSync.js`: Combined Colorado, Michigan, New York City Hero Act, and New York City Commuter onboarding notices runner.
+- `src/workflows/soHowDidWeDoFeedbackSync.js`: Combined SO How Did We Do feedback runner with initial-send and reminder tracking.
 - `src/workflows/startDateApprovalReminderSync.js`: Start date approval reminder runner.
 - `src/workflows/placementBenefitsReminderSync.js`: Combined day 10 / day 21 / day 26 placement benefits reminder runner.
 - `src/workflows/placementYearlyFeeIncreaseSync.js`: Placement yearly fee increase reminder runner.
 - `src/utils/placementStartReminderUtils.js`: Placement reminder substitution and formatting helpers.
 - `src/utils/americasOnboardingNoticesUtils.js`: Americas onboarding rule, attachment, survey, and SparkPost helpers.
+- `src/utils/soHowDidWeDoFeedbackUtils.js`: SO How Did We Do feedback rule, survey, reminder, and SparkPost helpers.
 - `src/utils/startDateApprovalReminderUtils.js`: Start date approval reminder region, scheduling, survey, and SparkPost helpers.
 - `src/utils/placementBenefitsReminderUtils.js`: Placement benefits reminder date planning, filters, and SparkPost helpers.
 - `src/utils/placementYearlyFeeIncreaseUtils.js`: Placement yearly fee increase filters and SparkPost helpers.

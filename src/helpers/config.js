@@ -146,6 +146,8 @@ const configSchema = z.object({
   AMERICAS_ONBOARDING_NOTICES_QUERY_COUNT: positiveIntWithDefault(200),
   AMERICAS_ONBOARDING_NOTICES_TARGET_DATE: optionalString,
   AMERICAS_ONBOARDING_NOTICES_EXTRA_DATE_BEGIN_STATUSES: stringWithDefaultPreserveBlank(""),
+  SO_HOW_DID_WE_DO_QUERY_COUNT: positiveIntWithDefault(200),
+  SO_HOW_DID_WE_DO_TARGET_DATE: optionalString,
   START_DATE_APPROVAL_REMINDER_QUERY_COUNT: positiveIntWithDefault(200),
   START_DATE_APPROVAL_REMINDER_TARGET_DATE: optionalString,
   AZURE_TABLE_STORAGE_CONNECTION_STRING: optionalString,
@@ -155,6 +157,7 @@ const configSchema = z.object({
   AZURE_WORKFLOW_RETENTION_DAYS: positiveIntWithDefault(60),
   AZURE_WORKFLOW_SEND_LOCK_TABLE_NAME: stringWithDefault("WorkflowSendLocks"),
   WORKFLOW_SURVEY_RESPONSE_TABLE_NAME: stringWithDefault("WorkflowSurveyResponses"),
+  WORKFLOW_SURVEY_TRACKING_TABLE_NAME: stringWithDefault("WorkflowSurveyTracking"),
   WORKFLOW_SURVEY_RESPONSE_BASE_URL: optionalString,
   WORKFLOW_SURVEY_RESPONSE_SIGNING_SECRET: optionalString,
   AZURE_PLACEMENT_DATABASE_ENRICHMENT_COMPARISON_TABLE_NAME: stringWithDefault(

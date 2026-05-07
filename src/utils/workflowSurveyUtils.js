@@ -12,6 +12,15 @@ function normalizeLower(value) {
   return normalizeString(value).toLowerCase();
 }
 
+function normalizeSurveyAnswer(value) {
+  const answer = normalizeLower(value);
+  if (/^(10|[1-9]|yes|no)$/.test(answer)) {
+    return answer;
+  }
+
+  return "";
+}
+
 function buildWorkflowSurveyToken({ payload, secret }) {
   if (!secret) {
     return "";
@@ -50,8 +59,8 @@ function verifyWorkflowSurveyToken({ token, secret, expectedAnswer = null, expec
     throw new Error("Invalid survey token payload");
   }
 
-  const answer = normalizeLower(payload?.answer);
-  if (!["yes", "no"].includes(answer)) {
+  const answer = normalizeSurveyAnswer(payload?.answer);
+  if (!answer) {
     throw new Error("Invalid survey answer");
   }
 
@@ -70,16 +79,21 @@ function verifyWorkflowSurveyToken({ token, secret, expectedAnswer = null, expec
     candidateId: payload?.candidateId ?? null,
     ownerId: payload?.ownerId ?? null,
     ownerEmail: normalizeLower(payload?.ownerEmail) || null,
+    recipientEmail: normalizeLower(payload?.recipientEmail || payload?.ownerEmail) || null,
     questionId: normalizeString(payload?.questionId) || null,
     questionText: normalizeString(payload?.questionText) || null,
     answer,
     issuedAt: normalizeString(payload?.issuedAt) || null,
+    surveyKey: normalizeString(payload?.surveyKey) || null,
+    trackingPartitionKey: normalizeString(payload?.trackingPartitionKey) || null,
+    trackingRowKey: normalizeString(payload?.trackingRowKey) || null,
     metadata: payload?.metadata && typeof payload.metadata === "object" ? payload.metadata : {},
   };
 }
 
 module.exports = {
   buildWorkflowSurveyToken,
+  normalizeSurveyAnswer,
   normalizeLower,
   normalizeString,
   verifyWorkflowSurveyToken,

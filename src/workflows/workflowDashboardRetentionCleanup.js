@@ -109,6 +109,15 @@ async function run() {
       fieldName: "reservedAt",
       cutoffValue: reservedAtCutoff,
     },
+    {
+      tableName: config.WORKFLOW_SURVEY_TRACKING_TABLE_NAME,
+      fieldName: "initialSentDate",
+    },
+    {
+      tableName: config.WORKFLOW_SURVEY_RESPONSE_TABLE_NAME,
+      fieldName: "submittedAt",
+      cutoffValue: reservedAtCutoff,
+    },
   ];
 
   const tables = [];

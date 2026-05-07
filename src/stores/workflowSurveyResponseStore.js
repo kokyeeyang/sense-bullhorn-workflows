@@ -13,6 +13,10 @@ function isLikelyConnectionString(value) {
 }
 
 function buildRowKey(response) {
+  if (normalizeString(response?.surveyKey)) {
+    return normalizeString(response.surveyKey);
+  }
+
   const fingerprint = [
     response.workflowName || "",
     response.placementId ?? "",
@@ -75,10 +79,12 @@ function buildEntity(response) {
     candidateId: response.candidateId ?? null,
     ownerId: response.ownerId ?? null,
     ownerEmail: normalizeString(response.ownerEmail).toLowerCase(),
+    recipientEmail: normalizeString(response.recipientEmail || response.ownerEmail).toLowerCase(),
     questionId: normalizeString(response.questionId),
     questionText: normalizeString(response.questionText),
     answer: normalizeString(response.answer).toLowerCase(),
     issuedAt: response.issuedAt || "",
+    surveyKey: normalizeString(response.surveyKey),
     metadataJson: JSON.stringify(response.metadata || {}),
     userAgent: normalizeString(response.userAgent),
     remoteAddress: normalizeString(response.remoteAddress),
