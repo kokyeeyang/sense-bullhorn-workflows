@@ -138,6 +138,14 @@ It also includes a start date approval reminder automation:
 4. Send the reminder to `placement.owner.email` and CC `placement.jobOrder.owner.reportToPerson.email`.
 5. For Americas only, include a yes/no survey that uses the same signed-response pattern as the existing confirmation workflows and stores the answer in Azure Table Storage.
 
+It also includes a combined Americas onboarding notices automation:
+
+1. Runs as one Azure Function workflow for the Colorado, Michigan, New York City Hero Act, and New York City Commuter onboarding notices.
+2. Queries placements by `dateBegin` and applies Pacific-time send-hour rules per state workflow.
+3. Uses Friday/Monday weekend adjustment for Colorado, Michigan, and the New York City Commuter notice, and sends on weekends as-is for the New York City Hero Act notice.
+4. Sends Colorado and Michigan sick-time notices to the candidate with the required attachment.
+5. Sends the New York City Hero Act notice to the candidate from the candidate owner, CCs onboarding, records the yes/no survey response in the shared `WorkflowSurveyResponses` table, and separately notifies the candidate owner one day after a placement moves to `qc approved` for New York commuter-benefit review.
+
 It also includes a combined placement termination workflows automation for the 12 migrated Sense termination workflows:
 
 1. Runs as one Azure Function workflow with separate rule definitions for each state/process.
@@ -250,6 +258,7 @@ npm run run:placement-termination-workflows-sync
 npm run run:interview-illinois-email-test-send
 npm run run:interview-illinois-email-sync
 npm run run:placement-start-reminder-sync
+npm run run:americas-onboarding-notices-sync
 npm run run:start-date-approval-reminder-sync
 npm run run:placement-benefits-reminder-sync
 npm run run:placement-benefits-reminder-test-send
@@ -263,6 +272,7 @@ npm run run:client-corporation-key-account-sync
 `TEST_CANDIDATE_ID=2923234` restricts the run to exactly one candidate by id.
 Each run writes `reports/changes-report-<timestamp>.json` with all affected candidates and field-level changes.
 Placement start reminder runs write both `reports/placement-start-reminder-report-<timestamp>.json` and `reports/placement-start-reminder-sparkpost-payload-<timestamp>.json`.
+Americas onboarding notices runs write both `reports/americas-onboarding-notices-report-<timestamp>.json` and `reports/americas-onboarding-notices-sparkpost-payload-<timestamp>.json`.
 Start date approval reminder runs write both `reports/start-date-approval-reminder-report-<timestamp>.json` and `reports/start-date-approval-reminder-sparkpost-payload-<timestamp>.json`.
 Placement benefits reminder runs write both `reports/placement-benefits-reminder-report-<timestamp>.json` and `reports/placement-benefits-reminder-sparkpost-payload-<timestamp>.json`.
 Placement benefits reminder test sends write `reports/placement-benefits-reminder-sparkpost-test-payload-<timestamp>.json`.
@@ -341,6 +351,9 @@ Optional:
 - `PLACEMENT_TERMINATION_EVENT_MAX_EVENTS` (default: `100`)
 - `PLACEMENT_TERMINATION_WORKFLOWS_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_TERMINATION_WORKFLOWS_TARGET_DATE` (optional; `YYYY-MM-DD` override for dry-run/backfill testing)
+- `AMERICAS_ONBOARDING_NOTICES_QUERY_COUNT` (default: `200`)
+- `AMERICAS_ONBOARDING_NOTICES_TARGET_DATE` (optional; `YYYY-MM-DD` override for dry-run/backfill testing)
+- `AMERICAS_ONBOARDING_NOTICES_EXTRA_DATE_BEGIN_STATUSES` (optional comma-separated extra statuses for temporary testing, for example `submitted,pre-hire`)
 - `START_DATE_APPROVAL_REMINDER_QUERY_COUNT` (default: `200`)
 - `START_DATE_APPROVAL_REMINDER_TARGET_DATE` (optional; `YYYY-MM-DD` override for dry-run/backfill testing)
 - `INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID` (default: `sense-interview-illinois-email`)
@@ -510,6 +523,7 @@ Azure schedules:
 - `AZURE_PLACEMENT_STATUS_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_TERMINATION_WORKFLOWS_SCHEDULE` default: `0 0 * * * *`
+- `AZURE_AMERICAS_ONBOARDING_NOTICES_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_START_DATE_APPROVAL_REMINDER_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
@@ -569,6 +583,7 @@ Routes:
 - `POST /api/workflows/placement-termination-workflows-sync`
 - `POST /api/workflows/interview-illinois-email-sync`
 - `POST /api/workflows/placement-start-reminder-sync`
+- `POST /api/workflows/americas-onboarding-notices-sync`
 - `POST /api/workflows/start-date-approval-reminder-sync`
 - `POST /api/workflows/placement-benefits-reminder-sync`
 - `POST /api/workflows/placement-benefits-reminder-test-send`
@@ -675,10 +690,12 @@ Notes:
 - `src/workflows/placementTerminationWorkflowsSync.js`: Combined state/perm termination workflow runner.
 - `src/workflows/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
 - `src/workflows/placementStartReminderSync.js`: Placement start reminder enrichment runner.
+- `src/workflows/americasOnboardingNoticesSync.js`: Combined Colorado, Michigan, New York City Hero Act, and New York City Commuter onboarding notices runner.
 - `src/workflows/startDateApprovalReminderSync.js`: Start date approval reminder runner.
 - `src/workflows/placementBenefitsReminderSync.js`: Combined day 10 / day 21 / day 26 placement benefits reminder runner.
 - `src/workflows/placementYearlyFeeIncreaseSync.js`: Placement yearly fee increase reminder runner.
 - `src/utils/placementStartReminderUtils.js`: Placement reminder substitution and formatting helpers.
+- `src/utils/americasOnboardingNoticesUtils.js`: Americas onboarding rule, attachment, survey, and SparkPost helpers.
 - `src/utils/startDateApprovalReminderUtils.js`: Start date approval reminder region, scheduling, survey, and SparkPost helpers.
 - `src/utils/placementBenefitsReminderUtils.js`: Placement benefits reminder date planning, filters, and SparkPost helpers.
 - `src/utils/placementYearlyFeeIncreaseUtils.js`: Placement yearly fee increase filters and SparkPost helpers.
