@@ -19,6 +19,7 @@
     "run:interview-illinois-email-test-send": "node src/workflows/interviewIllinoisEmailTestSend.js",
     "run:placement-start-reminder-sync": "node src/workflows/placementStartReminderSync.js",
     "run:americas-onboarding-notices-sync": "node src/workflows/americasOnboardingNoticesSync.js",
+    "run:americas-internal-placement-notices-sync": "node src/workflows/americasInternalPlacementNoticesSync.js",
     "run:so-how-did-we-do-feedback-sync": "node src/workflows/soHowDidWeDoFeedbackSync.js",
     "run:start-date-approval-reminder-sync": "node src/workflows/startDateApprovalReminderSync.js",
     "run:placement-benefits-reminder-sync": "node src/workflows/placementBenefitsReminderSync.js",

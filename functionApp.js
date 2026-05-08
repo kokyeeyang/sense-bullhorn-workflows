@@ -12,6 +12,7 @@ const { run: runInterviewIllinoisEmailSync } = require("./src/workflows/intervie
 const { run: runNewJobIllinoisEmailSync } = require("./src/workflows/newJobIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/workflows/placementStartReminderSync");
 const { run: runAmericasOnboardingNoticesSync } = require("./src/workflows/americasOnboardingNoticesSync");
+const { run: runAmericasInternalPlacementNoticesSync } = require("./src/workflows/americasInternalPlacementNoticesSync");
 const { run: runSoHowDidWeDoFeedbackSync } = require("./src/workflows/soHowDidWeDoFeedbackSync");
 const { run: runStartDateApprovalReminderSync } = require("./src/workflows/startDateApprovalReminderSync");
 const { run: runPlacementBenefitsReminderSync } = require("./src/workflows/placementBenefitsReminderSync");
@@ -112,6 +113,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 * * * *",
     logLabel: "Americas onboarding notices sync",
     run: ({ targetDate } = {}) => runAmericasOnboardingNoticesSync({ targetDate }),
+  },
+  {
+    functionName: "americasInternalPlacementNoticesSync",
+    workflowName: "americas-internal-placement-notices-sync",
+    route: "workflows/americas-internal-placement-notices-sync",
+    scheduleEnv: "AZURE_AMERICAS_INTERNAL_PLACEMENT_NOTICES_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "Americas internal placement notices sync",
+    run: ({ targetDate } = {}) => runAmericasInternalPlacementNoticesSync({ targetDate }),
   },
   {
     functionName: "soHowDidWeDoFeedbackSync",
