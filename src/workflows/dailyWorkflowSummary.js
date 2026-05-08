@@ -347,6 +347,19 @@ async function run({ targetDate, workflowName } = {}) {
     subject: combinedEmail.subject,
     text: combinedEmail.text,
     html: combinedEmail.html,
+    audit: {
+      workflowName: "daily-workflow-summary",
+      sendType: "summary",
+      recipientType: "internal-recipient",
+      recipientEmail: config.DAILY_SUMMARY_RECIPIENT_EMAIL,
+      businessDate: summaryDate,
+      runDate: summaryDate,
+      metadata: {
+        workflowCount: summaries.length,
+        workflowNames,
+        aggregateTotals: combinedEmail.aggregateTotals,
+      },
+    },
   });
 
   logger.info(

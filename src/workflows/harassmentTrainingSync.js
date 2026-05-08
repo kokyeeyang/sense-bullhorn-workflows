@@ -436,6 +436,34 @@ async function run({ targetDate } = {}) {
         headers: transmissionPayload.headers,
         attachments: transmissionPayload.attachments,
         from: transmissionPayload.from,
+        audit: {
+          workflowName: "harassment-training-sync",
+          sendType: "notification",
+          ruleKey: item.rule.key,
+          recipientType: "candidate",
+          recipientEmail: transmissionPayload.recipientEnvelope.toEmail || "",
+          recipientFirstName: item.placement?.candidate?.firstName || "",
+          placementId: item.placement?.id || null,
+          candidateId: item.placement?.candidate?.id || null,
+          clientCorporationId: item.placement?.clientCorporation?.id || null,
+          ownerId: item.placement?.candidate?.owner?.id || item.placement?.jobOrder?.owner?.id || null,
+          ownerEmail:
+            item.placement?.candidate?.owner?.email ||
+            item.placement?.jobOrder?.owner?.email ||
+            "",
+          businessDate: businessDateKey,
+          runDate: businessDateKey,
+          context: {
+            source: item.source,
+            queryDate: item.queryDate,
+            transactionId: item.transactionId || null,
+          },
+          metadata: {
+            templateVariant: item.rule.templateVariant,
+            stateLabel: item.rule.stateLabel,
+            attachmentPaths: attachmentResult.attachmentPaths,
+          },
+        },
       });
 
       transmissions.push({

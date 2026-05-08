@@ -301,7 +301,38 @@ async function run({ targetDate } = {}) {
 
     if (!config.DRY_RUN) {
       try {
-        const transmission = await sparkPost.sendInlineTransmission(transmissionPayload);
+        const transmission = await sparkPost.sendInlineTransmission({
+          ...transmissionPayload,
+          audit: {
+            workflowName: WORKFLOW_NAME,
+            sendType: "reminder",
+            ruleKey: item.stage.key,
+            recipientType: "owner",
+            recipientEmail: transmissionPayload.recipientEnvelope.toEmail || "",
+            recipientFirstName:
+              placement?.owner?.firstName ||
+              placement?.jobOrder?.owner?.firstName ||
+              "",
+            placementId: placement?.id || null,
+            candidateId: placement?.candidate?.id || null,
+            clientCorporationId: placement?.clientCorporation?.id || null,
+            ownerId: placement?.owner?.id || placement?.jobOrder?.owner?.id || null,
+            ownerEmail:
+              placement?.owner?.email ||
+              placement?.jobOrder?.owner?.email ||
+              "",
+            businessDate: businessDateKey,
+            runDate: businessDateKey,
+            context: {
+              queryDateBegin: item.queryDateBegin,
+            },
+            metadata: {
+              stageKey: item.stage.key,
+              stageDaysAfterDateBegin: item.stage.daysAfterDateBegin,
+              region: matchDetails.region || null,
+            },
+          },
+        });
         transmissions.push({
           placementId: placement.id,
           stageKey: item.stage.key,

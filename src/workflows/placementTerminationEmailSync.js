@@ -320,6 +320,18 @@ async function run() {
     transmission = await sparkPost.sendTransmission({
       templateId,
       recipients: sparkPostRecipients,
+      audit: {
+        workflowName: "placement-termination-email-sync",
+        sendType: "notification",
+        recipientType: "candidate-owner",
+        metadata: {
+          placementIds: matchedPlacements.map((item) => item.placementId),
+          transactionIds: matchedPlacements
+            .map((item) => item.transactionId)
+            .filter(Boolean),
+          recipientCount: sparkPostRecipients.length,
+        },
+      },
     });
   }
 

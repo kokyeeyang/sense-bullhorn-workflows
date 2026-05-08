@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { insertWorkflowEmailTransmissionPostgres } = require("../stores/postgresWorkflowEmailTransmissionStore");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -52,7 +53,7 @@ class SparkPostClient {
     }
   }
 
-  async sendTransmission({ templateId, recipients, headers, attachments, from }) {
+  async sendTransmission({ templateId, recipients, headers, attachments, from, audit }) {
     const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
     const payload = {
       content: {
@@ -75,10 +76,17 @@ class SparkPostClient {
         }),
     });
 
+    await this.recordEmailTransmission({
+      sendMethod: "template",
+      payload,
+      audit,
+      providerResponse: response.data,
+    });
+
     return response.data;
   }
 
-  async sendInlineTransmission({ content, recipients }) {
+  async sendInlineTransmission({ content, recipients, tracking, audit }) {
     const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
     const payload = {
       content,
@@ -96,10 +104,18 @@ class SparkPostClient {
         }),
     });
 
+    await this.recordEmailTransmission({
+      sendMethod: "inline",
+      payload,
+      tracking,
+      audit,
+      providerResponse: response.data,
+    });
+
     return response.data;
   }
 
-  async sendMessage({ from, to, subject, text, html }) {
+  async sendMessage({ from, to, subject, text, html, audit }) {
     const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
     const payload = {
       content: {
@@ -122,6 +138,13 @@ class SparkPostClient {
         }),
     });
 
+    await this.recordEmailTransmission({
+      sendMethod: "message",
+      payload,
+      audit,
+      providerResponse: response.data,
+    });
+
     return response.data;
   }
 
@@ -140,6 +163,32 @@ class SparkPostClient {
     });
 
     return response.data;
+  }
+
+  async recordEmailTransmission({ sendMethod, payload, tracking, audit, providerResponse }) {
+    try {
+      await insertWorkflowEmailTransmissionPostgres({
+        config: this.config,
+        transmission: {
+          environment: String(this.config.BULLHORN_ENV || "production").trim().toLowerCase(),
+          provider: "sparkpost",
+          sendMethod,
+          payload,
+          tracking,
+          audit,
+          providerResponse,
+          sentAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        {
+          sendMethod,
+          message: error.message,
+        },
+        "Failed to write email transmission record to PostgreSQL",
+      );
+    }
   }
 }
 

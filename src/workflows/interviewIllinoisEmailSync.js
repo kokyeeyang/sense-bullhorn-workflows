@@ -201,6 +201,16 @@ async function run() {
     transmission = await sparkPost.sendTransmission({
       templateId,
       recipients: sparkPostRecipients,
+      audit: {
+        workflowName: "interview-illinois-email-sync",
+        sendType: "notification",
+        recipientType: "job-owner",
+        metadata: {
+          subscriptionId: config.INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID,
+          appointmentIds: matchedAppointments.map((item) => item.appointmentId),
+          recipientCount: sparkPostRecipients.length,
+        },
+      },
     });
   }
 

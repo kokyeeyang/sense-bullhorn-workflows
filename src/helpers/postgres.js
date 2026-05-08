@@ -249,6 +249,54 @@ async function ensureSchema({ config }) {
         CREATE INDEX IF NOT EXISTS idx_workflow_survey_responses_lookup
         ON workflow_survey_responses (workflow_name, survey_key, submitted_at);
       `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS workflow_email_transmissions (
+          id BIGSERIAL PRIMARY KEY,
+          environment TEXT NOT NULL,
+          workflow_name TEXT NOT NULL DEFAULT '',
+          provider TEXT NOT NULL DEFAULT '',
+          send_method TEXT NOT NULL DEFAULT '',
+          send_type TEXT NOT NULL DEFAULT '',
+          rule_key TEXT NOT NULL DEFAULT '',
+          recipient_type TEXT NOT NULL DEFAULT '',
+          recipient_email TEXT NOT NULL DEFAULT '',
+          recipient_first_name TEXT NOT NULL DEFAULT '',
+          from_email TEXT NOT NULL DEFAULT '',
+          from_name TEXT NOT NULL DEFAULT '',
+          subject TEXT NOT NULL DEFAULT '',
+          template_id TEXT NOT NULL DEFAULT '',
+          provider_transmission_id TEXT NOT NULL DEFAULT '',
+          provider_message_id TEXT NOT NULL DEFAULT '',
+          placement_id BIGINT,
+          candidate_id BIGINT,
+          client_contact_id BIGINT,
+          client_corporation_id BIGINT,
+          owner_id BIGINT,
+          owner_email TEXT NOT NULL DEFAULT '',
+          survey_key TEXT NOT NULL DEFAULT '',
+          business_date TEXT NOT NULL DEFAULT '',
+          run_date TEXT NOT NULL DEFAULT '',
+          sent_at TIMESTAMPTZ,
+          text_body TEXT NOT NULL DEFAULT '',
+          html_body TEXT NOT NULL DEFAULT '',
+          transmission_payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+          provider_response_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+          context_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+          metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_email_transmissions_lookup
+        ON workflow_email_transmissions (environment, workflow_name, run_date, sent_at);
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_email_transmissions_survey_key
+        ON workflow_email_transmissions (survey_key, send_type, sent_at);
+      `);
     })();
   }
 

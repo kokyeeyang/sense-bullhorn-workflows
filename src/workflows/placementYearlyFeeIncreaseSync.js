@@ -203,6 +203,19 @@ async function run() {
     transmission = await sparkPost.sendTransmission({
       templateId,
       recipients: sparkPostRecipients,
+      audit: {
+        workflowName: "placement-yearly-fee-increase-sync",
+        sendType: "notification",
+        recipientType: "job-owner",
+        businessDate: window.targetPlacementDateBegin,
+        runDate: window.targetPlacementDateBegin,
+        metadata: {
+          targetPlacementDateBegin: window.targetPlacementDateBegin,
+          monthOffset: config.PLACEMENT_YEARLY_FEE_INCREASE_MONTH_OFFSET,
+          placementIds: matchedPlacements.map((item) => item.placementId),
+          recipientCount: sparkPostRecipients.length,
+        },
+      },
     });
   }
 

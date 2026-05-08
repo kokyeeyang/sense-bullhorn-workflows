@@ -260,6 +260,34 @@ async function run({ targetDate } = {}) {
         templateId,
         recipients: transmissionPayload.recipients,
         headers: transmissionPayload.headers,
+        audit: {
+          workflowName: "placement-benefits-reminder-sync",
+          sendType: "reminder",
+          ruleKey: item.stage.key,
+          recipientType: "candidate",
+          recipientEmail: transmissionPayload.recipientEnvelope.toEmail || "",
+          recipientFirstName: hydratedPlacement?.candidate?.firstName || "",
+          placementId: hydratedPlacement?.id || null,
+          candidateId: hydratedPlacement?.candidate?.id || null,
+          clientCorporationId: hydratedPlacement?.clientCorporation?.id || null,
+          ownerId:
+            hydratedPlacement?.candidate?.owner?.id ||
+            hydratedPlacement?.jobOrder?.owner?.id ||
+            null,
+          ownerEmail:
+            hydratedPlacement?.candidate?.owner?.email ||
+            hydratedPlacement?.jobOrder?.owner?.email ||
+            "",
+          businessDate: businessDateKey,
+          runDate: businessDateKey,
+          context: {
+            queryDateBegin: item.queryDateBegin,
+          },
+          metadata: {
+            stageKey: item.stage.key,
+            stageLabel: item.stage.label,
+          },
+        },
       });
 
       transmissions.push({

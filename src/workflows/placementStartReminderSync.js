@@ -210,6 +210,21 @@ async function run() {
     transmission = await sparkPost.sendTransmission({
       templateId: config.SPARKPOST_TEMPLATE_ID,
       recipients: sparkPostRecipients,
+      audit: {
+        workflowName: "placement-start-reminder-sync",
+        sendType: "reminder",
+        recipientType: "owner",
+        businessDate: window.targetDate,
+        runDate: window.targetDate,
+        metadata: {
+          targetDate: window.targetDate,
+          daysAhead: config.PLACEMENT_START_REMINDER_DAYS_AHEAD,
+          windowBeforeDays: config.PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS,
+          windowAfterDays: config.PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS,
+          placementIds: transformedPlacements.map((item) => item.placementId),
+          recipientCount: sparkPostRecipients.length,
+        },
+      },
     });
   }
 

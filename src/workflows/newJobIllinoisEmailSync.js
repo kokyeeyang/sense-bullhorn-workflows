@@ -158,6 +158,16 @@ async function run() {
     transmission = await sparkPost.sendTransmission({
       templateId,
       recipients: sparkPostRecipients,
+      audit: {
+        workflowName: "new-job-illinois-email-sync",
+        sendType: "notification",
+        recipientType: "job-owner",
+        metadata: {
+          graceHours: config.NEW_JOB_ILLINOIS_GRACE_HOURS,
+          jobOrderIds: matchedJobOrders.map((item) => item.jobOrderId),
+          recipientCount: sparkPostRecipients.length,
+        },
+      },
     });
   }
 

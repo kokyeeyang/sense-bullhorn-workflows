@@ -95,6 +95,8 @@ describe("soHowDidWeDoFeedbackUtils", () => {
     expect(transmission.content.html).toContain(SURVEY_QUESTION_TEXT);
     expect(transmission.content.html).toContain("Share feedback");
     expect(transmission.tracking.surveyUrl).toContain("token=");
+    expect(transmission.audit.workflowName).toBe(WORKFLOW_NAME);
+    expect(transmission.audit.sendType).toBe("initial");
     expect(payload.answer).toBeNull();
     expect(payload.surveyKey).toBeTruthy();
     expect(payload.trackingPartitionKey).toContain(WORKFLOW_NAME);

@@ -253,7 +253,27 @@ async function run({ targetDate } = {}) {
 
     if (!config.DRY_RUN) {
       try {
-        const transmission = await sparkPost.sendInlineTransmission(transmissionPayload);
+        const transmission = await sparkPost.sendInlineTransmission({
+          ...transmissionPayload,
+          audit: {
+            workflowName: WORKFLOW_NAME,
+            sendType: "check-in",
+            recipientType: "client-contact",
+            recipientEmail: transmissionPayload.recipientEnvelope.toEmail || "",
+            recipientFirstName: placement?.clientContact?.firstName || "",
+            placementId: placement?.id || null,
+            candidateId: placement?.candidate?.id || null,
+            clientContactId: placement?.clientContact?.id || null,
+            clientCorporationId: placement?.clientCorporation?.id || null,
+            ownerId: placement?.jobOrder?.owner?.id || null,
+            ownerEmail: placement?.jobOrder?.owner?.email || "",
+            businessDate: businessDateKey,
+            runDate: businessDateKey,
+            context: {
+              queryDateBegin: item.queryDateBegin,
+            },
+          },
+        });
         transmissions.push({
           placementId: placement.id,
           transmission,
