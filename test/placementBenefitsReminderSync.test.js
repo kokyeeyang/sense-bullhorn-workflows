@@ -26,6 +26,7 @@ const mockBullhornClient = {
 
 const mockSparkPostClient = {
   sendTransmission: jest.fn(),
+  sendInlineTransmission: jest.fn(),
 };
 
 jest.mock("../src/clients/bullhornClient", () => ({
@@ -163,6 +164,7 @@ describe("placementBenefitsReminderSync", () => {
       totalPlacementsQueried: 3,
       matchedPlacements: 2,
       day10Count: 1,
+      newYorkDay10Count: 0,
       day21Count: 1,
       day26Count: 0,
       skippedNonMatchingPlacement: 1,
@@ -188,5 +190,82 @@ describe("placementBenefitsReminderSync", () => {
     expect(result.sparkPost.sent).toBe(false);
     expect(mockSparkPostClient.sendTransmission).not.toHaveBeenCalled();
     expect(fs.writeFile).toHaveBeenCalledTimes(2);
+  });
+
+  test("uses New York day 10 reminder instead of generic day 10", async () => {
+    mockBullhornClient.queryPlacementsByDateBeginRange
+      .mockResolvedValueOnce([
+        {
+          id: 5101,
+          status: "approved",
+          employmentType: "Contract",
+          dateBegin: 1774828800000,
+          candidate: { id: 7101 },
+          clientCorporation: { id: 999, name: "NY Power" },
+          jobOrder: { id: 811, title: "Engineer", owner: { id: 9011 } },
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    mockBullhornClient.getCandidate.mockResolvedValueOnce({
+      id: 7101,
+      firstName: "Nora",
+      lastName: "York",
+      email: "nora@example.com",
+      customText21: "Benefit Eligible",
+      owner: { id: 9111 },
+    });
+
+    mockBullhornClient.getCorporateUser.mockImplementation(async ({ corporateUserId }) => {
+      const users = {
+        9011: { id: 9011, firstName: "Job", lastName: "Owner", email: "job@example.com" },
+        9111: {
+          id: 9111,
+          firstName: "Candidate",
+          lastName: "Owner",
+          email: "candidate.owner@example.com",
+          primaryDepartment: { name: "New York City" },
+        },
+      };
+
+      return users[corporateUserId];
+    });
+
+    const result = await run({ targetDate: "2026-04-15" });
+
+    expect(result.totals.day10Count).toBe(0);
+    expect(result.totals.newYorkDay10Count).toBe(1);
+    expect(result.placements).toHaveLength(1);
+    expect(result.placements[0].stage.key).toBe("new-york-americas-benefit-reminder");
+    expect(result.placements[0].sparkPostPayload.content.from.email).toBe(
+      "soinsurance@spencer-ogden.com",
+    );
+    expect(result.placements[0].sparkPostPayload.content.attachments).toHaveLength(2);
+  });
+
+  test("configured target date bypasses the Pacific hour gate", async () => {
+    loadConfig.mockReturnValue({
+      DRY_RUN: true,
+      PLACEMENT_BENEFITS_REMINDER_QUERY_COUNT: 200,
+      PLACEMENT_BENEFITS_REMINDER_TARGET_DATE: "2026-04-15",
+      PLACEMENT_BENEFITS_REMINDER_DAY10_SPARKPOST_TEMPLATE_ID: "benefits-day-10",
+      PLACEMENT_BENEFITS_REMINDER_DAY21_SPARKPOST_TEMPLATE_ID: "benefits-day-21",
+      PLACEMENT_BENEFITS_REMINDER_DAY26_SPARKPOST_TEMPLATE_ID: "benefits-day-26",
+      SPARKPOST_API_KEY: "sparkpost-key",
+      RETRY_MAX_ATTEMPTS: 4,
+      RETRY_BASE_DELAY_MS: 500,
+    });
+
+    mockBullhornClient.queryPlacementsByDateBeginRange
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await run();
+
+    expect(result.businessDate).toBe("2026-04-15");
+    expect(result.skippedReason).toBeUndefined();
+    expect(mockBullhornClient.queryPlacementsByDateBeginRange).toHaveBeenCalledTimes(3);
   });
 });

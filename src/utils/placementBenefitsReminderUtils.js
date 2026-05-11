@@ -1,3 +1,6 @@
+const fs = require("node:fs");
+const path = require("node:path");
+
 const { buildFullName, formatDateBegin, normalizeString } = require("./placementStartReminderUtils");
 
 const BENEFITS_REMINDER_TIME_ZONE = "America/Los_Angeles";
@@ -5,6 +8,16 @@ const EXCLUDED_DEPARTMENTS = new Set(["hou - contract dc", "hou - dcm", "hou - d
 const EXCLUDED_CLIENT_CORPORATION_IDS = new Set(["10397", "32", "7895", "4608", "56847"]);
 const APPROVED_STATUS_VALUES = ["approved", "qc approved"];
 const DAY_MS = 24 * 60 * 60 * 1000;
+const NEW_YORK_BENEFITS_RULE_KEY = "new-york-americas-benefit-reminder";
+const NEW_YORK_BENEFITS_ATTACHMENTS = [
+  "attachments/Employee Benefit Acknowledgement 2020.pdf",
+  "attachments/SO Open Enrollment Guide 2022- Contractors.pdf",
+];
+const NEW_YORK_BENEFITS_DEPARTMENTS = [
+  "new york city",
+  "nyc - contract renewables",
+  "nyc - contract power",
+];
 
 const BENEFITS_REMINDER_STAGES = [
   {
@@ -52,12 +65,14 @@ function addDays(dateKey, days) {
   return formatDateKey(date);
 }
 
-function getBusinessDateKey({ baseDate = new Date(), timeZone = BENEFITS_REMINDER_TIME_ZONE } = {}) {
+function getBusinessDateParts({ baseDate = new Date(), timeZone = BENEFITS_REMINDER_TIME_ZONE } = {}) {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
   });
   const parts = Object.fromEntries(
     formatter
@@ -66,7 +81,16 @@ function getBusinessDateKey({ baseDate = new Date(), timeZone = BENEFITS_REMINDE
       .map((part) => [part.type, part.value]),
   );
 
-  return `${parts.year}-${parts.month}-${parts.day}`;
+  const dateKey = `${parts.year}-${parts.month}-${parts.day}`;
+  return {
+    dateKey,
+    dayOfWeek: getDayOfWeek(dateKey),
+    hour: Number(parts.hour === "24" ? "0" : parts.hour),
+  };
+}
+
+function getBusinessDateKey({ baseDate = new Date(), timeZone = BENEFITS_REMINDER_TIME_ZONE } = {}) {
+  return getBusinessDateParts({ baseDate, timeZone }).dateKey;
 }
 
 function getDayOfWeek(dateKey) {
@@ -123,6 +147,19 @@ function matchesBenefitsReminderPlacement(placement) {
     benefitPackage === "benefit eligible" &&
     !EXCLUDED_DEPARTMENTS.has(candidateOwnerDepartment) &&
     !EXCLUDED_CLIENT_CORPORATION_IDS.has(clientCorporationId)
+  );
+}
+
+function matchesNewYorkBenefitsReminderPlacement(placement) {
+  const candidateOwnerDepartment = normalizeLower(
+    placement?.candidate?.owner?.primaryDepartment?.name,
+  );
+
+  return (
+    matchesBenefitsReminderPlacement(placement) &&
+    NEW_YORK_BENEFITS_DEPARTMENTS.some((department) =>
+      candidateOwnerDepartment.includes(department),
+    )
   );
 }
 
@@ -202,6 +239,101 @@ function buildBenefitsReminderTransmission({ placement, stage, templateId }) {
   };
 }
 
+function buildAttachment(filePath) {
+  const resolvedPath = path.resolve(filePath);
+  const extension = path.extname(resolvedPath).toLowerCase();
+  const type = extension === ".pdf" ? "application/pdf" : "application/octet-stream";
+
+  return {
+    name: path.basename(resolvedPath),
+    type,
+    data: fs.readFileSync(resolvedPath).toString("base64"),
+  };
+}
+
+function buildNewYorkBenefitsReminderHtml({ placement }) {
+  const firstName = normalizeString(placement?.candidate?.firstName) || "there";
+  return [
+    "<!doctype html>",
+    '<html lang="en"><body style="font-family:Arial,Helvetica,sans-serif;color:#202124;line-height:1.6;">',
+    `<p>Hello ${firstName},</p>`,
+    "<p>Welcome to Spencer Ogden!</p>",
+    "<p>Our records show that you have not yet accessed the benefit enrollment wizard on the ADP website to elect or decline benefits. Your personal identification code was issued in an email from ADP.</p>",
+    "<p>Please remember that you have 31 days from your date of hire to make your benefit elections to take effect on the first of the month following your date of hire and remain in effect for the remainder of the 2022 plan year.</p>",
+    "<p>If you miss the new hire enrollment window, 31 days from date of hire, you will not have another chance to elect coverage or make any changes to your coverage until our next open enrollment period unless you experience an IRS qualified life change event during 2022. Your next opportunity to enroll will be November 2022 during open enrollment for an effective date of January 1, 2023.</p>",
+    "<p>This email serves as a reminder to access the enrollment wizard. The ADP access instructions were included in your on-boarding package but have been attached to this message for your convenience.</p>",
+    "<p>Please let us know if you have any questions.</p>",
+    "<p>Regards,<br>Spencer Ogden Benefits<br>713-358-7900</p>",
+    "</body></html>",
+  ].join("");
+}
+
+function htmlToText(html) {
+  return normalizeString(html)
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .split("\n")
+    .map((line) => normalizeString(line))
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildNewYorkBenefitsReminderTransmission({ placement }) {
+  const toEmail = normalizeString(placement?.candidate?.email).toLowerCase();
+  const candidateOwnerEmail = normalizeString(placement?.candidate?.owner?.email).toLowerCase();
+  const ccEmails = uniqueEmails([candidateOwnerEmail], { exclude: [toEmail] });
+  const html = buildNewYorkBenefitsReminderHtml({ placement });
+  const attachments = NEW_YORK_BENEFITS_ATTACHMENTS.map((attachmentPath) =>
+    buildAttachment(attachmentPath),
+  );
+
+  const recipients = [
+    {
+      address: {
+        email: toEmail,
+      },
+    },
+    ...ccEmails.map((email) => ({
+      address: {
+        email,
+        header_to: toEmail,
+      },
+    })),
+  ].filter((recipient) => normalizeString(recipient?.address?.email));
+
+  return {
+    content: {
+      from: {
+        name: "Soinsurance",
+        email: "soinsurance@spencer-ogden.com",
+      },
+      subject: "Benefits Enrollment Reminder",
+      text: htmlToText(html),
+      html,
+      attachments,
+      ...(ccEmails.length > 0 ? { headers: { CC: ccEmails.join(", ") } } : {}),
+    },
+    recipients,
+    recipientEnvelope: {
+      toEmail,
+      ccEmails,
+      missingCandidateEmail: !toEmail,
+      missingCandidateOwnerEmail: !candidateOwnerEmail,
+      missingJobOrderOwnerEmail: false,
+    },
+    attachmentPaths: NEW_YORK_BENEFITS_ATTACHMENTS.map((attachmentPath) =>
+      path.resolve(attachmentPath),
+    ),
+  };
+}
+
 function buildPlacementReportRecord({
   placement,
   stage,
@@ -246,10 +378,14 @@ module.exports = {
   buildBenefitsReminderRecipientEnvelope,
   buildBenefitsReminderTransmission,
   buildDateBeginQueryDatesForStage,
+  buildNewYorkBenefitsReminderTransmission,
   buildPlacementReportRecord,
   buildQueryPlan,
   buildUtcDayWindowFromDateKey,
+  getBusinessDateParts,
   getBusinessDateKey,
   getStageTemplateId,
   matchesBenefitsReminderPlacement,
+  matchesNewYorkBenefitsReminderPlacement,
+  NEW_YORK_BENEFITS_RULE_KEY,
 };

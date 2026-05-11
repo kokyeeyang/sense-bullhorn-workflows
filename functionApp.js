@@ -167,10 +167,9 @@ const workflowDefinitions = [
     workflowName: "placement-benefits-reminder-sync",
     route: "workflows/placement-benefits-reminder-sync",
     scheduleEnv: "AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE",
-    defaultSchedule: "0 0 17 * * *",
+    defaultSchedule: "0 0 * * * *",
     logLabel: "placement benefits reminder sync",
     run: ({ targetDate } = {}) => runPlacementBenefitsReminderSync({ targetDate }),
-    enabled: false,
   },
   {
     functionName: "placementBenefitsReminderTestSend",

@@ -6,15 +6,20 @@ const { BullhornClient } = require("../clients/bullhornClient");
 const { SparkPostClient } = require("../clients/sparkPostClient");
 const {
   BENEFITS_REMINDER_STAGES,
+  NEW_YORK_BENEFITS_RULE_KEY,
   buildBenefitsReminderTransmission,
+  buildNewYorkBenefitsReminderTransmission,
   buildPlacementReportRecord,
   buildQueryPlan,
   buildUtcDayWindowFromDateKey,
-  getBusinessDateKey,
+  getBusinessDateParts,
   getStageTemplateId,
   matchesBenefitsReminderPlacement,
+  matchesNewYorkBenefitsReminderPlacement,
 } = require("../utils/placementBenefitsReminderUtils");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
+
+const SEND_AT_PACIFIC_HOUR = 17;
 
 function validateSparkPostConfig(config) {
   if (config.DRY_RUN) {
@@ -122,13 +127,64 @@ async function run({ targetDate } = {}) {
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });
-  const businessDateKey = targetDate || getBusinessDateKey();
+  const business = getBusinessDateParts();
+  const configuredTargetDate = config.PLACEMENT_BENEFITS_REMINDER_TARGET_DATE || null;
+  const businessDateKey = targetDate || configuredTargetDate || business.dateKey;
+  const forceTimedRun = Boolean(targetDate || configuredTargetDate);
+  const isPacificWeekday = business.dayOfWeek >= 1 && business.dayOfWeek <= 5;
+
+  if (!forceTimedRun && (business.hour !== SEND_AT_PACIFIC_HOUR || !isPacificWeekday)) {
+    const report = {
+      generatedAt: new Date().toISOString(),
+      dryRun: config.DRY_RUN,
+      businessDate: businessDateKey,
+      businessHour: business.hour,
+      expectedPacificHour: SEND_AT_PACIFIC_HOUR,
+      skippedReason: !isPacificWeekday ? "outside-pacific-weekday" : "outside-send-hour",
+      queryPlan: [],
+      totals: {
+        totalPlacementsQueried: 0,
+        matchedPlacements: 0,
+        day10Count: 0,
+        newYorkDay10Count: 0,
+        day21Count: 0,
+        day26Count: 0,
+        skippedNonMatchingPlacement: 0,
+        skippedMissingCandidateEmail: 0,
+        missingCandidateOwnerEmail: 0,
+        missingJobOrderOwnerEmail: 0,
+      },
+      sparkPost: {
+        sent: false,
+        transmissionCount: 0,
+        payloadCount: 0,
+        transmissions: [],
+        payload: [],
+      },
+      placements: [],
+    };
+
+    const reportPath = await writeChangesReport({ report });
+    const sparkPostPayloadReportPath = await writeSparkPostPayloadReport({ payload: [] });
+
+    return buildWorkflowResult({
+      workflowName: "placement-benefits-reminder-sync",
+      report,
+      artifacts: {
+        reportPath,
+        sparkPostPayloadReportPath,
+      },
+    });
+  }
+
   const queryPlan = buildQueryPlan({ businessDateKey });
 
   logger.info(
     {
       dryRun: config.DRY_RUN,
       businessDate: businessDateKey,
+      businessHour: business.hour,
+      expectedPacificHour: SEND_AT_PACIFIC_HOUR,
       queryCount: config.PLACEMENT_BENEFITS_REMINDER_QUERY_COUNT,
       queryPlan,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
@@ -192,6 +248,7 @@ async function run({ targetDate } = {}) {
   let missingJobOrderOwnerEmail = 0;
   const placementsByStage = {
     day10: 0,
+    newYorkDay10: 0,
     day21: 0,
     day26: 0,
   };
@@ -215,12 +272,18 @@ async function run({ targetDate } = {}) {
       continue;
     }
 
-    const templateId = getStageTemplateId({ config, stage: item.stage });
-    const transmissionPayload = buildBenefitsReminderTransmission({
-      placement: hydratedPlacement,
-      stage: item.stage,
-      templateId,
-    });
+    const isNewYorkDay10 =
+      item.stage.key === "day10" && matchesNewYorkBenefitsReminderPlacement(hydratedPlacement);
+    const templateId = isNewYorkDay10 ? null : getStageTemplateId({ config, stage: item.stage });
+    const transmissionPayload = isNewYorkDay10
+      ? buildNewYorkBenefitsReminderTransmission({
+          placement: hydratedPlacement,
+        })
+      : buildBenefitsReminderTransmission({
+          placement: hydratedPlacement,
+          stage: item.stage,
+          templateId,
+        });
 
     if (transmissionPayload.recipientEnvelope.missingCandidateEmail) {
       skippedMissingCandidateEmail += 1;
@@ -237,33 +300,41 @@ async function run({ targetDate } = {}) {
 
     const placementReportRecord = buildPlacementReportRecord({
       placement: hydratedPlacement,
-      stage: item.stage,
+      stage: isNewYorkDay10
+        ? {
+            ...item.stage,
+            key: NEW_YORK_BENEFITS_RULE_KEY,
+            label: "new-york-day-10",
+          }
+        : item.stage,
       templateId,
       queryDateBegin: item.queryDateBegin,
       businessDateKey,
       recipientEnvelope: transmissionPayload.recipientEnvelope,
-      sparkPostPayload: {
-        content: {
-          template_id: templateId,
-          headers: transmissionPayload.headers || null,
-        },
-        recipients: transmissionPayload.recipients,
-      },
+      sparkPostPayload: isNewYorkDay10
+        ? transmissionPayload
+        : {
+            content: {
+              template_id: templateId,
+              headers: transmissionPayload.headers || null,
+            },
+            recipients: transmissionPayload.recipients,
+          },
     });
 
     matchedPlacements.push(placementReportRecord);
     sparkPostPayload.push(placementReportRecord.sparkPostPayload);
-    placementsByStage[item.stage.key] += 1;
+    if (isNewYorkDay10) {
+      placementsByStage.newYorkDay10 += 1;
+    } else {
+      placementsByStage[item.stage.key] += 1;
+    }
 
     if (!config.DRY_RUN) {
-      const transmission = await sparkPost.sendTransmission({
-        templateId,
-        recipients: transmissionPayload.recipients,
-        headers: transmissionPayload.headers,
-        audit: {
+      const audit = {
           workflowName: "placement-benefits-reminder-sync",
           sendType: "reminder",
-          ruleKey: item.stage.key,
+          ruleKey: isNewYorkDay10 ? NEW_YORK_BENEFITS_RULE_KEY : item.stage.key,
           recipientType: "candidate",
           recipientEmail: transmissionPayload.recipientEnvelope.toEmail || "",
           recipientFirstName: hydratedPlacement?.candidate?.firstName || "",
@@ -284,15 +355,25 @@ async function run({ targetDate } = {}) {
             queryDateBegin: item.queryDateBegin,
           },
           metadata: {
-            stageKey: item.stage.key,
-            stageLabel: item.stage.label,
+            stageKey: isNewYorkDay10 ? NEW_YORK_BENEFITS_RULE_KEY : item.stage.key,
+            stageLabel: isNewYorkDay10 ? "new-york-day-10" : item.stage.label,
           },
-        },
-      });
+        };
+      const transmission = isNewYorkDay10
+        ? await sparkPost.sendInlineTransmission({
+            ...transmissionPayload,
+            audit,
+          })
+        : await sparkPost.sendTransmission({
+            templateId,
+            recipients: transmissionPayload.recipients,
+            headers: transmissionPayload.headers,
+            audit,
+          });
 
       transmissions.push({
         placementId: hydratedPlacement.id,
-        stage: item.stage.label,
+        stage: isNewYorkDay10 ? "new-york-day-10" : item.stage.label,
         transmission,
       });
     }
@@ -307,6 +388,7 @@ async function run({ targetDate } = {}) {
       totalPlacementsQueried: stagePlacements.length,
       matchedPlacements: matchedPlacements.length,
       day10Count: placementsByStage.day10,
+      newYorkDay10Count: placementsByStage.newYorkDay10,
       day21Count: placementsByStage.day21,
       day26Count: placementsByStage.day26,
       skippedNonMatchingPlacement,
