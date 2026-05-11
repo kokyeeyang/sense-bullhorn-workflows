@@ -21,6 +21,7 @@
     "run:americas-onboarding-notices-sync": "node src/workflows/americasOnboardingNoticesSync.js",
     "run:americas-internal-placement-notices-sync": "node src/workflows/americasInternalPlacementNoticesSync.js",
     "run:perm-checkin-sync": "node src/workflows/permCheckinSync.js",
+    "run:emea-placement-auto-reply-sync": "node src/workflows/emeaPlacementAutoReplySync.js",
     "run:so-how-did-we-do-feedback-sync": "node src/workflows/soHowDidWeDoFeedbackSync.js",
     "run:start-date-approval-reminder-sync": "node src/workflows/startDateApprovalReminderSync.js",
     "run:placement-benefits-reminder-sync": "node src/workflows/placementBenefitsReminderSync.js",

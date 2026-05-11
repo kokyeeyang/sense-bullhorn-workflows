@@ -14,6 +14,7 @@ const { run: runPlacementStartReminderSync } = require("./src/workflows/placemen
 const { run: runAmericasOnboardingNoticesSync } = require("./src/workflows/americasOnboardingNoticesSync");
 const { run: runAmericasInternalPlacementNoticesSync } = require("./src/workflows/americasInternalPlacementNoticesSync");
 const { run: runPermCheckinSync } = require("./src/workflows/permCheckinSync");
+const { run: runEmeaPlacementAutoReplySync } = require("./src/workflows/emeaPlacementAutoReplySync");
 const { run: runSoHowDidWeDoFeedbackSync } = require("./src/workflows/soHowDidWeDoFeedbackSync");
 const { run: runStartDateApprovalReminderSync } = require("./src/workflows/startDateApprovalReminderSync");
 const { run: runPlacementBenefitsReminderSync } = require("./src/workflows/placementBenefitsReminderSync");
@@ -133,6 +134,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 * * * *",
     logLabel: "perm check-in sync",
     run: ({ targetDate } = {}) => runPermCheckinSync({ targetDate }),
+  },
+  {
+    functionName: "emeaPlacementAutoReplySync",
+    workflowName: "emea-placement-auto-reply-sync",
+    route: "workflows/emea-placement-auto-reply-sync",
+    scheduleEnv: "AZURE_EMEA_PLACEMENT_AUTO_REPLY_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "EMEA placement auto-reply sync",
+    run: ({ targetDate } = {}) => runEmeaPlacementAutoReplySync({ targetDate }),
   },
   {
     functionName: "soHowDidWeDoFeedbackSync",

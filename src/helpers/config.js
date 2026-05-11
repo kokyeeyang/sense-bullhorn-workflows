@@ -151,6 +151,8 @@ const configSchema = z.object({
   PERM_CHECKIN_QUERY_COUNT: positiveIntWithDefault(200),
   PERM_CHECKIN_TARGET_DATE: optionalString,
   PERM_CHECKIN_RESPONSE_BASE_URL: optionalString,
+  EMEA_PLACEMENT_AUTO_REPLY_QUERY_COUNT: positiveIntWithDefault(200),
+  EMEA_PLACEMENT_AUTO_REPLY_TARGET_DATE: optionalString,
   SO_HOW_DID_WE_DO_QUERY_COUNT: positiveIntWithDefault(200),
   SO_HOW_DID_WE_DO_TARGET_DATE: optionalString,
   POSTGRES_CONNECTION_STRING: optionalString,
