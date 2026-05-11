@@ -13,6 +13,7 @@ const { run: runNewJobIllinoisEmailSync } = require("./src/workflows/newJobIllin
 const { run: runPlacementStartReminderSync } = require("./src/workflows/placementStartReminderSync");
 const { run: runAmericasOnboardingNoticesSync } = require("./src/workflows/americasOnboardingNoticesSync");
 const { run: runAmericasInternalPlacementNoticesSync } = require("./src/workflows/americasInternalPlacementNoticesSync");
+const { run: runPermCheckinSync } = require("./src/workflows/permCheckinSync");
 const { run: runSoHowDidWeDoFeedbackSync } = require("./src/workflows/soHowDidWeDoFeedbackSync");
 const { run: runStartDateApprovalReminderSync } = require("./src/workflows/startDateApprovalReminderSync");
 const { run: runPlacementBenefitsReminderSync } = require("./src/workflows/placementBenefitsReminderSync");
@@ -29,6 +30,7 @@ const {
 const {
   handleSoHowDidWeDoFeedbackResponse,
 } = require("./src/workflows/soHowDidWeDoFeedbackResponseHandler");
+const { handlePermCheckinResponse } = require("./src/workflows/permCheckinResponseHandler");
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/workflows/placementYearlyFeeIncreaseSync");
 const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/workflows/placementYearlyFeeIncreaseTestSend");
 const { run: runDailyWorkflowSummary } = require("./src/workflows/dailyWorkflowSummary");
@@ -122,6 +124,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 * * * *",
     logLabel: "Americas internal placement notices sync",
     run: ({ targetDate } = {}) => runAmericasInternalPlacementNoticesSync({ targetDate }),
+  },
+  {
+    functionName: "permCheckinSync",
+    workflowName: "perm-checkin-sync",
+    route: "workflows/perm-checkin-sync",
+    scheduleEnv: "AZURE_PERM_CHECKIN_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "perm check-in sync",
+    run: ({ targetDate } = {}) => runPermCheckinSync({ targetDate }),
   },
   {
     functionName: "soHowDidWeDoFeedbackSync",
@@ -490,4 +501,11 @@ app.http("soHowDidWeDoFeedbackResponse", {
   authLevel: "anonymous",
   route: "workflows/so-how-did-we-do/respond",
   handler: handleSoHowDidWeDoFeedbackResponse,
+});
+
+app.http("permCheckinResponse", {
+  methods: ["GET", "POST"],
+  authLevel: "anonymous",
+  route: "workflows/perm-checkin/respond",
+  handler: handlePermCheckinResponse,
 });
