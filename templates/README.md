@@ -48,3 +48,21 @@ Use this theme for SparkPost HTML templates in this folder.
 Primary actions should use `#5630d3` with white text. Secondary actions should use a white background, `#b8c0cc` border, and `#202124` text.
 
 Use table-based buttons instead of relying only on CSS button styling, because these templates are sent through email clients.
+
+## SparkPost Template Files
+
+- `benefits-reminder-day-10.html`
+- `benefits-reminder-day-21.html`
+- `benefits-reminder-day-26.html`
+- `harassment-training-onboarding-confirmation.html`
+- `harassment-training-california-notice.html`
+- `harassment-training-state-notice.html`
+- `interview-illinois-alert.html`
+- `placement-termination.html`
+- `placement-start-reminder.html`
+- `new-job-illinois-alert.html`
+- `placement-yearly-fee-increase-reminder.html`
+
+## Preview Data
+
+Use `sparkpost-preview-substitution-data.json` for SparkPost preview substitution data. Copy the object for the template being previewed into SparkPost's substitution data field.

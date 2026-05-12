@@ -1,0 +1,76 @@
+{
+  "benefits-reminder-day-10.html": {
+    "candidate_first_name": "Alex"
+  },
+  "benefits-reminder-day-21.html": {
+    "candidate_first_name": "Alex"
+  },
+  "benefits-reminder-day-26.html": {
+    "candidate_first_name": "Alex"
+  },
+  "harassment-training-onboarding-confirmation.html": {
+    "subject": "Action Required: Anti-Harassment Training Confirmation",
+    "state": "Illinois",
+    "candidate_first_name": "Alex",
+    "client_company_name": "Example Energy Services",
+    "confirmation_question_text": "Have you reviewed the attached anti-harassment training document?",
+    "response_url_yes": "https://example.com/harassment-training/confirm?response=yes",
+    "response_url_no": "https://example.com/harassment-training/confirm?response=no",
+    "candidate_owner_name": "Jordan Smith"
+  },
+  "harassment-training-california-notice.html": {
+    "subject": "Action Required: California Sexual Harassment Training",
+    "state": "California",
+    "candidate_first_name": "Alex",
+    "candidate_last_name": "Taylor",
+    "training_url": "https://example.com/california-harassment-training",
+    "candidate_owner_first_name": "Jordan"
+  },
+  "harassment-training-state-notice.html": {
+    "subject": "Action Required: State Sexual Harassment Training",
+    "state": "New York",
+    "candidate_first_name": "Alex",
+    "candidate_last_name": "Taylor",
+    "training_url": "https://example.com/state-harassment-training",
+    "candidate_owner_first_name": "Jordan"
+  },
+  "interview-illinois-alert.html": {
+    "id": "789012",
+    "candidateReference": {
+      "name": "Alex Taylor",
+      "id": "123456"
+    }
+  },
+  "new-job-illinois-alert.html": {
+    "job_order_id": "49086",
+    "client_corporation_name": "Example Energy Services"
+  },
+  "placement-termination.html": {
+    "owner_firstName": "Jordan",
+    "placement_id": "456789",
+    "candidate_name": "Alex Taylor"
+  },
+  "placement-start-reminder.html": {
+    "jobOrderOwner_firstName": "Jordan",
+    "candidate_name": "Alex Taylor",
+    "client_company_name": "Example Energy Services",
+    "date_begin": "1 June 2026",
+    "placement_id": "456789",
+    "so_entity": "Spencer Ogden Inc.",
+    "legal_entity_name": "Example Energy Services LLC",
+    "billingClientContact_name": "Morgan Lee",
+    "billingClientContact_full_address": "100 Market Street, Houston, TX 77002, United States",
+    "billingClientContact_country_name": "United States",
+    "tob_agreed": "Yes",
+    "po_required": "Yes",
+    "po_number": "PO-2026-001",
+    "finance_ref_number": "XXGENE20"
+  },
+  "placement-yearly-fee-increase-reminder.html": {
+    "client_company_name": "Example Energy Services",
+    "yearly_fee_increase_percent": "5",
+    "placement_id": "456789",
+    "candidate_name": "Alex Taylor",
+    "placement_start_date": "1 July 2025"
+  }
+}
