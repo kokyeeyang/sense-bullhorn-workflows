@@ -698,7 +698,7 @@ Notes:
 
 ## Files
 
-- `src/workflows/index.js`: Main runner.
+- `src/workflows/runCandidateStateSync.js`: Candidate state cleanup runner.
 - `src/workflows/clientContactDncSync.js`: Combined client contact DNC runner.
 - `src/workflows/placementDatabaseEnrichmentSync.js`: Daily placement database enrichment runner.
 - `src/workflows/placementStatusSync.js`: Placement status transition runner.

@@ -115,7 +115,7 @@ async function writeChangesReport({ report }) {
   return writeJsonArtifact({ filePrefix: "changes-report", payload: report });
 }
 
-async function run({ candidateIds = null } = {}) {
+async function runCandidateStateSync({ candidateIds = null } = {}) {
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
   const explicitCandidateIds = parseCandidateIds(candidateIds);
@@ -342,6 +342,8 @@ async function run({ candidateIds = null } = {}) {
     window: {
       fromEpoch,
       toEpoch,
+      fromIso: from.toISOString(),
+      toIso: to.toISOString(),
       lookbackHours: config.LOOKBACK_HOURS,
       cutoffDate: config.CANDIDATE_STATE_SYNC_CUTOFF_DATE,
     },
@@ -374,7 +376,7 @@ async function run({ candidateIds = null } = {}) {
 }
 
 if (require.main === module) {
-  run().catch((error) => {
+  runCandidateStateSync().catch((error) => {
     logger.error(serializeError(error), "Candidate state sync failed");
     process.exitCode = 1;
   });
@@ -385,5 +387,6 @@ module.exports = {
   parseCandidateIds,
   parseBullhornDateAdded,
   parseIsoDateStart,
-  run,
+  run: runCandidateStateSync,
+  runCandidateStateSync,
 };

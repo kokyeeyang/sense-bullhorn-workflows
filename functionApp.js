@@ -3,7 +3,7 @@ require("dotenv").config();
 const { app } = require("@azure/functions");
 const { loadConfig } = require("./src/helpers/config");
 const { logger } = require("./src/helpers/logger");
-const { run: runCandidateStateSync } = require("./src/workflows/index");
+const { runCandidateStateSync } = require("./src/workflows/runCandidateStateSync");
 const { run: runPlacementDatabaseEnrichmentSync } = require("./src/workflows/placementDatabaseEnrichmentSync");
 const { run: runPlacementStatusSync } = require("./src/workflows/placementStatusSync");
 const { run: runPlacementTerminationEmailSync } = require("./src/workflows/placementTerminationEmailSync");

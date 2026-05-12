@@ -4,8 +4,9 @@
   "description": "Bullhorn workflow migration scripts",
   "main": "functionApp.js",
   "scripts": {
-    "start": "node src/workflows/index.js",
-    "run:workflow": "node src/workflows/index.js",
+    "start": "node src/workflows/runCandidateStateSync.js",
+    "run:workflow": "node src/workflows/runCandidateStateSync.js",
+    "run:candidate-state-sync": "node src/workflows/runCandidateStateSync.js",
     "run:client-contact-dnc-sync": "node src/workflows/clientContactDncSync.js",
     "run:client-corporation-360-sync": "node src/workflows/clientCorporation360Sync.js",
     "run:client-corporation-key-account-sync": "node src/workflows/clientCorporationKeyAccountSync.js",

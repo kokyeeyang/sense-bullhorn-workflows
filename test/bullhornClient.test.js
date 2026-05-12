@@ -17,7 +17,7 @@ describe("BullhornClient", () => {
     jest.clearAllMocks();
   });
 
-  test("searchCandidates uses existing bracket range syntax for candidate dateAdded searches", async () => {
+  test("searchCandidates uses fielded range syntax for candidate dateAdded searches", async () => {
     axios.get.mockResolvedValue({
       data: {
         data: [],
@@ -37,7 +37,7 @@ describe("BullhornClient", () => {
       "https://example-rest.bullhornstaffing.com/rest-services/123/search/Candidate",
       expect.objectContaining({
         params: expect.objectContaining({
-          query: "dateAdded[1498867200 TO 1509494399]",
+          query: "dateAdded:[1498867200 TO 1509494399]",
         }),
       }),
     );

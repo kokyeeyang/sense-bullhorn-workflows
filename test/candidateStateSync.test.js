@@ -3,7 +3,7 @@ const {
   parseCandidateIds,
   parseBullhornDateAdded,
   parseIsoDateStart,
-} = require("../src/workflows/index");
+} = require("../src/workflows/runCandidateStateSync");
 
 describe("candidate state sync", () => {
   test("parses the cutoff date at the start of the UTC day", () => {
