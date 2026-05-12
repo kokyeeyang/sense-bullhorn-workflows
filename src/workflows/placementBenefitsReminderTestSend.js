@@ -15,14 +15,14 @@ function buildDummyPlacements() {
       candidate: {
         firstName: "Yee Yang",
         lastName: "Kok",
-        email: "yeeyang.kok@spencer-ogden.com",
+        email: "kokyeeyang1994@gmail.com",
         owner: {
-          email: "yeeyang.kok+candowner@spencer-ogden.com",
+          email: "yeeyang.kok@spencer-ogden.com",
         },
       },
       jobOrder: {
         owner: {
-          email: "yeeyang.kok+jobowner@spencer-ogden.com",
+          email: "yeeyang.kok@spencer-ogden.com",
         },
       },
     },
@@ -34,12 +34,12 @@ function buildDummyPlacements() {
         lastName: "Test",
         email: "yee_yang94@hotmail.com",
         owner: {
-          email: "yeeyang.kok+hotmailcandowner@spencer-ogden.com",
+          email: "yeeyang.kok@spencer-ogden.com",
         },
       },
       jobOrder: {
         owner: {
-          email: "yeeyang.kok+hotmailjobowner@spencer-ogden.com",
+          email: "yeeyang.kok@spencer-ogden.com",
         },
       },
     },

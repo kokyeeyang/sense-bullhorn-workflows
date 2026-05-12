@@ -14,7 +14,7 @@ function buildTestSparkPostPayload(config) {
     recipients: [
       {
         address: {
-          email: "yeeyang.kok@spencer-ogden.com",
+          email: "kokyeeyang1994@gmail.com",
         },
         substitution_data: {
           placement_id: "123456",
@@ -57,6 +57,13 @@ function buildTestSparkPostPayload(config) {
         },
       }
     ],
+  };
+}
+
+function buildFinalSparkPostPayload({ payload, sparkPost }) {
+  return {
+    content: payload.content,
+    recipients: sparkPost.appendBullhornTrackingRecipient(payload.recipients),
   };
 }
 
@@ -106,6 +113,7 @@ async function run() {
   logger.info({ reportPath }, "Placement reminder SparkPost test payload report written");
 
   let transmission = null;
+  const finalPayload = buildFinalSparkPostPayload({ payload, sparkPost });
   if (!config.DRY_RUN) {
     transmission = await sparkPost.sendTransmission({
       templateId: payload.content.template_id,
@@ -120,9 +128,25 @@ async function run() {
     );
   }
 
+  await fs.writeFile(
+    reportPath,
+    `${JSON.stringify(
+      {
+        dryRun: config.DRY_RUN,
+        previewPayload: payload,
+        finalPayload,
+        transmission,
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+
   return {
     dryRun: config.DRY_RUN,
     payload,
+    finalPayload,
     transmission,
     reportPath,
   };
@@ -143,4 +167,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { buildTestSparkPostPayload, run };
+module.exports = { buildFinalSparkPostPayload, buildTestSparkPostPayload, run };

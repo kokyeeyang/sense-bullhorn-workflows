@@ -126,6 +126,7 @@ const configSchema = z.object({
   PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_AFTER_DAYS: nonNegativeIntWithDefault(0),
   PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE: envBoolean,
   BULLHORN_WORKFLOW: optionalString,
+  BULLHORN_EMAIL_TRACKING_BCC: optionalString,
   SPARKPOST_API_BASE_URL: urlWithDefault("https://api.sparkpost.com"),
   SPARKPOST_API_KEY: optionalString,
   SPARKPOST_TEMPLATE_ID: optionalString,

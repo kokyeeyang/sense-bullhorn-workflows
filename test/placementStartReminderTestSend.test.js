@@ -1,4 +1,7 @@
-const { buildTestSparkPostPayload } = require("../src/workflows/placementStartReminderTestSend");
+const {
+  buildFinalSparkPostPayload,
+  buildTestSparkPostPayload,
+} = require("../src/workflows/placementStartReminderTestSend");
 
 describe("placementStartReminderTestSend", () => {
   test("builds the expected SparkPost payload", () => {
@@ -56,5 +59,24 @@ describe("placementStartReminderTestSend", () => {
         },
       ],
     });
+  });
+
+  test("builds final payload with Bullhorn tracking recipient when configured", () => {
+    const payload = buildTestSparkPostPayload({
+      SPARKPOST_TEMPLATE_ID: "test-yy",
+    });
+    const sparkPost = {
+      appendBullhornTrackingRecipient: (recipients) => [
+        ...recipients,
+        {
+          address: {
+            email: "spencerogden.2386@sl40tracker.bullhornstaffing.com",
+            header_to: "yeeyang.kok@spencer-ogden.com",
+          },
+        },
+      ],
+    };
+
+    expect(buildFinalSparkPostPayload({ payload, sparkPost }).recipients).toHaveLength(3);
   });
 });

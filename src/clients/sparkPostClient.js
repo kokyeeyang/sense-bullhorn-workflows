@@ -5,6 +5,25 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getRecipientEmail(recipient) {
+  return normalizeEmail(recipient?.address?.email);
+}
+
+function getPrimaryRecipientEmail(recipients = []) {
+  for (const recipient of recipients) {
+    const email = getRecipientEmail(recipient);
+    if (email) {
+      return email;
+    }
+  }
+
+  return "";
+}
+
 class SparkPostClient {
   constructor({ config, logger }) {
     this.config = config;
@@ -55,6 +74,7 @@ class SparkPostClient {
 
   async sendTransmission({ templateId, recipients, headers, attachments, from, audit }) {
     const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
+    const finalRecipients = this.appendBullhornTrackingRecipient(recipients);
     const payload = {
       content: {
         template_id: templateId,
@@ -62,7 +82,7 @@ class SparkPostClient {
         ...(headers ? { headers } : {}),
         ...(attachments?.length ? { attachments } : {}),
       },
-      recipients,
+      recipients: finalRecipients,
     };
 
     const response = await this.requestWithRetry({
@@ -88,9 +108,10 @@ class SparkPostClient {
 
   async sendInlineTransmission({ content, recipients, tracking, audit }) {
     const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
+    const finalRecipients = this.appendBullhornTrackingRecipient(recipients);
     const payload = {
       content,
-      recipients,
+      recipients: finalRecipients,
     };
 
     const response = await this.requestWithRetry({
@@ -117,6 +138,7 @@ class SparkPostClient {
 
   async sendMessage({ from, to, subject, text, html, audit }) {
     const url = `${this.config.SPARKPOST_API_BASE_URL}/api/v1/transmissions`;
+    const recipients = this.appendBullhornTrackingRecipient([{ address: { email: to } }]);
     const payload = {
       content: {
         from,
@@ -124,7 +146,7 @@ class SparkPostClient {
         text,
         html,
       },
-      recipients: [{ address: { email: to } }],
+      recipients,
     };
 
     const response = await this.requestWithRetry({
@@ -146,6 +168,32 @@ class SparkPostClient {
     });
 
     return response.data;
+  }
+
+  appendBullhornTrackingRecipient(recipients = []) {
+    const trackingEmail = normalizeEmail(this.config.BULLHORN_EMAIL_TRACKING_BCC);
+    if (!trackingEmail) {
+      return recipients;
+    }
+
+    const primaryEmail = getPrimaryRecipientEmail(recipients);
+    if (!primaryEmail) {
+      return recipients;
+    }
+
+    if (recipients.some((recipient) => getRecipientEmail(recipient) === trackingEmail)) {
+      return recipients;
+    }
+
+    return [
+      ...recipients,
+      {
+        address: {
+          email: trackingEmail,
+          header_to: primaryEmail,
+        },
+      },
+    ];
   }
 
   async getTemplate(templateId) {

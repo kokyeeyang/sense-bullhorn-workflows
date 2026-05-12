@@ -199,6 +199,28 @@ describe("interviewIllinoisEmailSync", () => {
           },
         },
       },
+      {
+        appointmentId: 703,
+        reason: "non-interview-appointment",
+        appointment: {
+          id: 703,
+          type: "Meeting",
+          dateAdded: null,
+          candidateReference: {
+            id: 516240,
+            firstName: "Kai",
+            lastName: "Lee",
+          },
+          jobOrder: {
+            id: 49088,
+            dateAdded: "2024-05-01T08:30:00.000Z",
+            employmentType: "contract",
+            address: { state: "Illinois" },
+            owner: { id: 2906869, firstName: "Jazzey", lastName: "Rooney" },
+          },
+        },
+        matchDetails: null,
+      },
     ]);
     expect(report.sparkPost.payload).toEqual({
       content: {

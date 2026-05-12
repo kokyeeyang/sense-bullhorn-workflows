@@ -45,6 +45,23 @@ async function writeSparkPostPayloadReport({ payload }) {
   });
 }
 
+function buildSkippedAppointmentPreview({ appointmentId, appointment = null, reason, matchDetails = null }) {
+  return {
+    appointmentId: appointmentId || null,
+    reason,
+    appointment: appointment
+      ? {
+          id: appointment.id ?? null,
+          type: appointment.type || null,
+          dateAdded: appointment.dateAdded || null,
+          candidateReference: appointment.candidateReference || null,
+          jobOrder: appointment.jobOrder || null,
+        }
+      : null,
+    matchDetails,
+  };
+}
+
 async function run() {
   const config = loadConfig();
   validateSparkPostConfig(config);
@@ -122,6 +139,13 @@ async function run() {
 
     if (!isInterviewAppointment(appointment)) {
       skippedNonInterview += 1;
+      skippedAppointments.push(
+        buildSkippedAppointmentPreview({
+          appointmentId,
+          appointment,
+          reason: "non-interview-appointment",
+        }),
+      );
       continue;
     }
 
@@ -144,6 +168,13 @@ async function run() {
     const ownerId = appointment?.jobOrder?.owner?.id || null;
     if (!ownerId) {
       skippedMissingOwnerId += 1;
+      skippedAppointments.push(
+        buildSkippedAppointmentPreview({
+          appointmentId,
+          appointment,
+          reason: "missing-job-order-owner-id",
+        }),
+      );
       continue;
     }
 
@@ -159,6 +190,13 @@ async function run() {
 
     if (!owner?.email) {
       skippedMissingOwnerEmail += 1;
+      skippedAppointments.push(
+        buildSkippedAppointmentPreview({
+          appointmentId,
+          appointment,
+          reason: "missing-job-order-owner-email",
+        }),
+      );
       continue;
     }
 
@@ -290,6 +328,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  buildSkippedAppointmentPreview,
   getTemplateId,
   run,
   writeSparkPostPayloadReport,
