@@ -70,4 +70,32 @@ describe("BullhornClient", () => {
     );
   });
 
+  test("searchCandidatesByDateAddedRange fetches candidate email fields with dateAdded search", async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        data: [],
+        total: 0,
+      },
+    });
+
+    const client = new BullhornClient({ config, logger });
+    await client.searchCandidatesByDateAddedRange({
+      restUrl: "https://example-rest.bullhornstaffing.com/rest-services/123",
+      bhRestToken: "token",
+      startMs: 1498867200000,
+      endMs: 1509494399000,
+      fieldsOverride: "id,email,dateAdded",
+    });
+
+    expect(axios.get).toHaveBeenCalledWith(
+      "https://example-rest.bullhornstaffing.com/rest-services/123/search/Candidate",
+      expect.objectContaining({
+        params: expect.objectContaining({
+          query: "dateAdded:[1498867200 TO 1509494399]",
+          fields: "id,email,dateAdded",
+        }),
+      }),
+    );
+  });
+
 });

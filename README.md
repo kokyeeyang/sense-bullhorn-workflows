@@ -271,6 +271,7 @@ npm run run:placement-start-reminder-sync
 npm run run:americas-onboarding-notices-sync
 npm run run:ais-survivex-certification-sync
 npm run run:americas-welcome-contract-email-sync
+npm run run:fair-collection-notice-sync
 npm run run:so-how-did-we-do-feedback-sync
 npm run run:start-date-approval-reminder-sync
 npm run run:placement-benefits-reminder-sync
@@ -290,6 +291,7 @@ Americas onboarding notices runs write both `reports/YYYY-MM-DD/americas-onboard
 AIS Survivex certification runs write both `reports/YYYY-MM-DD/ais-survivex-certification-report-<timestamp>.json` and `reports/YYYY-MM-DD/ais-survivex-certification-sparkpost-payload-<timestamp>.json`.
 Americas welcome contract email runs write both `reports/YYYY-MM-DD/americas-welcome-contract-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/americas-welcome-contract-email-sparkpost-payload-<timestamp>.json`.
 Americas welcome contract email maps the Sense `last_note_action_type = Talent platform initiated` rule to Bullhorn Candidate `customText16`, whose metadata label is `Initiate Onboarding`. Bullhorn does not expose `CandidateEditHistory` in this tenant, so the workflow scans recently modified candidates and checks the current `customText16` value rather than proving an edit-history transition. `AMERICAS_WELCOME_CONTRACT_EMAIL_ACTION_TYPE_FIELD` can override the field name if the mapping changes.
+Fair collection notice runs write both `reports/YYYY-MM-DD/fair-collection-notice-report-<timestamp>.json` and `reports/YYYY-MM-DD/fair-collection-notice-sparkpost-payload-<timestamp>.json`.
 SO How Did We Do feedback runs write both `reports/YYYY-MM-DD/so-how-did-we-do-feedback-report-<timestamp>.json` and `reports/YYYY-MM-DD/so-how-did-we-do-feedback-sparkpost-payload-<timestamp>.json`.
 Start date approval reminder runs write both `reports/YYYY-MM-DD/start-date-approval-reminder-report-<timestamp>.json` and `reports/YYYY-MM-DD/start-date-approval-reminder-sparkpost-payload-<timestamp>.json`.
 Placement benefits reminder runs write both `reports/YYYY-MM-DD/placement-benefits-reminder-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-benefits-reminder-sparkpost-payload-<timestamp>.json`.
@@ -318,6 +320,7 @@ These files live in `templates/` and are rendered by the FunctionApp code before
 | `americas-oregon-workplace-fairness.html` | Oregon Workplace Fairness Policy notice |
 | `americas-paid-leave-onboarding.html` | Colorado and Michigan paid leave onboarding notices |
 | `americas-welcome-contract-email.html` | Americas welcome email for US contract candidates |
+| `fair-collection-notice.html` | Fair Collection Notice for newly added candidates |
 | `harassment-training-california-notice.html` | Local source for California harassment training SparkPost template |
 | `harassment-training-onboarding-confirmation.html` | Local source for harassment training onboarding confirmation SparkPost template |
 | `harassment-training-state-notice.html` | Local source for Connecticut/New York harassment training SparkPost template |
@@ -601,6 +604,7 @@ Azure schedules:
 - `AZURE_AMERICAS_ONBOARDING_NOTICES_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_AIS_SURVIVEX_CERTIFICATION_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_AMERICAS_WELCOME_CONTRACT_EMAIL_SCHEDULE` default: `0 0 * * * *`
+- `AZURE_FAIR_COLLECTION_NOTICE_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_SO_HOW_DID_WE_DO_FEEDBACK_SCHEDULE` default: `0 0 11 * * *`
 - `AZURE_START_DATE_APPROVAL_REMINDER_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`

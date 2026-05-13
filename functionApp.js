@@ -15,6 +15,7 @@ const { run: runAmericasOnboardingNoticesSync } = require("./src/workflows/ameri
 const { run: runAmericasInternalPlacementNoticesSync } = require("./src/workflows/americasInternalPlacementNoticesSync");
 const { run: runAisSurvivexCertificationSync } = require("./src/workflows/aisSurvivexCertificationSync");
 const { run: runAmericasWelcomeContractEmailSync } = require("./src/workflows/americasWelcomeContractEmailSync");
+const { run: runFairCollectionNoticeSync } = require("./src/workflows/fairCollectionNoticeSync");
 const { run: runPermCheckinSync } = require("./src/workflows/permCheckinSync");
 const { run: runEmeaPlacementAutoReplySync } = require("./src/workflows/emeaPlacementAutoReplySync");
 const { run: runSoHowDidWeDoFeedbackSync } = require("./src/workflows/soHowDidWeDoFeedbackSync");
@@ -145,6 +146,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 * * * *",
     logLabel: "Americas welcome contract email sync",
     run: ({ targetDate } = {}) => runAmericasWelcomeContractEmailSync({ targetDate }),
+  },
+  {
+    functionName: "fairCollectionNoticeSync",
+    workflowName: "fair-collection-notice-sync",
+    route: "workflows/fair-collection-notice-sync",
+    scheduleEnv: "AZURE_FAIR_COLLECTION_NOTICE_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "Fair collection notice sync",
+    run: ({ targetDate } = {}) => runFairCollectionNoticeSync({ targetDate }),
   },
   {
     functionName: "permCheckinSync",

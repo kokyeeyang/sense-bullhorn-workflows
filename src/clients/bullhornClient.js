@@ -1000,6 +1000,52 @@ class BullhornClient {
     return all;
   }
 
+  async searchCandidatesByDateAddedRange({
+    restUrl,
+    bhRestToken,
+    startMs,
+    endMs,
+    count = 200,
+    fieldsOverride,
+  }) {
+    const fields = fieldsOverride || [
+      "id",
+      "firstName",
+      "lastName",
+      "email",
+      "dateAdded",
+    ].join(",");
+    const all = [];
+    let start = 0;
+    let total = 0;
+    const fromEpochSeconds = Math.floor(startMs / 1000);
+    const toEpochSeconds = Math.floor(endMs / 1000);
+    const query = `dateAdded:[${fromEpochSeconds} TO ${toEpochSeconds}]`;
+
+    do {
+      const response = await this.requestWithRetry({
+        label: "search_candidates_by_date_added_range",
+        fn: () =>
+          axios.get(`${restUrl}/search/Candidate`, {
+            params: {
+              BhRestToken: bhRestToken,
+              query,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      total = response.data.total || 0;
+      all.push(...data);
+      start += data.length;
+    } while (start < total);
+
+    return all;
+  }
+
   async getCorporateUser({ restUrl, bhRestToken, corporateUserId }) {
     const url = `${restUrl}/entity/CorporateUser/${corporateUserId}`;
 

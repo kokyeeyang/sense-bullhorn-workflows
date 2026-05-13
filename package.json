@@ -23,6 +23,7 @@
     "run:americas-internal-placement-notices-sync": "node src/workflows/americasInternalPlacementNoticesSync.js",
     "run:ais-survivex-certification-sync": "node src/workflows/aisSurvivexCertificationSync.js",
     "run:americas-welcome-contract-email-sync": "node src/workflows/americasWelcomeContractEmailSync.js",
+    "run:fair-collection-notice-sync": "node src/workflows/fairCollectionNoticeSync.js",
     "run:perm-checkin-sync": "node src/workflows/permCheckinSync.js",
     "run:emea-placement-auto-reply-sync": "node src/workflows/emeaPlacementAutoReplySync.js",
     "run:so-how-did-we-do-feedback-sync": "node src/workflows/soHowDidWeDoFeedbackSync.js",
