@@ -4,6 +4,9 @@ const { loadConfig } = require("../helpers/config");
 const { logger } = require("../helpers/logger");
 const { BullhornClient } = require("../clients/bullhornClient");
 const {
+  writeWorkflowDataMutationAuditRecordsSafe,
+} = require("../stores/postgresWorkflowDataMutationAuditStore");
+const {
   getClientCorporationChanges,
   hasClientCorporationDelayPassed,
   inferClientCorporationKeyAccountPatch,
@@ -191,6 +194,13 @@ async function run() {
     },
     affectedClientCorporations,
   };
+
+  report.dataMutationAudit = await writeWorkflowDataMutationAuditRecordsSafe({
+    config,
+    logger,
+    workflowName: "client-corporation-key-account-sync",
+    report,
+  });
 
   const reportPath = await writeChangesReport({ report });
   logger.info({ reportPath }, "Client corporation key account changes report written");

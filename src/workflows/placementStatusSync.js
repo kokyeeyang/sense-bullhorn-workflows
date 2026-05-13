@@ -4,6 +4,9 @@ const { loadConfig } = require("../helpers/config");
 const { logger } = require("../helpers/logger");
 const { BullhornClient } = require("../clients/bullhornClient");
 const {
+  writeWorkflowDataMutationAuditRecordsSafe,
+} = require("../stores/postgresWorkflowDataMutationAuditStore");
+const {
   buildCandidatePatchFromPlacement,
   getFieldChanges,
   isTargetPlacementStatusChange,
@@ -191,6 +194,13 @@ async function run() {
     },
     affectedCandidates,
   };
+
+  report.dataMutationAudit = await writeWorkflowDataMutationAuditRecordsSafe({
+    config,
+    logger,
+    workflowName: "placement-status-sync",
+    report,
+  });
 
   const reportPath = await writeChangesReport({ report });
   logger.info({ reportPath }, "Placement changes report written");

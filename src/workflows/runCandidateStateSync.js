@@ -4,6 +4,9 @@ const { loadConfig } = require("../helpers/config");
 const { logger } = require("../helpers/logger");
 const { BullhornClient } = require("../clients/bullhornClient");
 const { inferAddressUpdateFromCandidate } = require("../helpers/phoneUtils");
+const {
+  writeWorkflowDataMutationAuditRecordsSafe,
+} = require("../stores/postgresWorkflowDataMutationAuditStore");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 function epochSecondsFromDate(date) {
@@ -362,6 +365,13 @@ async function runCandidateStateSync({ candidateIds = null } = {}) {
       skippedOutsideLookbackSamples,
     },
   };
+
+  report.dataMutationAudit = await writeWorkflowDataMutationAuditRecordsSafe({
+    config,
+    logger,
+    workflowName: "candidate-state-sync",
+    report,
+  });
 
   const reportPath = await writeChangesReport({ report });
   logger.info({ reportPath }, "Changes report written");

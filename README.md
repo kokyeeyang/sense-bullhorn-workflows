@@ -245,7 +245,16 @@ Dashboard storage now uses an aggregate-first model. Instead of persisting raw c
 
 These aggregate tables keep the same core meanings such as successful items, failed items, skipped items, update counts, email counts, field counts, skip reason counts, and action-decision counts, but they store them precomputed per workflow/day instead of as raw event rows.
 
-PostgreSQL reporting is also supported through `POSTGRES_CONNECTION_STRING`. When it is configured, the repo dual-writes workflow run logs, dashboard aggregates, generic workflow survey tracking, generic workflow survey responses, and workflow comparison records to PostgreSQL while keeping the existing Azure Table operational writes in place. The daily summary and dashboard summary readers prefer PostgreSQL when rows are available and fall back to Azure Tables otherwise.
+PostgreSQL reporting is also supported through `POSTGRES_CONNECTION_STRING`. When it is configured, the repo dual-writes workflow run logs, dashboard aggregates, generic workflow survey tracking, generic workflow survey responses, workflow comparison records, and data mutation audit rows to PostgreSQL while keeping the existing Azure Table operational writes in place. The daily summary and dashboard summary readers prefer PostgreSQL when rows are available and fall back to Azure Tables otherwise.
+
+The `workflow_data_mutation_audit` table is the row-level audit trail for workflows that update Bullhorn data. It stores one row per changed field, including workflow name, run date, dry-run/live action, entity type/id, related candidate/placement/client-contact/client-corporation ids, field name, old value, new value, reason, and a JSON copy of the source report record. It is currently wired into:
+
+- `candidate-state-sync`
+- `placement-database-enrichment-sync`
+- `client-contact-dnc-sync`
+- `client-corporation-360-sync`
+- `client-corporation-key-account-sync`
+- `placement-status-sync`
 
 ## Important security note
 

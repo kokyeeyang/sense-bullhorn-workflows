@@ -11,6 +11,9 @@ const {
 const {
   writeComparisonRecordsSafe,
 } = require("../stores/placementDatabaseEnrichmentComparisonStore");
+const {
+  writeWorkflowDataMutationAuditRecordsSafe,
+} = require("../stores/postgresWorkflowDataMutationAuditStore");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 const SKIPPED_TRANSITIONS_PREVIEW_LIMIT = 25;
@@ -368,6 +371,13 @@ async function run() {
       ),
     ],
   };
+
+  report.dataMutationAudit = await writeWorkflowDataMutationAuditRecordsSafe({
+    config,
+    logger,
+    workflowName: "placement-database-enrichment-sync",
+    report,
+  });
 
   const reportPath = await writeChangesReport({ report });
   const comparisonReportPath = await writeComparisonReport({ report: comparisonReport });

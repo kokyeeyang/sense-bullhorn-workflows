@@ -174,6 +174,65 @@ async function ensureSchema({ config }) {
       `);
 
       await pool.query(`
+        CREATE TABLE IF NOT EXISTS workflow_data_mutation_audit (
+          id BIGSERIAL PRIMARY KEY,
+          environment TEXT NOT NULL,
+          workflow_name TEXT NOT NULL,
+          run_date DATE NOT NULL,
+          generated_at TIMESTAMPTZ,
+          dry_run BOOLEAN NOT NULL DEFAULT TRUE,
+          action TEXT NOT NULL DEFAULT '',
+          entity_type TEXT NOT NULL DEFAULT '',
+          entity_id BIGINT,
+          related_entity_type TEXT NOT NULL DEFAULT '',
+          related_entity_id BIGINT,
+          candidate_id BIGINT,
+          placement_id BIGINT,
+          client_contact_id BIGINT,
+          client_corporation_id BIGINT,
+          transaction_id TEXT NOT NULL DEFAULT '',
+          field_name TEXT NOT NULL DEFAULT '',
+          old_value_text TEXT,
+          new_value_text TEXT,
+          old_value_json JSONB NOT NULL DEFAULT 'null'::jsonb,
+          new_value_json JSONB NOT NULL DEFAULT 'null'::jsonb,
+          reason TEXT NOT NULL DEFAULT '',
+          details_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_data_mutation_audit_lookup
+        ON workflow_data_mutation_audit (environment, workflow_name, run_date);
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_data_mutation_audit_entity
+        ON workflow_data_mutation_audit (entity_type, entity_id);
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_data_mutation_audit_candidate
+        ON workflow_data_mutation_audit (candidate_id);
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_data_mutation_audit_placement
+        ON workflow_data_mutation_audit (placement_id);
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_data_mutation_audit_client_contact
+        ON workflow_data_mutation_audit (client_contact_id);
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_data_mutation_audit_client_corporation
+        ON workflow_data_mutation_audit (client_corporation_id);
+      `);
+
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS workflow_survey_tracking (
           partition_key TEXT NOT NULL,
           row_key TEXT NOT NULL,

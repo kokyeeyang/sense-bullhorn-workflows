@@ -5,6 +5,9 @@ const { logger } = require("../helpers/logger");
 const { BullhornClient } = require("../clients/bullhornClient");
 const { epochSecondsFromDateString } = require("./clientCorporation360Sync");
 const {
+  writeWorkflowDataMutationAuditRecordsSafe,
+} = require("../stores/postgresWorkflowDataMutationAuditStore");
+const {
   buildDoNotContactPatch,
   getContactChanges,
   inferCurrentClientCorporationContactPatch,
@@ -534,6 +537,13 @@ async function run() {
     skippedTransitions,
     affectedContacts,
   };
+
+  report.dataMutationAudit = await writeWorkflowDataMutationAuditRecordsSafe({
+    config,
+    logger,
+    workflowName: "client-contact-dnc-sync",
+    report,
+  });
 
   const reportPath = await writeChangesReport({ report });
   logger.info({ reportPath }, "Client contact DNC report written");
