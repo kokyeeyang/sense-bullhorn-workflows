@@ -15,12 +15,19 @@ function resolveReportsDir() {
   return path.resolve(currentWorkingDirectory, "reports");
 }
 
-function buildJsonArtifactPath({ filePrefix }) {
-  const reportsDir = resolveReportsDir();
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+function buildJsonArtifactPath({ filePrefix, generatedAt = new Date() }) {
+  const baseReportsDir = resolveReportsDir();
+  const generatedDate = generatedAt instanceof Date ? generatedAt : new Date(generatedAt);
+  const isoTimestamp = Number.isNaN(generatedDate.getTime())
+    ? new Date().toISOString()
+    : generatedDate.toISOString();
+  const dateFolder = isoTimestamp.slice(0, 10);
+  const reportsDir = path.join(baseReportsDir, dateFolder);
+  const timestamp = isoTimestamp.replace(/[:.]/g, "-");
 
   return {
     reportsDir,
+    dateFolder,
     artifactPath: path.join(reportsDir, `${filePrefix}-${timestamp}.json`),
   };
 }

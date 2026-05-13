@@ -269,6 +269,8 @@ npm run run:interview-illinois-email-test-send
 npm run run:interview-illinois-email-sync
 npm run run:placement-start-reminder-sync
 npm run run:americas-onboarding-notices-sync
+npm run run:ais-survivex-certification-sync
+npm run run:americas-welcome-contract-email-sync
 npm run run:so-how-did-we-do-feedback-sync
 npm run run:start-date-approval-reminder-sync
 npm run run:placement-benefits-reminder-sync
@@ -281,20 +283,79 @@ npm run run:client-corporation-key-account-sync
 
 `DRY_RUN=true` logs intended updates without writing to Bullhorn, including a simulated post-update candidate object preview.
 `TEST_CANDIDATE_ID=2923234` restricts the run to exactly one candidate by id.
-Each run writes `reports/changes-report-<timestamp>.json` with all affected candidates and field-level changes.
-Placement start reminder runs write both `reports/placement-start-reminder-report-<timestamp>.json` and `reports/placement-start-reminder-sparkpost-payload-<timestamp>.json`.
-Americas onboarding notices runs write both `reports/americas-onboarding-notices-report-<timestamp>.json` and `reports/americas-onboarding-notices-sparkpost-payload-<timestamp>.json`.
-SO How Did We Do feedback runs write both `reports/so-how-did-we-do-feedback-report-<timestamp>.json` and `reports/so-how-did-we-do-feedback-sparkpost-payload-<timestamp>.json`.
-Start date approval reminder runs write both `reports/start-date-approval-reminder-report-<timestamp>.json` and `reports/start-date-approval-reminder-sparkpost-payload-<timestamp>.json`.
-Placement benefits reminder runs write both `reports/placement-benefits-reminder-report-<timestamp>.json` and `reports/placement-benefits-reminder-sparkpost-payload-<timestamp>.json`.
-Placement benefits reminder test sends write `reports/placement-benefits-reminder-sparkpost-test-payload-<timestamp>.json`.
-Placement yearly fee increase runs write both `reports/placement-yearly-fee-increase-report-<timestamp>.json` and `reports/placement-yearly-fee-increase-sparkpost-payload-<timestamp>.json`.
-Placement yearly fee increase test sends write `reports/placement-yearly-fee-increase-sparkpost-test-payload-<timestamp>.json`.
-Placement termination email runs write both `reports/placement-termination-email-report-<timestamp>.json` and `reports/placement-termination-email-sparkpost-payload-<timestamp>.json`.
-Placement termination workflows runs write both `reports/placement-termination-workflows-report-<timestamp>.json` and `reports/placement-termination-workflows-sparkpost-payload-<timestamp>.json`.
-Illinois interview email runs write both `reports/interview-illinois-email-report-<timestamp>.json` and `reports/interview-illinois-email-sparkpost-payload-<timestamp>.json`.
-Illinois interview test sends write `reports/interview-illinois-email-sparkpost-test-payload-<timestamp>.json`.
-New Jobs Illinois email runs write both `reports/new-job-illinois-email-report-<timestamp>.json` and `reports/new-job-illinois-email-sparkpost-payload-<timestamp>.json`.
+Each run writes reports into date-based folders under `reports/YYYY-MM-DD/`, using the report generation date in UTC.
+Candidate state sync writes `reports/YYYY-MM-DD/changes-report-<timestamp>.json` with all affected candidates and field-level changes.
+Placement start reminder runs write both `reports/YYYY-MM-DD/placement-start-reminder-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-start-reminder-sparkpost-payload-<timestamp>.json`.
+Americas onboarding notices runs write both `reports/YYYY-MM-DD/americas-onboarding-notices-report-<timestamp>.json` and `reports/YYYY-MM-DD/americas-onboarding-notices-sparkpost-payload-<timestamp>.json`.
+AIS Survivex certification runs write both `reports/YYYY-MM-DD/ais-survivex-certification-report-<timestamp>.json` and `reports/YYYY-MM-DD/ais-survivex-certification-sparkpost-payload-<timestamp>.json`.
+Americas welcome contract email runs write both `reports/YYYY-MM-DD/americas-welcome-contract-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/americas-welcome-contract-email-sparkpost-payload-<timestamp>.json`.
+Americas welcome contract email maps the Sense `last_note_action_type = Talent platform initiated` rule to Bullhorn Candidate `customText16`, whose metadata label is `Initiate Onboarding`. Bullhorn does not expose `CandidateEditHistory` in this tenant, so the workflow scans recently modified candidates and checks the current `customText16` value rather than proving an edit-history transition. `AMERICAS_WELCOME_CONTRACT_EMAIL_ACTION_TYPE_FIELD` can override the field name if the mapping changes.
+SO How Did We Do feedback runs write both `reports/YYYY-MM-DD/so-how-did-we-do-feedback-report-<timestamp>.json` and `reports/YYYY-MM-DD/so-how-did-we-do-feedback-sparkpost-payload-<timestamp>.json`.
+Start date approval reminder runs write both `reports/YYYY-MM-DD/start-date-approval-reminder-report-<timestamp>.json` and `reports/YYYY-MM-DD/start-date-approval-reminder-sparkpost-payload-<timestamp>.json`.
+Placement benefits reminder runs write both `reports/YYYY-MM-DD/placement-benefits-reminder-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-benefits-reminder-sparkpost-payload-<timestamp>.json`.
+Placement benefits reminder test sends write `reports/YYYY-MM-DD/placement-benefits-reminder-sparkpost-test-payload-<timestamp>.json`.
+Placement yearly fee increase runs write both `reports/YYYY-MM-DD/placement-yearly-fee-increase-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-yearly-fee-increase-sparkpost-payload-<timestamp>.json`.
+Placement yearly fee increase test sends write `reports/YYYY-MM-DD/placement-yearly-fee-increase-sparkpost-test-payload-<timestamp>.json`.
+Placement termination email runs write both `reports/YYYY-MM-DD/placement-termination-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-termination-email-sparkpost-payload-<timestamp>.json`.
+Placement termination workflows runs write both `reports/YYYY-MM-DD/placement-termination-workflows-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-termination-workflows-sparkpost-payload-<timestamp>.json`.
+Illinois interview email runs write both `reports/YYYY-MM-DD/interview-illinois-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/interview-illinois-email-sparkpost-payload-<timestamp>.json`.
+Illinois interview test sends write `reports/YYYY-MM-DD/interview-illinois-email-sparkpost-test-payload-<timestamp>.json`.
+New Jobs Illinois email runs write both `reports/YYYY-MM-DD/new-job-illinois-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/new-job-illinois-email-sparkpost-payload-<timestamp>.json`.
+
+## Email Templates
+
+Email templates are split between local inline HTML files in this repository and templates that are expected to be stored in SparkPost and referenced by template ID.
+
+### Local Inline Templates
+
+These files live in `templates/` and are rendered by the FunctionApp code before sending inline SparkPost transmissions, or kept as local source/preview material for migrated template copy:
+
+| File | Primary use |
+| --- | --- |
+| `ais-survivex-certification-renewal.html` | AIS/Survivex certification renewal email |
+| `americas-new-york-city-commuter.html` | New York City commuter internal placement notice |
+| `americas-new-york-city-hero-act.html` | New York City HERO Act survey notice |
+| `americas-oregon-workplace-fairness.html` | Oregon Workplace Fairness Policy notice |
+| `americas-paid-leave-onboarding.html` | Colorado and Michigan paid leave onboarding notices |
+| `americas-welcome-contract-email.html` | Americas welcome email for US contract candidates |
+| `harassment-training-california-notice.html` | Local source for California harassment training SparkPost template |
+| `harassment-training-onboarding-confirmation.html` | Local source for harassment training onboarding confirmation SparkPost template |
+| `harassment-training-state-notice.html` | Local source for Connecticut/New York harassment training SparkPost template |
+| `so-how-did-we-do-feedback.html` | SO How Did We Do feedback survey email |
+| `so-how-did-we-do-reminder.html` | SO How Did We Do reminder email |
+| `start-date-approval-reminder.html` | Start date approval reminder email |
+| `termination-alabama-notice.html` | Alabama termination notice |
+| `termination-apac-perm-invoicing.html` | APAC perm termination invoicing notice |
+| `termination-california-change-in-relationship.html` | California notice to employee of change in relationship |
+| `termination-colorado.html` | Colorado termination notice |
+| `termination-end-of-month-contract-reminder.html` | US contract ending soon reminder |
+| `termination-generic-unemployment-notice.html` | Shared unemployment notice template for multiple states |
+| `termination-georgia.html` | Georgia termination notice |
+| `termination-maryland.html` | Maryland termination notice |
+| `termination-new-jersey-unemployment-benefits.html` | New Jersey unemployment benefits notice |
+| `termination-us-perm-invoice.html` | US perm termination invoice notice |
+| `us-contract-performance-checkin.html` | US contract performance check-in email |
+
+`templates/sparkpost-preview-substitution-data.json` is preview data, not an email template.
+
+### SparkPost-Managed Templates
+
+These templates are stored in SparkPost and selected by environment/config values. Some have local HTML source files above so copy can be versioned here, but the runtime sends by SparkPost `template_id`.
+
+| Config key | Workflow/use |
+| --- | --- |
+| `SPARKPOST_TEMPLATE_ID` | Generic fallback template ID used by older template-based workflows |
+| `INTERVIEW_ILLINOIS_SPARKPOST_TEMPLATE_ID` | Illinois interview email |
+| `NEW_JOB_ILLINOIS_SPARKPOST_TEMPLATE_ID` | New Jobs Illinois email |
+| `PLACEMENT_TERMINATION_SPARKPOST_TEMPLATE_ID` | Placement termination email workflow |
+| `PLACEMENT_YEARLY_FEE_INCREASE_SPARKPOST_TEMPLATE_ID` | Placement yearly fee increase reminder |
+| `PLACEMENT_BENEFITS_REMINDER_DAY10_SPARKPOST_TEMPLATE_ID` | Placement benefits reminder, day 10 |
+| `PLACEMENT_BENEFITS_REMINDER_DAY21_SPARKPOST_TEMPLATE_ID` | Placement benefits reminder, day 21 |
+| `PLACEMENT_BENEFITS_REMINDER_DAY26_SPARKPOST_TEMPLATE_ID` | Placement benefits reminder, day 26 |
+| `HARASSMENT_TRAINING_SPARKPOST_TEMPLATE_ID` | Harassment training fallback template ID |
+| `HARASSMENT_TRAINING_ONBOARDING_SPARKPOST_TEMPLATE_ID` | Harassment training onboarding confirmation |
+| `HARASSMENT_TRAINING_STATE_NOTICE_SPARKPOST_TEMPLATE_ID` | Harassment training state notice |
+| `HARASSMENT_TRAINING_CALIFORNIA_SPARKPOST_TEMPLATE_ID` | Harassment training California notice |
 
 ## Testing
 
@@ -412,14 +473,14 @@ Workflow file: `.github/workflows/bullhorn-state-sync.yml`
 
 - Scheduled daily at `02:00 UTC` (10:00 AM Malaysia time, UTC+8).
 - Can also run manually with `workflow_dispatch`.
-- Uploads `reports/*.json` as a workflow artifact (`bullhorn-changes-report`).
+- Uploads `reports/**/*.json` as a workflow artifact (`bullhorn-changes-report`).
 
 Workflow file: `.github/workflows/bullhorn-placement-status-sync.yml`
 
 - Scheduled every 5 minutes.
 - Can also run manually with `workflow_dispatch`.
 - Uses Bullhorn event subscriptions for `Placement UPDATED`.
-- Uploads `reports/placement-status-report-*.json` as a workflow artifact (`bullhorn-placement-status-report`).
+- Uploads `reports/**/placement-status-report-*.json` as a workflow artifact (`bullhorn-placement-status-report`).
 
 Workflow file: `.github/workflows/bullhorn-placement-database-enrichment-sync.yml`
 
@@ -427,7 +488,7 @@ Workflow file: `.github/workflows/bullhorn-placement-database-enrichment-sync.ym
 - Can also run manually with `workflow_dispatch`.
 - Uses a dedicated Bullhorn `Placement` event subscription queue.
 - Consumes up to `PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS` queued events per run, then drains any backlog over later runs.
-- Uploads `reports/placement-database-enrichment-report-*.json` as a workflow artifact (`bullhorn-placement-database-enrichment-report`).
+- Uploads `reports/**/placement-database-enrichment-report-*.json` as a workflow artifact (`bullhorn-placement-database-enrichment-report`).
 
 Workflow file: `.github/workflows/bullhorn-client-contact-dnc-sync.yml`
 
@@ -435,7 +496,7 @@ Workflow file: `.github/workflows/bullhorn-client-contact-dnc-sync.yml`
 - Can also run manually with `workflow_dispatch`.
 - Combines a delayed `ClientContact.dateAdded` scan with `ClientCorporation` status event handling.
 - Interprets the 60-hour grace period as "do not enforce the delayed DNC rule until 60 hours after the contact was added."
-- Uploads `reports/client-contact-dnc-report-*.json` as a workflow artifact (`bullhorn-client-contact-dnc-report`).
+- Uploads `reports/**/client-contact-dnc-report-*.json` as a workflow artifact (`bullhorn-client-contact-dnc-report`).
 
 Workflow file: `.github/workflows/bullhorn-placement-termination-email-sync.yml`
 
@@ -443,7 +504,7 @@ Workflow file: `.github/workflows/bullhorn-placement-termination-email-sync.yml`
 - Can also run manually with `workflow_dispatch`.
 - Uses a dedicated Bullhorn event subscription queue for `Placement UPDATED`.
 - Filters the consumed events to status changes where the new value is `terminated`.
-- Uploads both `reports/placement-termination-email-report-*.json` and `reports/placement-termination-email-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-termination-email-reports`).
+- Uploads both `reports/**/placement-termination-email-report-*.json` and `reports/**/placement-termination-email-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-termination-email-reports`).
 
 Workflow file: `.github/workflows/bullhorn-interview-illinois-email-sync.yml`
 
@@ -451,32 +512,32 @@ Workflow file: `.github/workflows/bullhorn-interview-illinois-email-sync.yml`
 - Can also run manually with `workflow_dispatch`.
 - Uses a dedicated Bullhorn event subscription queue for `Appointment INSERTED`.
 - Filters the consumed appointments to `type = Interview` and the configured Illinois job order conditions.
-- Uploads both `reports/interview-illinois-email-report-*.json` and `reports/interview-illinois-email-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-interview-illinois-email-reports`).
+- Uploads both `reports/**/interview-illinois-email-report-*.json` and `reports/**/interview-illinois-email-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-interview-illinois-email-reports`).
 
 Workflow file: `.github/workflows/bullhorn-client-corporation-360-sync.yml`
 
 - Scheduled every 5 minutes.
 - Can also run manually with `workflow_dispatch`.
-- Uploads `reports/client-corporation-360-report-*.json` as a workflow artifact (`bullhorn-client-corporation-360-report`).
+- Uploads `reports/**/client-corporation-360-report-*.json` as a workflow artifact (`bullhorn-client-corporation-360-report`).
 
 Workflow file: `.github/workflows/bullhorn-client-corporation-key-account-sync.yml`
 
 - Scheduled every 5 minutes.
 - Can also run manually with `workflow_dispatch`.
-- Uploads `reports/client-corporation-key-account-report-*.json` as a workflow artifact (`bullhorn-client-corporation-key-account-report`).
+- Uploads `reports/**/client-corporation-key-account-report-*.json` as a workflow artifact (`bullhorn-client-corporation-key-account-report`).
 
 Workflow file: `.github/workflows/bullhorn-placement-start-reminder-sync.yml`
 
 - Scheduled daily at `00:00 UTC`.
 - Can also run manually with `workflow_dispatch`.
-- Uploads both `reports/placement-start-reminder-report-*.json` and `reports/placement-start-reminder-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-start-reminder-reports`).
+- Uploads both `reports/**/placement-start-reminder-report-*.json` and `reports/**/placement-start-reminder-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-start-reminder-reports`).
 
 Workflow file: `.github/workflows/bullhorn-placement-yearly-fee-increase-sync.yml`
 
 - Scheduled daily at `00:00 UTC`.
 - Can also run manually with `workflow_dispatch`.
 - Sends one reminder 11 months after `placement.dateBegin` for eligible contract placements.
-- Uploads both `reports/placement-yearly-fee-increase-report-*.json` and `reports/placement-yearly-fee-increase-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-yearly-fee-increase-reports`).
+- Uploads both `reports/**/placement-yearly-fee-increase-report-*.json` and `reports/**/placement-yearly-fee-increase-sparkpost-payload-*.json` as a workflow artifact (`bullhorn-placement-yearly-fee-increase-reports`).
 
 Add repository secrets with the same names as the env vars above.
 
@@ -538,6 +599,8 @@ Azure schedules:
 - `AZURE_PLACEMENT_TERMINATION_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_TERMINATION_WORKFLOWS_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_AMERICAS_ONBOARDING_NOTICES_SCHEDULE` default: `0 0 * * * *`
+- `AZURE_AIS_SURVIVEX_CERTIFICATION_SCHEDULE` default: `0 0 * * * *`
+- `AZURE_AMERICAS_WELCOME_CONTRACT_EMAIL_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_SO_HOW_DID_WE_DO_FEEDBACK_SCHEDULE` default: `0 0 11 * * *`
 - `AZURE_START_DATE_APPROVAL_REMINDER_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
@@ -599,6 +662,8 @@ Routes:
 - `POST /api/workflows/interview-illinois-email-sync`
 - `POST /api/workflows/placement-start-reminder-sync`
 - `POST /api/workflows/americas-onboarding-notices-sync`
+- `POST /api/workflows/ais-survivex-certification-sync`
+- `POST /api/workflows/americas-welcome-contract-email-sync`
 - `POST /api/workflows/so-how-did-we-do-feedback-sync`
 - `POST /api/workflows/start-date-approval-reminder-sync`
 - `POST /api/workflows/placement-benefits-reminder-sync`
@@ -639,7 +704,7 @@ Success example:
     "skippedNoChange": 3
   },
   "artifacts": {
-    "reportPath": "/home/site/wwwroot/reports/client-corporation-360-report-2026-04-01T02-00-07-000Z.json"
+    "reportPath": "/home/site/wwwroot/reports/2026-04-01/client-corporation-360-report-2026-04-01T02-00-07-000Z.json"
   },
   "report": {
     "generatedAt": "2026-04-01T02:00:07.000Z",

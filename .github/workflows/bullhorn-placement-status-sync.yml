@@ -41,5 +41,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bullhorn-placement-status-report
-          path: reports/placement-status-report-*.json
+          path: reports/**/placement-status-report-*.json
           if-no-files-found: warn

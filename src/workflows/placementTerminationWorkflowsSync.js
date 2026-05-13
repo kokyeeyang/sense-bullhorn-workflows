@@ -237,7 +237,7 @@ async function collectDailyChangeMatches({ bullhorn, session, config, businessDa
       for (const rule of rules) {
         if (!dateKeysByRule.get(rule.key).includes(dateKey)) continue;
         const change = rule.source === "terminationReasonChange"
-          ? findFieldChange(record, ["terminationReason", "terminationreason"])
+          ? findFieldChange(record, ["terminationReason", "terminationreason", "customText41", "customtext41"])
           : findFieldChange(record, ["status"]);
         if (!change) {
           if (skipped.length < SKIPPED_PREVIEW_LIMIT) {

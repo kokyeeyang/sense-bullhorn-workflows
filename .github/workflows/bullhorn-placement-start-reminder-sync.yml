@@ -46,6 +46,6 @@ jobs:
         with:
           name: bullhorn-placement-start-reminder-reports
           path: |
-            reports/placement-start-reminder-report-*.json
-            reports/placement-start-reminder-sparkpost-payload-*.json
+            reports/**/placement-start-reminder-report-*.json
+            reports/**/placement-start-reminder-sparkpost-payload-*.json
           if-no-files-found: warn

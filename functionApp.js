@@ -13,6 +13,8 @@ const { run: runNewJobIllinoisEmailSync } = require("./src/workflows/newJobIllin
 const { run: runPlacementStartReminderSync } = require("./src/workflows/placementStartReminderSync");
 const { run: runAmericasOnboardingNoticesSync } = require("./src/workflows/americasOnboardingNoticesSync");
 const { run: runAmericasInternalPlacementNoticesSync } = require("./src/workflows/americasInternalPlacementNoticesSync");
+const { run: runAisSurvivexCertificationSync } = require("./src/workflows/aisSurvivexCertificationSync");
+const { run: runAmericasWelcomeContractEmailSync } = require("./src/workflows/americasWelcomeContractEmailSync");
 const { run: runPermCheckinSync } = require("./src/workflows/permCheckinSync");
 const { run: runEmeaPlacementAutoReplySync } = require("./src/workflows/emeaPlacementAutoReplySync");
 const { run: runSoHowDidWeDoFeedbackSync } = require("./src/workflows/soHowDidWeDoFeedbackSync");
@@ -125,6 +127,24 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 * * * *",
     logLabel: "Americas internal placement notices sync",
     run: ({ targetDate } = {}) => runAmericasInternalPlacementNoticesSync({ targetDate }),
+  },
+  {
+    functionName: "aisSurvivexCertificationSync",
+    workflowName: "ais-survivex-certification-sync",
+    route: "workflows/ais-survivex-certification-sync",
+    scheduleEnv: "AZURE_AIS_SURVIVEX_CERTIFICATION_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "AIS Survivex certification sync",
+    run: ({ targetDate } = {}) => runAisSurvivexCertificationSync({ targetDate }),
+  },
+  {
+    functionName: "americasWelcomeContractEmailSync",
+    workflowName: "americas-welcome-contract-email-sync",
+    route: "workflows/americas-welcome-contract-email-sync",
+    scheduleEnv: "AZURE_AMERICAS_WELCOME_CONTRACT_EMAIL_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "Americas welcome contract email sync",
+    run: ({ targetDate } = {}) => runAmericasWelcomeContractEmailSync({ targetDate }),
   },
   {
     functionName: "permCheckinSync",

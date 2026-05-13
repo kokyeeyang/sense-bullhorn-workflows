@@ -39,5 +39,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bullhorn-changes-report
-          path: reports/*.json
+          path: reports/**/*.json
           if-no-files-found: warn

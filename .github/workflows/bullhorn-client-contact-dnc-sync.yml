@@ -44,5 +44,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bullhorn-client-contact-dnc-report
-          path: reports/client-contact-dnc-report-*.json
+          path: reports/**/client-contact-dnc-report-*.json
           if-no-files-found: warn

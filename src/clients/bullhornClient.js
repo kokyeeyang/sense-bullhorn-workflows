@@ -510,6 +510,52 @@ class BullhornClient {
     return all;
   }
 
+  async queryEntityEditHistoryByDateAddedRange({
+    restUrl,
+    bhRestToken,
+    entityName,
+    startMs,
+    endMs,
+    count = 200,
+  }) {
+    const fields = [
+      "id",
+      "dateAdded",
+      "transactionID",
+      "targetEntity(id)",
+      "fieldChanges(columnName,oldValue,newValue)",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: `query_${entityName.toLowerCase()}_edit_history_by_date_added_range`,
+        fn: () =>
+          axios.get(`${restUrl}/query/${entityName}EditHistory`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `dateAdded>=${startMs} AND dateAdded<${endMs}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
   async searchClientContacts({
     restUrl,
     bhRestToken,
@@ -841,6 +887,117 @@ class BullhornClient {
     });
 
     return response.data.data;
+  }
+
+  async getCandidateByIdWithFields({ restUrl, bhRestToken, candidateId, fields }) {
+    const url = `${restUrl}/entity/Candidate/${candidateId}`;
+
+    const response = await this.requestWithRetry({
+      label: "get_candidate_by_id_with_fields",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            fields,
+          },
+        }),
+    });
+
+    return response.data.data;
+  }
+
+  async queryCandidateCertificationsByExpirationRange({
+    restUrl,
+    bhRestToken,
+    startMs,
+    endMs,
+    count = 200,
+    entityName = "CandidateCertification",
+    fieldsOverride,
+  }) {
+    const fields = fieldsOverride || [
+      "id",
+      "dateExpiration",
+      "candidate(id,firstName,lastName,email,dateAdded,dateLastPlacementStarted,owner(id,firstName,lastName,email))",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "query_candidate_certifications_by_expiration_range",
+        fn: () =>
+          axios.get(`${restUrl}/query/${entityName}`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `dateExpiration>=${startMs} AND dateExpiration<${endMs}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
+  async queryCandidatesByDateLastModifiedRange({
+    restUrl,
+    bhRestToken,
+    startMs,
+    endMs,
+    count = 200,
+    fieldsOverride,
+  }) {
+    const fields = fieldsOverride || [
+      "id",
+      "firstName",
+      "lastName",
+      "email",
+      "dateAdded",
+      "dateLastModified",
+      "address(countryName)",
+    ].join(",");
+    const all = [];
+    let start = 0;
+    let total = 0;
+    const fromEpochSeconds = Math.floor(startMs / 1000);
+    const toEpochSeconds = Math.floor(endMs / 1000);
+    const query = `dateLastModified:[${fromEpochSeconds} TO ${toEpochSeconds}]`;
+
+    do {
+      const response = await this.requestWithRetry({
+        label: "query_candidates_by_date_last_modified_range",
+        fn: () =>
+          axios.get(`${restUrl}/search/Candidate`, {
+            params: {
+              BhRestToken: bhRestToken,
+              query,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      total = response.data.total || 0;
+      all.push(...data);
+
+      start += data.length;
+    } while (start < total);
+
+    return all;
   }
 
   async getCorporateUser({ restUrl, bhRestToken, corporateUserId }) {

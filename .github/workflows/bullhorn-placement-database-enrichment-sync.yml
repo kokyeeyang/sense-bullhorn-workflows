@@ -41,5 +41,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bullhorn-placement-database-enrichment-report
-          path: reports/placement-database-enrichment-report-*.json
+          path: reports/**/placement-database-enrichment-report-*.json
           if-no-files-found: warn

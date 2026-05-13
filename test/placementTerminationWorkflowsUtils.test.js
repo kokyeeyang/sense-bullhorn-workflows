@@ -56,6 +56,7 @@ test("matches state termination rules with lowercase-style comparisons", () => {
 
 test("matches termination reason workflows from configured reason list", () => {
   const newYork = WORKFLOW_RULES.find((rule) => rule.key === "new-york-termination");
+  const california = WORKFLOW_RULES.find((rule) => rule.key === "california-change-in-relationship");
 
   expect(
     matchesChangeRule({
@@ -64,6 +65,17 @@ test("matches termination reason workflows from configured reason list", () => {
       placement: {
         employmentType: "CONTRACT",
         jobOrder: { address: { state: "New York" } },
+      },
+    }),
+  ).toBe(true);
+
+  expect(
+    matchesChangeRule({
+      rule: california,
+      change: { oldValue: "Other", newValue: "Lack of work" },
+      placement: {
+        employmentType: "CONTRACT",
+        jobOrder: { address: { state: "California" } },
       },
     }),
   ).toBe(true);
@@ -100,7 +112,7 @@ test("explains why a placement does not match a termination rule", () => {
   });
 });
 
-test("builds inline SparkPost payload with CC recipients and literal placeholders", () => {
+test("builds inline SparkPost payload with CC recipients and rendered placeholders", () => {
   const colorado = WORKFLOW_RULES.find((rule) => rule.key === "colorado-termination");
   const payload = buildInlineTransmission({
     rule: colorado,
@@ -114,7 +126,8 @@ test("builds inline SparkPost payload with CC recipients and literal placeholder
     },
   });
 
-  expect(payload.content.text).toContain("{{candidate.firstname}} {{candidate.lastname}}");
+  expect(payload.content.text).toContain("Dear Jordan,");
+  expect(payload.content.text).toContain("Ava Tan");
   expect(payload.content.headers).toEqual({ CC: "usapayrollqueries@spencer-ogden.com" });
   expect(payload.recipients).toEqual([
     { address: { email: "owner@example.com" } },
@@ -125,6 +138,28 @@ test("builds inline SparkPost payload with CC recipients and literal placeholder
       },
     },
   ]);
+});
+
+test("builds California termination payload from candidate owner to candidate", () => {
+  const california = WORKFLOW_RULES.find((rule) => rule.key === "california-change-in-relationship");
+  const payload = buildInlineTransmission({
+    rule: california,
+    placement: {
+      dateEnd: Date.UTC(2026, 4, 13),
+      candidate: {
+        firstName: "Ava",
+        lastName: "Tan",
+        email: "ava@example.com",
+        owner: { firstName: "Jordan", lastName: "Owner", email: "owner@example.com" },
+      },
+    },
+  });
+
+  expect(payload.content.from).toEqual({ name: "Jordan Owner", email: "owner@example.com" });
+  expect(payload.content.subject).toBe("Notice to employee of change in relationship");
+  expect(payload.content.text).toContain("Name: Ava Tan");
+  expect(payload.content.text).toContain("13 May 2026");
+  expect(payload.recipients).toEqual([{ address: { email: "ava@example.com" } }]);
 });
 
 test("uses Bullhorn-safe address fields for placement state and country", () => {

@@ -153,6 +153,35 @@ const WORKFLOW_RULES = [
     templatePath: "termination-generic-unemployment-notice.html",
   })),
   {
+    key: "california-change-in-relationship",
+    source: "terminationReasonChange",
+    states: ["california"],
+    employmentType: "contract",
+    terminationReasons: TERMINATION_REASONS,
+    delayDays: 1,
+    weekendAdjust: true,
+    from: "candidateOwner",
+    to: "candidate.email",
+    cc: [],
+    subject: "Notice to employee of change in relationship",
+    attachments: ["attachments/For Your Benefit_ California's Programs for the Unemployed (DE 2320 Rev. 64 (11-19)).pdf"],
+    templatePath: "termination-california-change-in-relationship.html",
+  },
+  {
+    key: "new-jersey-unemployment-benefits",
+    source: "terminationReasonChange",
+    states: ["new jersey"],
+    employmentType: "contract",
+    terminationReasons: TERMINATION_REASONS,
+    delayDays: 1,
+    weekendAdjust: true,
+    from: "candidateOwner",
+    to: "candidate.email",
+    cc: [],
+    subject: "Information regarding unemployment benefits",
+    templatePath: "termination-new-jersey-unemployment-benefits.html",
+  },
+  {
     key: "apac-perm-termination-invoicing",
     source: "statusChange",
     employmentType: "perm",
@@ -377,6 +406,26 @@ function loadHtmlTemplate(templatePath) {
   return templateCache.get(resolvedPath);
 }
 
+function renderTemplate(template, placement) {
+  const candidateOwner = getCandidateOwner(placement);
+  const values = {
+    id: normalizeString(placement?.id),
+    "candidate.firstname": normalizeString(placement?.candidate?.firstName),
+    "candidate.firstName": normalizeString(placement?.candidate?.firstName),
+    "candidate.lastname": normalizeString(placement?.candidate?.lastName),
+    "candidate.lastName": normalizeString(placement?.candidate?.lastName),
+    "candidateOwner.firstname": normalizeString(candidateOwner?.firstName),
+    "candidateowner.firstname": normalizeString(candidateOwner?.firstName),
+    "candidateOwner.name": buildFullName(candidateOwner),
+    "candidateowner.name": buildFullName(candidateOwner),
+    "dateend": formatDateBegin(placement?.dateEnd),
+    "workState": normalizeString(getPlacementWorkState(placement)),
+    "workstate": normalizeString(getPlacementWorkState(placement)),
+  };
+
+  return template.replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (match, key) => values[key] ?? match);
+}
+
 function htmlToText(html) {
   return normalizeString(html)
     .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -490,6 +539,8 @@ function buildAttachment(filePath) {
   const typeByExt = {
     ".pdf": "application/pdf",
     ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".doc": "application/msword",
   };
@@ -515,6 +566,7 @@ function resolveFrom({ placement, rule }) {
 function buildInlineTransmission({ placement, rule, attachments = [] }) {
   const toEmail = resolvePathValue(placement, rule.to);
   const ccEmails = uniqueEmails((rule.cc || []).map((selector) => resolveEmailValue(placement, selector)), { exclude: [toEmail] });
+  const html = renderTemplate(loadHtmlTemplate(rule.templatePath), placement);
   const recipients = [
     { address: { email: toEmail } },
     ...ccEmails.map((email) => ({ address: { email, header_to: toEmail } })),
@@ -524,8 +576,8 @@ function buildInlineTransmission({ placement, rule, attachments = [] }) {
     content: {
       from: resolveFrom({ placement, rule }),
       subject: rule.subject,
-      text: htmlToText(loadHtmlTemplate(rule.templatePath)),
-      html: loadHtmlTemplate(rule.templatePath),
+      text: htmlToText(html),
+      html,
       ...(ccEmails.length ? { headers: { CC: ccEmails.join(", ") } } : {}),
       ...(attachments.length ? { attachments } : {}),
     },

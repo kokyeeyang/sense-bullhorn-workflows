@@ -44,6 +44,6 @@ jobs:
         with:
           name: bullhorn-placement-termination-email-reports
           path: |
-            reports/placement-termination-email-report-*.json
-            reports/placement-termination-email-sparkpost-payload-*.json
+            reports/**/placement-termination-email-report-*.json
+            reports/**/placement-termination-email-sparkpost-payload-*.json
           if-no-files-found: warn

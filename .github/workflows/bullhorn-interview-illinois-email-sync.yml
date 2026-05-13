@@ -47,6 +47,6 @@ jobs:
         with:
           name: bullhorn-interview-illinois-email-reports
           path: |
-            reports/interview-illinois-email-report-*.json
-            reports/interview-illinois-email-sparkpost-payload-*.json
+            reports/**/interview-illinois-email-report-*.json
+            reports/**/interview-illinois-email-sparkpost-payload-*.json
           if-no-files-found: warn

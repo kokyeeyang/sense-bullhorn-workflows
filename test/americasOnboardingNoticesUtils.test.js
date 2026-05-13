@@ -60,6 +60,29 @@ describe("americasOnboardingNoticesUtils", () => {
     ).toBe(false);
   });
 
+  test("matches Oregon workplace fairness onboarding notice", () => {
+    const oregonRule = RULES.find((rule) => rule.key === "oregon-workplace-fairness-policy");
+
+    expect(
+      getMatchDetails(
+        {
+          status: "Pre-Hire",
+          dateBegin: Date.UTC(2026, 4, 13),
+          employmentType: "Contract",
+          candidate: {
+            email: "candidate@example.com",
+          },
+          jobOrder: {
+            address: {
+              state: "Oregon",
+            },
+          },
+        },
+        oregonRule,
+      ).matched,
+    ).toBe(true);
+  });
+
   test("can temporarily include extra statuses for onboarding notice testing", () => {
     const michiganRule = RULES.find((rule) => rule.key === "michigan-paid-medical-leave");
 

@@ -47,6 +47,6 @@ jobs:
         with:
           name: bullhorn-placement-yearly-fee-increase-reports
           path: |
-            reports/placement-yearly-fee-increase-report-*.json
-            reports/placement-yearly-fee-increase-sparkpost-payload-*.json
+            reports/**/placement-yearly-fee-increase-report-*.json
+            reports/**/placement-yearly-fee-increase-sparkpost-payload-*.json
           if-no-files-found: warn
