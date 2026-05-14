@@ -92,7 +92,7 @@ describe("jobApplicationNotificationUtils", () => {
 
     expect(content.from).toEqual({
       name: "Sales Operations Team",
-      email: "houseaccounts@spencer-ogden.com",
+      email: "noreply@spencer-ogden.com",
     });
     expect(content.subject).toBe("New Application for Job: 456 - Project Manager");
     expect(content.text).toContain("Hi Pat,");

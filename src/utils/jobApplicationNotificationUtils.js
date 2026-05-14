@@ -178,7 +178,7 @@ function buildInlineEmailContent({ jobSubmission, owner }) {
   return {
     from: {
       name: "Sales Operations Team",
-      email: "houseaccounts@spencer-ogden.com",
+      email: "noreply@spencer-ogden.com",
     },
     subject: buildSubject(jobSubmission),
     text,
