@@ -114,7 +114,7 @@ function buildTransmission({ candidate }) {
     content: {
       from: {
         name: "Spencer Ogden",
-        email: "onboarding@spencer-ogden.com",
+        email: "faircollection@spencer-ogden.com",
       },
       subject: "Fair Collection Notice From Spencer Ogden",
       text: htmlToText(html),

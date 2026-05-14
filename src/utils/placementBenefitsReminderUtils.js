@@ -311,8 +311,8 @@ function buildNewYorkBenefitsReminderTransmission({ placement }) {
   return {
     content: {
       from: {
-        name: "Soinsurance",
-        email: "soinsurance@spencer-ogden.com",
+        name: "SO Insurance",
+        email: "houseaccounts@spencer-ogden.com",
       },
       subject: "Benefits Enrollment Reminder",
       text: htmlToText(html),

@@ -157,7 +157,7 @@ function buildTransmission({ certification, attachments = [] }) {
     content: {
       from: {
         name: "Spencer Ogden",
-        email: "houseaccounts@spencer-ogden.com",
+        email: "noreply@spencer-ogden.com",
       },
       subject: "Your certificate is due for renewal",
       text: htmlToText(html),
