@@ -11,6 +11,7 @@ Completed Sense workflows:
 9. Reminder for Yearly Fee Increase
 10. Placement Benefits Reminder
 11. Applications from all Job Boards
+12. Vestas PO
 
 Minimal Node.js workflow to:
 
@@ -181,6 +182,18 @@ It also includes a job application notification automation:
 4. Send the Sales Operations Team notification when `JobSubmission.source` is in the configured job-board list and `jobOrder.owner.pager = 500`.
 5. Send one inline SparkPost transmission per matching application, or write dry-run preview reports when `DRY_RUN=true`.
 
+It also includes a Vestas PO automation:
+
+1. Run as a scheduled Azure Function at `6:00 AM` Pacific.
+2. Query Bullhorn `Placement.dateAdded` for the active Pacific business date.
+3. Skip weekend timer sends and catch Saturday/Sunday `dateAdded` placements on Monday.
+4. Keep only placements where `clientCorporation.id = 10752`.
+5. Send the purchase order request to `placement.owner.email`, falling back to `jobOrder.owner.email` if needed, and CC `usainvoices@spencer-ogden.com` and `mindy.prefling@spencer-ogden.com`.
+6. Attach `attachments/Vestas TOB.pdf`.
+7. Include a signed one-choice survey for purchase order turnaround time and save responses to the shared workflow survey response table.
+8. Keep the email HTML in `templates/vestas-po.html` using the standard project email theme.
+9. Survey response route: `GET/POST /api/workflows/vestas-po/respond`.
+
 It also includes a New Jobs Illinois email automation:
 
 1. Run once per day from Azure Functions.
@@ -286,6 +299,7 @@ npm run run:placement-termination-workflows-sync
 npm run run:interview-illinois-email-test-send
 npm run run:interview-illinois-email-sync
 npm run run:job-application-notification-sync
+npm run run:vestas-po-sync
 npm run run:placement-start-reminder-sync
 npm run run:americas-onboarding-notices-sync
 npm run run:ais-survivex-certification-sync
@@ -322,6 +336,7 @@ Placement termination workflows runs write both `reports/YYYY-MM-DD/placement-te
 Illinois interview email runs write both `reports/YYYY-MM-DD/interview-illinois-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/interview-illinois-email-sparkpost-payload-<timestamp>.json`.
 Illinois interview test sends write `reports/YYYY-MM-DD/interview-illinois-email-sparkpost-test-payload-<timestamp>.json`.
 Job application notification runs write both `reports/YYYY-MM-DD/job-application-notification-report-<timestamp>.json` and `reports/YYYY-MM-DD/job-application-notification-sparkpost-payload-<timestamp>.json`.
+Vestas PO runs write both `reports/YYYY-MM-DD/vestas-po-report-<timestamp>.json` and `reports/YYYY-MM-DD/vestas-po-sparkpost-payload-<timestamp>.json`.
 New Jobs Illinois email runs write both `reports/YYYY-MM-DD/new-job-illinois-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/new-job-illinois-email-sparkpost-payload-<timestamp>.json`.
 
 ## Email Templates
@@ -629,6 +644,7 @@ Azure schedules:
 - `AZURE_START_DATE_APPROVAL_REMINDER_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_JOB_APPLICATION_NOTIFICATION_SCHEDULE` default: `0 */5 * * * *`
+- `AZURE_VESTAS_PO_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
 - `AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE` default: `0 0 17 * * *`
 - `AZURE_PLACEMENT_YEARLY_FEE_INCREASE_SCHEDULE` default: `0 0 0 * * *`
@@ -686,6 +702,7 @@ Routes:
 - `POST /api/workflows/placement-termination-workflows-sync`
 - `POST /api/workflows/interview-illinois-email-sync`
 - `POST /api/workflows/job-application-notification-sync`
+- `POST /api/workflows/vestas-po-sync`
 - `POST /api/workflows/placement-start-reminder-sync`
 - `POST /api/workflows/americas-onboarding-notices-sync`
 - `POST /api/workflows/ais-survivex-certification-sync`
@@ -797,6 +814,7 @@ Notes:
 - `src/workflows/placementTerminationWorkflowsSync.js`: Combined state/perm termination workflow runner.
 - `src/workflows/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
 - `src/workflows/jobApplicationNotificationSync.js`: Combined job application notification runner.
+- `src/workflows/vestasPoSync.js`: Vestas purchase order request runner.
 - `src/workflows/placementStartReminderSync.js`: Placement start reminder enrichment runner.
 - `src/workflows/americasOnboardingNoticesSync.js`: Combined Colorado, Michigan, New York City Hero Act, and New York City Commuter onboarding notices runner.
 - `src/workflows/soHowDidWeDoFeedbackSync.js`: Combined SO How Did We Do feedback runner with initial-send and reminder tracking.
@@ -813,6 +831,7 @@ Notes:
 - `src/utils/placementTerminationWorkflowsUtils.js`: Termination workflow rules, scheduling, attachments, templates, and inline SparkPost helpers.
 - `src/utils/interviewIllinoisEmailUtils.js`: Illinois interview filter and substitution helpers.
 - `src/utils/jobApplicationNotificationUtils.js`: Job application notification rules and inline SparkPost helpers.
+- `src/utils/vestasPoUtils.js`: Vestas PO dateAdded planning, template rendering, attachment, and survey helpers.
 - `src/clients/sparkPostClient.js`: SparkPost transmission client.
 - `src/workflows/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
 - `src/workflows/clientCorporationKeyAccountSync.js`: Client corporation `customText7 -> Key Account` cleanup runner.

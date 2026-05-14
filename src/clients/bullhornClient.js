@@ -883,6 +883,58 @@ class BullhornClient {
     return all;
   }
 
+  async queryPlacementsByDateAddedRange({
+    restUrl,
+    bhRestToken,
+    startMs,
+    endMs,
+    count = 200,
+    fieldsOverride,
+  }) {
+    const fields = fieldsOverride || [
+      "id",
+      "dateAdded",
+      "dateBegin",
+      "salary",
+      "flatFee",
+      "owner(id,firstName,lastName,email)",
+      "candidate(id,firstName,lastName,email)",
+      "clientCorporation(id,name)",
+      "clientContact(id,firstName,lastName,email)",
+      "billingClientContact(id,firstName,lastName,email)",
+      "jobOrder(id,title,owner(id,firstName,lastName,email))",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "query_placements_by_date_added_range",
+        fn: () =>
+          axios.get(`${restUrl}/query/Placement`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `dateAdded>=${startMs} AND dateAdded<${endMs}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
   async queryPlacementsByDateEndRange({
     restUrl,
     bhRestToken,

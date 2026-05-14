@@ -12,8 +12,13 @@ function normalizeLower(value) {
   return normalizeString(value).toLowerCase();
 }
 
-function normalizeSurveyAnswer(value) {
+function normalizeSurveyAnswer(value, { allowedAnswers = null } = {}) {
   const answer = normalizeLower(value);
+  if (Array.isArray(allowedAnswers) && allowedAnswers.length > 0) {
+    const allowed = new Set(allowedAnswers.map(normalizeLower).filter(Boolean));
+    return allowed.has(answer) ? answer : "";
+  }
+
   if (/^(10|[1-9]|yes|no)$/.test(answer)) {
     return answer;
   }
@@ -42,6 +47,7 @@ function verifyWorkflowSurveyToken({
   secret,
   expectedAnswer = null,
   expectedWorkflow = null,
+  allowedAnswers = null,
   allowMissingAnswer = false,
 }) {
   if (!secret) {
@@ -65,7 +71,7 @@ function verifyWorkflowSurveyToken({
     throw new Error("Invalid survey token payload");
   }
 
-  const answer = normalizeSurveyAnswer(payload?.answer);
+  const answer = normalizeSurveyAnswer(payload?.answer, { allowedAnswers });
   if (!answer && !allowMissingAnswer) {
     throw new Error("Invalid survey answer");
   }

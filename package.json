@@ -17,6 +17,7 @@
     "run:placement-termination-email-test-send": "node src/workflows/placementTerminationEmailTestSend.js",
     "run:interview-illinois-email-sync": "node src/workflows/interviewIllinoisEmailSync.js",
     "run:job-application-notification-sync": "node src/workflows/jobApplicationNotificationSync.js",
+    "run:vestas-po-sync": "node src/workflows/vestasPoSync.js",
     "run:new-job-illinois-email-sync": "node src/workflows/newJobIllinoisEmailSync.js",
     "run:interview-illinois-email-test-send": "node src/workflows/interviewIllinoisEmailTestSend.js",
     "run:placement-start-reminder-sync": "node src/workflows/placementStartReminderSync.js",

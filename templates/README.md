@@ -61,6 +61,7 @@ Use table-based buttons instead of relying only on CSS button styling, because t
 - `placement-termination.html`
 - `placement-start-reminder.html`
 - `new-job-illinois-alert.html`
+- `vestas-po.html`
 - `placement-yearly-fee-increase-reminder.html`
 
 ## Preview Data

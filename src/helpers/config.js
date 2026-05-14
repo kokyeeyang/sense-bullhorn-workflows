@@ -97,6 +97,8 @@ const configSchema = z.object({
     "spencer ogden 2021,adzuna,cv library,glassdoor,indeed,spencer ogden,spencer ogden website,linkedin premium,linkedin,linkedin recruiter,linkedin recruiter license,linked in,epc engineer,jobrapido",
   ),
   JOB_APPLICATION_NOTIFICATION_OWNER_PAGERS: stringWithDefaultPreserveBlank("500"),
+  VESTAS_PO_QUERY_COUNT: positiveIntWithDefault(200),
+  VESTAS_PO_TARGET_DATE: optionalString,
   NEW_JOB_ILLINOIS_GRACE_HOURS: positiveIntWithDefault(24),
   NEW_JOB_ILLINOIS_QUERY_COUNT: positiveIntWithDefault(200),
   NEW_JOB_ILLINOIS_JOB_ORDER_STATE: stringWithDefaultPreserveBlank("Illinois"),

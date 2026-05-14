@@ -10,6 +10,7 @@ const { run: runPlacementTerminationEmailSync } = require("./src/workflows/place
 const { run: runPlacementTerminationWorkflowsSync } = require("./src/workflows/placementTerminationWorkflowsSync");
 const { run: runInterviewIllinoisEmailSync } = require("./src/workflows/interviewIllinoisEmailSync");
 const { run: runJobApplicationNotificationSync } = require("./src/workflows/jobApplicationNotificationSync");
+const { run: runVestasPoSync } = require("./src/workflows/vestasPoSync");
 const { run: runNewJobIllinoisEmailSync } = require("./src/workflows/newJobIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/workflows/placementStartReminderSync");
 const { run: runAmericasOnboardingNoticesSync } = require("./src/workflows/americasOnboardingNoticesSync");
@@ -36,6 +37,7 @@ const {
   handleSoHowDidWeDoFeedbackResponse,
 } = require("./src/workflows/soHowDidWeDoFeedbackResponseHandler");
 const { handlePermCheckinResponse } = require("./src/workflows/permCheckinResponseHandler");
+const { handleVestasPoResponse } = require("./src/workflows/vestasPoResponseHandler");
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/workflows/placementYearlyFeeIncreaseSync");
 const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/workflows/placementYearlyFeeIncreaseTestSend");
 const { run: runDailyWorkflowSummary } = require("./src/workflows/dailyWorkflowSummary");
@@ -263,6 +265,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 */5 * * * *",
     logLabel: "job application notification sync",
     run: runJobApplicationNotificationSync,
+  },
+  {
+    functionName: "vestasPoSync",
+    workflowName: "vestas-po-sync",
+    route: "workflows/vestas-po-sync",
+    scheduleEnv: "AZURE_VESTAS_PO_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "Vestas PO sync",
+    run: ({ targetDate } = {}) => runVestasPoSync({ targetDate }),
   },
   {
     functionName: "newJobIllinoisEmailSync",
@@ -557,4 +568,11 @@ app.http("permCheckinResponse", {
   authLevel: "anonymous",
   route: "workflows/perm-checkin/respond",
   handler: handlePermCheckinResponse,
+});
+
+app.http("vestasPoResponse", {
+  methods: ["GET", "POST"],
+  authLevel: "anonymous",
+  route: "workflows/vestas-po/respond",
+  handler: handleVestasPoResponse,
 });

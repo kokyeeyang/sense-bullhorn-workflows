@@ -71,6 +71,34 @@ describe("workflowSurveyUtils", () => {
     );
   });
 
+  test("verifies custom allowed survey answers for multiple-choice workflows", () => {
+    const token = buildWorkflowSurveyToken({
+      secret: "secret",
+      payload: {
+        workflowName: "vestas-po-sync",
+        placementId: 123,
+        questionId: "vestas-po-turnaround-time",
+        answer: "4-5-days",
+      },
+    });
+
+    expect(
+      verifyWorkflowSurveyToken({
+        token,
+        secret: "secret",
+        expectedWorkflow: "vestas-po-sync",
+        expectedAnswer: "4-5-days",
+        allowedAnswers: ["0-2-days", "4-5-days", "7-8-days", "2-weeks"],
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        workflowName: "vestas-po-sync",
+        placementId: 123,
+        answer: "4-5-days",
+      }),
+    );
+  });
+
   test("builds stable survey response entities", () => {
     const entity = buildEntity({
       workflowName: "start-date-approval-reminder-sync",
