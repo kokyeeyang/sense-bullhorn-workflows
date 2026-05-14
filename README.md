@@ -10,6 +10,7 @@ Completed Sense workflows:
 8. Key Accounts
 9. Reminder for Yearly Fee Increase
 10. Placement Benefits Reminder
+11. Applications from all Job Boards
 
 Minimal Node.js workflow to:
 
@@ -172,6 +173,14 @@ It also includes an Illinois interview notification automation:
 5. Fetch the job order owner and send one SparkPost email per matching interview.
 6. Send one SparkPost transmission containing all recipients, or write dry-run preview reports when `DRY_RUN=true`.
 
+It also includes a job application notification automation:
+
+1. Subscribe to Bullhorn `JobSubmission` insert events with a dedicated subscription queue.
+2. Consume recent application events from Bullhorn on a schedule, including weekends.
+3. Fetch the job submission, candidate, job order, client corporation, and job order owner.
+4. Send the Sales Operations Team notification when `JobSubmission.source` is in the configured job-board list and `jobOrder.owner.pager = 500`.
+5. Send one inline SparkPost transmission per matching application, or write dry-run preview reports when `DRY_RUN=true`.
+
 It also includes a New Jobs Illinois email automation:
 
 1. Run once per day from Azure Functions.
@@ -276,6 +285,7 @@ npm run run:placement-termination-email-sync
 npm run run:placement-termination-workflows-sync
 npm run run:interview-illinois-email-test-send
 npm run run:interview-illinois-email-sync
+npm run run:job-application-notification-sync
 npm run run:placement-start-reminder-sync
 npm run run:americas-onboarding-notices-sync
 npm run run:ais-survivex-certification-sync
@@ -311,6 +321,7 @@ Placement termination email runs write both `reports/YYYY-MM-DD/placement-termin
 Placement termination workflows runs write both `reports/YYYY-MM-DD/placement-termination-workflows-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-termination-workflows-sparkpost-payload-<timestamp>.json`.
 Illinois interview email runs write both `reports/YYYY-MM-DD/interview-illinois-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/interview-illinois-email-sparkpost-payload-<timestamp>.json`.
 Illinois interview test sends write `reports/YYYY-MM-DD/interview-illinois-email-sparkpost-test-payload-<timestamp>.json`.
+Job application notification runs write both `reports/YYYY-MM-DD/job-application-notification-report-<timestamp>.json` and `reports/YYYY-MM-DD/job-application-notification-sparkpost-payload-<timestamp>.json`.
 New Jobs Illinois email runs write both `reports/YYYY-MM-DD/new-job-illinois-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/new-job-illinois-email-sparkpost-payload-<timestamp>.json`.
 
 ## Email Templates
@@ -617,6 +628,7 @@ Azure schedules:
 - `AZURE_SO_HOW_DID_WE_DO_FEEDBACK_SCHEDULE` default: `0 0 11 * * *`
 - `AZURE_START_DATE_APPROVAL_REMINDER_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_INTERVIEW_ILLINOIS_EMAIL_SCHEDULE` default: `0 */5 * * * *`
+- `AZURE_JOB_APPLICATION_NOTIFICATION_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
 - `AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE` default: `0 0 17 * * *`
 - `AZURE_PLACEMENT_YEARLY_FEE_INCREASE_SCHEDULE` default: `0 0 0 * * *`
@@ -673,6 +685,7 @@ Routes:
 - `POST /api/workflows/placement-termination-email-sync`
 - `POST /api/workflows/placement-termination-workflows-sync`
 - `POST /api/workflows/interview-illinois-email-sync`
+- `POST /api/workflows/job-application-notification-sync`
 - `POST /api/workflows/placement-start-reminder-sync`
 - `POST /api/workflows/americas-onboarding-notices-sync`
 - `POST /api/workflows/ais-survivex-certification-sync`
@@ -783,6 +796,7 @@ Notes:
 - `src/workflows/placementTerminationEmailSync.js`: Placement termination email runner.
 - `src/workflows/placementTerminationWorkflowsSync.js`: Combined state/perm termination workflow runner.
 - `src/workflows/interviewIllinoisEmailSync.js`: Illinois interview notification runner.
+- `src/workflows/jobApplicationNotificationSync.js`: Combined job application notification runner.
 - `src/workflows/placementStartReminderSync.js`: Placement start reminder enrichment runner.
 - `src/workflows/americasOnboardingNoticesSync.js`: Combined Colorado, Michigan, New York City Hero Act, and New York City Commuter onboarding notices runner.
 - `src/workflows/soHowDidWeDoFeedbackSync.js`: Combined SO How Did We Do feedback runner with initial-send and reminder tracking.
@@ -798,6 +812,7 @@ Notes:
 - `src/utils/placementTerminationEmailUtils.js`: Placement termination email helpers.
 - `src/utils/placementTerminationWorkflowsUtils.js`: Termination workflow rules, scheduling, attachments, templates, and inline SparkPost helpers.
 - `src/utils/interviewIllinoisEmailUtils.js`: Illinois interview filter and substitution helpers.
+- `src/utils/jobApplicationNotificationUtils.js`: Job application notification rules and inline SparkPost helpers.
 - `src/clients/sparkPostClient.js`: SparkPost transmission client.
 - `src/workflows/clientCorporation360Sync.js`: Client corporation `customText7 -> 360` cleanup runner.
 - `src/workflows/clientCorporationKeyAccountSync.js`: Client corporation `customText7 -> Key Account` cleanup runner.

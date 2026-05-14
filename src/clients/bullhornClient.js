@@ -657,6 +657,74 @@ class BullhornClient {
     return response.data.data;
   }
 
+  async getJobSubmission({ restUrl, bhRestToken, jobSubmissionId }) {
+    const url = `${restUrl}/entity/JobSubmission/${jobSubmissionId}`;
+
+    const response = await this.requestWithRetry({
+      label: "get_job_submission",
+      fn: () =>
+        axios.get(url, {
+          params: {
+            BhRestToken: bhRestToken,
+            fields: [
+              "id",
+              "dateAdded",
+              "source",
+              "candidate(id,firstName,lastName,name)",
+              "jobOrder(id,title,clientCorporation(id,name),owner(id,firstName,lastName,email,pager))",
+            ].join(","),
+          },
+        }),
+    });
+
+    return response.data.data;
+  }
+
+  async queryJobSubmissionsByDateAddedRange({
+    restUrl,
+    bhRestToken,
+    startMs,
+    endMs,
+    count = 200,
+  }) {
+    const fields = [
+      "id",
+      "dateAdded",
+      "source",
+      "candidate(id,firstName,lastName,name)",
+      "jobOrder(id,title,clientCorporation(id,name),owner(id,firstName,lastName,email,pager))",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "query_job_submissions_by_date_added_range",
+        fn: () =>
+          axios.get(`${restUrl}/query/JobSubmission`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `dateAdded>=${startMs} AND dateAdded<${endMs}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
   async queryJobOrdersByDateAddedRange({
     restUrl,
     bhRestToken,

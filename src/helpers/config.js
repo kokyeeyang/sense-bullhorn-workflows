@@ -89,6 +89,14 @@ const configSchema = z.object({
   INTERVIEW_ILLINOIS_JOB_ORDER_STATE: stringWithDefaultPreserveBlank("Illinois"),
   INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED: stringWithDefaultPreserveBlank("2024-05-01"),
   INTERVIEW_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE: stringWithDefaultPreserveBlank("contract"),
+  JOB_APPLICATION_NOTIFICATION_EVENT_SUBSCRIPTION_ID: stringWithDefault(
+    "sense-job-application-notification",
+  ),
+  JOB_APPLICATION_NOTIFICATION_EVENT_MAX_EVENTS: positiveIntWithDefault(100),
+  JOB_APPLICATION_NOTIFICATION_SOURCES: stringWithDefaultPreserveBlank(
+    "spencer ogden 2021,adzuna,cv library,glassdoor,indeed,spencer ogden,spencer ogden website,linkedin premium,linkedin,linkedin recruiter,linkedin recruiter license,linked in,epc engineer,jobrapido",
+  ),
+  JOB_APPLICATION_NOTIFICATION_OWNER_PAGERS: stringWithDefaultPreserveBlank("500"),
   NEW_JOB_ILLINOIS_GRACE_HOURS: positiveIntWithDefault(24),
   NEW_JOB_ILLINOIS_QUERY_COUNT: positiveIntWithDefault(200),
   NEW_JOB_ILLINOIS_JOB_ORDER_STATE: stringWithDefaultPreserveBlank("Illinois"),

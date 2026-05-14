@@ -9,6 +9,7 @@ const { run: runPlacementStatusSync } = require("./src/workflows/placementStatus
 const { run: runPlacementTerminationEmailSync } = require("./src/workflows/placementTerminationEmailSync");
 const { run: runPlacementTerminationWorkflowsSync } = require("./src/workflows/placementTerminationWorkflowsSync");
 const { run: runInterviewIllinoisEmailSync } = require("./src/workflows/interviewIllinoisEmailSync");
+const { run: runJobApplicationNotificationSync } = require("./src/workflows/jobApplicationNotificationSync");
 const { run: runNewJobIllinoisEmailSync } = require("./src/workflows/newJobIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/workflows/placementStartReminderSync");
 const { run: runAmericasOnboardingNoticesSync } = require("./src/workflows/americasOnboardingNoticesSync");
@@ -253,6 +254,15 @@ const workflowDefinitions = [
     logLabel: "interview Illinois email sync",
     run: runInterviewIllinoisEmailSync,
     enableTimer: false,
+  },
+  {
+    functionName: "jobApplicationNotificationSync",
+    workflowName: "job-application-notification-sync",
+    route: "workflows/job-application-notification-sync",
+    scheduleEnv: "AZURE_JOB_APPLICATION_NOTIFICATION_SCHEDULE",
+    defaultSchedule: "0 */5 * * * *",
+    logLabel: "job application notification sync",
+    run: runJobApplicationNotificationSync,
   },
   {
     functionName: "newJobIllinoisEmailSync",
