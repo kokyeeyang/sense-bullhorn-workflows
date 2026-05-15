@@ -11,6 +11,9 @@ const { run: runPlacementTerminationWorkflowsSync } = require("./src/workflows/p
 const { run: runInterviewIllinoisEmailSync } = require("./src/workflows/interviewIllinoisEmailSync");
 const { run: runJobApplicationNotificationSync } = require("./src/workflows/jobApplicationNotificationSync");
 const { run: runVestasPoSync } = require("./src/workflows/vestasPoSync");
+const { run: runApprovedPlacementApacSync } = require("./src/workflows/approvedPlacementApacSync");
+const { run: runAwrClientRequestSync } = require("./src/workflows/awrClientRequestSync");
+const { run: runContractorNotContactedReminderSync } = require("./src/workflows/contractorNotContactedReminderSync");
 const { run: runNewJobIllinoisEmailSync } = require("./src/workflows/newJobIllinoisEmailSync");
 const { run: runPlacementStartReminderSync } = require("./src/workflows/placementStartReminderSync");
 const { run: runAmericasOnboardingNoticesSync } = require("./src/workflows/americasOnboardingNoticesSync");
@@ -274,6 +277,33 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 * * * *",
     logLabel: "Vestas PO sync",
     run: ({ targetDate } = {}) => runVestasPoSync({ targetDate }),
+  },
+  {
+    functionName: "approvedPlacementApacSync",
+    workflowName: "approved-placement-apac-sync",
+    route: "workflows/approved-placement-apac-sync",
+    scheduleEnv: "AZURE_APPROVED_PLACEMENT_APAC_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "approved placement APAC sync",
+    run: ({ targetDate } = {}) => runApprovedPlacementApacSync({ targetDate }),
+  },
+  {
+    functionName: "awrClientRequestSync",
+    workflowName: "awr-client-request-sync",
+    route: "workflows/awr-client-request-sync",
+    scheduleEnv: "AZURE_AWR_CLIENT_REQUEST_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "AWR client request sync",
+    run: ({ targetDate } = {}) => runAwrClientRequestSync({ targetDate }),
+  },
+  {
+    functionName: "contractorNotContactedReminderSync",
+    workflowName: "contractor-not-contacted-reminder-sync",
+    route: "workflows/contractor-not-contacted-reminder-sync",
+    scheduleEnv: "AZURE_CONTRACTOR_NOT_CONTACTED_REMINDER_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "contractor not contacted reminder sync",
+    run: ({ targetDate } = {}) => runContractorNotContactedReminderSync({ targetDate }),
   },
   {
     functionName: "newJobIllinoisEmailSync",

@@ -935,6 +935,100 @@ class BullhornClient {
     return all;
   }
 
+  async queryCandidatesByDateFieldRange({
+    restUrl,
+    bhRestToken,
+    fieldName,
+    startMs,
+    endMs,
+    count = 200,
+    fieldsOverride,
+  }) {
+    const fields = fieldsOverride || [
+      "id",
+      "firstName",
+      "lastName",
+      "name",
+      "email",
+      fieldName,
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "query_candidates_by_date_field_range",
+        fn: () =>
+          axios.get(`${restUrl}/query/Candidate`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `${fieldName}>=${startMs} AND ${fieldName}<${endMs}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
+  async queryPlacementsByCandidateId({
+    restUrl,
+    bhRestToken,
+    candidateId,
+    count = 200,
+    fieldsOverride,
+  }) {
+    const fields = fieldsOverride || [
+      "id",
+      "status",
+      "employmentType",
+      "candidate(id,firstName,lastName,name,email)",
+      "clientCorporation(id,name)",
+      "jobOrder(id,title,owner(id,firstName,lastName,email,pager))",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const response = await this.requestWithRetry({
+        label: "query_placements_by_candidate_id",
+        fn: () =>
+          axios.get(`${restUrl}/query/Placement`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where: `candidate.id=${Number(candidateId)}`,
+              fields,
+              count,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < count) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
   async queryPlacementsByDateEndRange({
     restUrl,
     bhRestToken,
