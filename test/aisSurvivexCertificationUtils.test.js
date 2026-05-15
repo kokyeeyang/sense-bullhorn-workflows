@@ -50,7 +50,7 @@ test("AIS Survivex certification builds candidate email payload", () => {
     },
   });
 
-  expect(payload.content.from.email).toBe("houseaccounts@spencer-ogden.com");
+  expect(payload.content.from.email).toBe("noreply@spencer-ogden.com");
   expect(payload.content.subject).toBe("Your certificate is due for renewal");
   expect(payload.content.text).toContain("To Ava,");
   expect(payload.recipients).toEqual([{ address: { email: "ava@example.com" } }]);

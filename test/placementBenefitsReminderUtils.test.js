@@ -161,10 +161,10 @@ describe("placementBenefitsReminderUtils", () => {
       },
     });
 
-    expect(transmission.content.from).toEqual({
-      name: "Soinsurance",
-      email: "soinsurance@spencer-ogden.com",
-    });
+  expect(transmission.content.from).toEqual({
+    name: "SO Insurance",
+    email: "houseaccounts@spencer-ogden.com",
+  });
     expect(transmission.content.subject).toBe("Benefits Enrollment Reminder");
     expect(transmission.content.attachments).toHaveLength(2);
     expect(transmission.recipients).toEqual([

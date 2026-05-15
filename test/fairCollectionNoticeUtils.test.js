@@ -35,7 +35,7 @@ test("fair collection notice builds inline candidate email payload", () => {
 
   expect(payload.content.from).toEqual({
     name: "Spencer Ogden",
-    email: "onboarding@spencer-ogden.com",
+    email: "faircollection@spencer-ogden.com",
   });
   expect(payload.content.subject).toBe("Fair Collection Notice From Spencer Ogden");
   expect(payload.content.text).toContain("The purpose of this notification");

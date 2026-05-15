@@ -16,7 +16,7 @@ describe("placementStartReminderTestSend", () => {
       recipients: [
         {
           address: {
-            email: "yeeyang.kok@spencer-ogden.com",
+            email: "kokyeeyang1994@gmail.com",
           },
           substitution_data: {
             placement_id: "123456",

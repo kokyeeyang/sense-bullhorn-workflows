@@ -239,7 +239,7 @@ describe("placementBenefitsReminderSync", () => {
     expect(result.placements).toHaveLength(1);
     expect(result.placements[0].stage.key).toBe("new-york-americas-benefit-reminder");
     expect(result.placements[0].sparkPostPayload.content.from.email).toBe(
-      "soinsurance@spencer-ogden.com",
+      "houseaccounts@spencer-ogden.com",
     );
     expect(result.placements[0].sparkPostPayload.content.attachments).toHaveLength(2);
   });
