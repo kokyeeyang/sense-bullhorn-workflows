@@ -11,6 +11,124 @@ function buildRunDate(value) {
   return String(value || new Date().toISOString()).slice(0, 10);
 }
 
+function mapMutationAuditRow(row) {
+  return {
+    id: Number(row.id || 0),
+    environment: row.environment || "",
+    workflowName: row.workflow_name || "",
+    runDate: row.run_date instanceof Date ? row.run_date.toISOString().slice(0, 10) : row.run_date,
+    generatedAt: row.generated_at ? row.generated_at.toISOString() : null,
+    dryRun: Boolean(row.dry_run),
+    action: row.action || "",
+    entityType: row.entity_type || "",
+    entityId: row.entity_id === null || row.entity_id === undefined ? null : Number(row.entity_id),
+    relatedEntityType: row.related_entity_type || "",
+    relatedEntityId:
+      row.related_entity_id === null || row.related_entity_id === undefined
+        ? null
+        : Number(row.related_entity_id),
+    candidateId:
+      row.candidate_id === null || row.candidate_id === undefined ? null : Number(row.candidate_id),
+    placementId:
+      row.placement_id === null || row.placement_id === undefined ? null : Number(row.placement_id),
+    clientContactId:
+      row.client_contact_id === null || row.client_contact_id === undefined
+        ? null
+        : Number(row.client_contact_id),
+    clientCorporationId:
+      row.client_corporation_id === null || row.client_corporation_id === undefined
+        ? null
+        : Number(row.client_corporation_id),
+    transactionId: row.transaction_id || "",
+    fieldName: row.field_name || "",
+    oldValueText: row.old_value_text,
+    newValueText: row.new_value_text,
+    oldValue: row.old_value_json,
+    newValue: row.new_value_json,
+    reason: row.reason || "",
+    details: row.details_json || {},
+    createdAt: row.created_at ? row.created_at.toISOString() : null,
+  };
+}
+
+function normalizeLimit(value, defaultLimit = 100, maxLimit = 500) {
+  const parsed = Number(value || defaultLimit);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return defaultLimit;
+  }
+  return Math.min(Math.floor(parsed), maxLimit);
+}
+
+async function listWorkflowDataMutationAuditRecordsPostgres({
+  config,
+  dateFrom,
+  dateTo,
+  workflowName = null,
+  action = null,
+  entityType = null,
+  fieldName = null,
+  candidateId = null,
+  entityId = null,
+  limit = 100,
+}) {
+  if (!config.POSTGRES_CONNECTION_STRING) {
+    return [];
+  }
+
+  const environment = getEnvironmentLabel(config);
+  const clauses = [
+    "environment = $1",
+    "run_date >= $2::date",
+    "run_date <= $3::date",
+  ];
+  const values = [environment, buildRunDate(dateFrom), buildRunDate(dateTo)];
+
+  function addClause(sql, value) {
+    values.push(value);
+    clauses.push(sql.replace("?", `$${values.length}`));
+  }
+
+  if (workflowName) {
+    const workflowNames = String(workflowName)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (workflowNames.length > 0) {
+      addClause("workflow_name = ANY(?::text[])", workflowNames);
+    }
+  }
+  if (action) {
+    addClause("action = ?", String(action).trim());
+  }
+  if (entityType) {
+    addClause("entity_type = ?", String(entityType).trim());
+  }
+  if (fieldName) {
+    addClause("field_name = ?", String(fieldName).trim());
+  }
+  if (candidateId) {
+    addClause("candidate_id = ?::bigint", Number(candidateId));
+  }
+  if (entityId) {
+    addClause("entity_id = ?::bigint", Number(entityId));
+  }
+
+  values.push(normalizeLimit(limit));
+  const result = await query({
+    config,
+    text: `
+      SELECT *
+      FROM workflow_data_mutation_audit
+      WHERE ${clauses.join(" AND ")}
+      ORDER BY generated_at DESC NULLS LAST, id DESC
+      LIMIT $${values.length}
+    `,
+    values,
+  });
+
+  return result.rows.map(mapMutationAuditRow);
+}
+
 async function writeWorkflowDataMutationAuditRecordsPostgres({ config, logger, records }) {
   if (!config.POSTGRES_CONNECTION_STRING || !Array.isArray(records) || records.length === 0) {
     return { skipped: true, count: 0, reason: "postgres-not-configured-or-no-records" };
@@ -116,6 +234,7 @@ async function writeWorkflowDataMutationAuditRecordsSafe({
 }
 
 module.exports = {
+  listWorkflowDataMutationAuditRecordsPostgres,
   writeWorkflowDataMutationAuditRecordsPostgres,
   writeWorkflowDataMutationAuditRecordsSafe,
 };

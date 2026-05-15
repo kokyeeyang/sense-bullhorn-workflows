@@ -269,6 +269,22 @@ These aggregate tables keep the same core meanings such as successful items, fai
 
 PostgreSQL reporting is also supported through `POSTGRES_CONNECTION_STRING`. When it is configured, the repo dual-writes workflow run logs, dashboard aggregates, generic workflow survey tracking, generic workflow survey responses, workflow comparison records, and data mutation audit rows to PostgreSQL while keeping the existing Azure Table operational writes in place. The daily summary and dashboard summary readers prefer PostgreSQL when rows are available and fall back to Azure Tables otherwise.
 
+Dashboard HTTP APIs are available for the future Next.js frontend and AI sidebar. They are read-only and aggregate-first, so they do not execute workflows or write workflow run logs:
+
+```text
+GET /api/dashboard/workflows
+GET /api/dashboard/summary?dateFrom=2026-05-01&dateTo=2026-05-15
+GET /api/dashboard/trends?month=2026-05&workflowName=job-application-notification-sync
+GET /api/dashboard/runs?dateFrom=2026-05-01&dateTo=2026-05-15&status=failed
+GET /api/dashboard/emails?dateFrom=2026-05-01&dateTo=2026-05-15
+GET /api/dashboard/skips?dateFrom=2026-05-01&dateTo=2026-05-15
+GET /api/dashboard/ai-context?dateFrom=2026-05-01&dateTo=2026-05-15
+GET /api/dashboard/data-mutations?dateFrom=2026-05-01&dateTo=2026-05-15&workflowName=placement-database-enrichment-sync
+GET /api/dashboard/email-transmissions?dateFrom=2026-05-01&dateTo=2026-05-15
+```
+
+Supported filters are `dateFrom`, `dateTo`, `month`, `workflowName` (comma-separated), `category`, `status`, `actionDecision`, and `includeRecords=true`. Date ranges default to the last 7 days and are capped at 92 days to keep UI and AI payloads concise.
+
 The `workflow_data_mutation_audit` table is the row-level audit trail for workflows that update Bullhorn data. It stores one row per changed field, including workflow name, run date, dry-run/live action, entity type/id, related candidate/placement/client-contact/client-corporation ids, field name, old value, new value, reason, and a JSON copy of the source report record. It is currently wired into:
 
 - `candidate-state-sync`

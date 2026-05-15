@@ -51,6 +51,17 @@ const { run: runClientCorporation360Sync } = require("./src/workflows/clientCorp
 const { run: runClientCorporationKeyAccountSync } = require("./src/workflows/clientCorporationKeyAccountSync");
 const { run: runWorkflowDashboardRetentionCleanup } = require("./src/workflows/workflowDashboardRetentionCleanup");
 const {
+  handleDashboardAiContext,
+  handleDashboardDataMutations,
+  handleDashboardEmails,
+  handleDashboardEmailTransmissions,
+  handleDashboardRuns,
+  handleDashboardSkips,
+  handleDashboardSummary,
+  handleDashboardTrends,
+  handleDashboardWorkflows,
+} = require("./src/workflows/dashboardApi");
+const {
   buildHttpErrorPayload,
   buildHttpSuccessPayload,
   serializeError,
@@ -605,4 +616,67 @@ app.http("vestasPoResponse", {
   authLevel: "anonymous",
   route: "workflows/vestas-po/respond",
   handler: handleVestasPoResponse,
+});
+
+app.http("dashboardWorkflows", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/workflows",
+  handler: handleDashboardWorkflows,
+});
+
+app.http("dashboardSummary", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/summary",
+  handler: handleDashboardSummary,
+});
+
+app.http("dashboardTrends", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/trends",
+  handler: handleDashboardTrends,
+});
+
+app.http("dashboardRuns", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/runs",
+  handler: handleDashboardRuns,
+});
+
+app.http("dashboardEmails", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/emails",
+  handler: handleDashboardEmails,
+});
+
+app.http("dashboardSkips", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/skips",
+  handler: handleDashboardSkips,
+});
+
+app.http("dashboardAiContext", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/ai-context",
+  handler: handleDashboardAiContext,
+});
+
+app.http("dashboardDataMutations", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/data-mutations",
+  handler: handleDashboardDataMutations,
+});
+
+app.http("dashboardEmailTransmissions", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/email-transmissions",
+  handler: handleDashboardEmailTransmissions,
 });
