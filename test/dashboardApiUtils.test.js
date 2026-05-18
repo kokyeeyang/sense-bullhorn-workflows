@@ -152,6 +152,7 @@ describe("dashboardApiUtils", () => {
     const awrWorkflow = catalog.find((workflow) => workflow.workflowName === "awr-client-request-sync");
 
     expect(jobApplicationWorkflow).toMatchObject({
+      label: "Job Application Notification",
       category: "email",
       sendsEmail: true,
     });
@@ -159,5 +160,6 @@ describe("dashboardApiUtils", () => {
       category: "email",
       sendsEmail: true,
     });
+    expect(catalog.find((workflow) => workflow.workflowName === "vestas-po-sync")).toBeUndefined();
   });
 });

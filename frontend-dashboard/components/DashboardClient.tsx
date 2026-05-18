@@ -38,6 +38,7 @@ import {
   WorkflowSummary,
 } from "@/lib/types";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 const STATUS_OPTIONS = ["", "success", "failed"];
 const CATEGORY_OPTIONS = [
@@ -207,8 +208,8 @@ function WorkflowTable({ workflows }: { workflows: WorkflowSummary[] }) {
           {workflows.map((workflow) => (
             <tr key={workflow.workflowName}>
               <td>
-                <strong>{workflow.workflowName}</strong>
-                <span>{workflow.lastSummary || "No summary"}</span>
+                <strong>{workflow.label || workflow.workflowName}</strong>
+                <span>{workflow.description || workflow.workflowName}</span>
               </td>
               <td>{workflow.category}</td>
               <td>
@@ -227,7 +228,7 @@ function WorkflowTable({ workflows }: { workflows: WorkflowSummary[] }) {
   );
 }
 
-function RunsTable({ runs }: { runs: RunLog[] }) {
+function RunsTable({ runs, catalog }: { runs: RunLog[]; catalog: WorkflowCatalogItem[] }) {
   return (
     <div className="tableScroller compact">
       <table>
@@ -246,8 +247,8 @@ function RunsTable({ runs }: { runs: RunLog[] }) {
           {runs.map((run, index) => (
             <tr key={`${run.workflowName}-${run.finishedAt}-${index}`}>
               <td>
-                <strong>{run.workflowName}</strong>
-                <span>{run.summary || "No summary"}</span>
+                <strong>{workflowLabel(run.workflowName, catalog)}</strong>
+                <span>{run.summary || run.workflowName}</span>
               </td>
               <td>
                 <span className={statusClass(run.status)}>{run.status}</span>
@@ -307,7 +308,7 @@ function AiPanel({ context, loading }: { context: AiMetricsContext | null; loadi
           <span>Failed workflows</span>
           <strong>{formatNumber(failedWorkflows.length)}</strong>
           {failedWorkflows.map((workflow) => (
-            <small key={workflow.workflowName}>{workflow.workflowName}</small>
+            <small key={workflow.workflowName}>{workflow.label || workflow.workflowName}</small>
           ))}
         </div>
       </div>
@@ -330,7 +331,7 @@ export function DashboardClient() {
   const [runsPageSize, setRunsPageSize] = useState(10);
 
   const workflowOptions = useMemo(
-    () => catalog.filter((workflow) => !query.category || workflow.category === query.category),
+    () => sortWorkflowsByLabel(catalog.filter((workflow) => !query.category || workflow.category === query.category)),
     [catalog, query.category],
   );
 
@@ -436,7 +437,7 @@ export function DashboardClient() {
               <option value="">All</option>
               {workflowOptions.map((workflow) => (
                 <option key={workflow.workflowName} value={workflow.workflowName}>
-                  {workflow.workflowName}
+                  {workflow.label}
                 </option>
               ))}
             </select>
@@ -597,7 +598,7 @@ export function DashboardClient() {
               </div>
               <Activity size={20} />
             </div>
-            <RunsTable runs={runsPagination.items} />
+            <RunsTable runs={runsPagination.items} catalog={catalog} />
             <PaginationControls
               page={runsPagination.page}
               pageSize={runsPageSize}

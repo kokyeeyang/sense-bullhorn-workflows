@@ -35,6 +35,144 @@ const WORKFLOW_CATEGORIES = {
   "client-corporation-key-account-sync": "client",
 };
 
+const WORKFLOW_METADATA = {
+  "candidate-state-sync": {
+    label: "Candidate State Sync",
+    description: "Normalizes candidate phone and location data used by downstream workflows.",
+  },
+  "placement-database-enrichment-sync": {
+    label: "Placement Database Enrichment",
+    description: "Keeps placement and candidate database fields aligned after Bullhorn placement changes.",
+  },
+  "placement-status-sync": {
+    label: "Placement Status Sync",
+    description: "Applies placement status updates from Bullhorn event changes.",
+  },
+  "placement-termination-email-sync": {
+    label: "Placement Termination Email",
+    description: "Sends candidate termination notices for configured placement exits.",
+  },
+  "placement-termination-workflows-sync": {
+    label: "Placement Termination Workflows",
+    description: "Runs state and contract termination notice workflows based on end dates and status changes.",
+  },
+  "interview-illinois-email-sync": {
+    label: "Illinois Interview Email",
+    description: "Sends Illinois-specific interview notices for matching job activity.",
+  },
+  "job-application-notification-sync": {
+    label: "Job Application Notification",
+    description: "Alerts job owners when new candidate applications arrive from configured sources.",
+  },
+  "approved-placement-apac-sync": {
+    label: "APAC Approved Placement",
+    description: "Notifies APAC teams when relevant placements reach approved status.",
+  },
+  "awr-client-request-sync": {
+    label: "AWR Client Request",
+    description: "Sends Agency Workers Regulations client declaration requests.",
+  },
+  "contractor-not-contacted-reminder-sync": {
+    label: "Contractor Not Contacted Reminder",
+    description: "Reminds owners to contact contractors without recent contact activity.",
+  },
+  "new-job-illinois-email-sync": {
+    label: "New Job Illinois Email",
+    description: "Sends Illinois notices for newly created contract job orders.",
+  },
+  "placement-start-reminder-sync": {
+    label: "Placement Start Reminder",
+    description: "Reminds owners about upcoming placement start requirements.",
+  },
+  "americas-onboarding-notices-sync": {
+    label: "Americas Onboarding Notices",
+    description: "Sends required US onboarding and policy notices to candidates.",
+  },
+  "americas-internal-placement-notices-sync": {
+    label: "Americas Internal Placement Notices",
+    description: "Notifies internal Americas teams about qualifying placement events.",
+  },
+  "ais-survivex-certification-sync": {
+    label: "AIS Survivex Certification",
+    description: "Sends certification renewal reminders for AIS Survivex contractors.",
+  },
+  "americas-welcome-contract-email-sync": {
+    label: "Americas Welcome Contract Email",
+    description: "Sends welcome and onboarding instructions to US contract candidates.",
+  },
+  "fair-collection-notice-sync": {
+    label: "Fair Collection Notice",
+    description: "Sends fair collection notices where required for onboarding.",
+  },
+  "perm-checkin-sync": {
+    label: "Perm Check-in",
+    description: "Sends check-in surveys for permanent placement follow-up.",
+  },
+  "emea-placement-auto-reply-sync": {
+    label: "EMEA Placement Auto Reply",
+    description: "Sends EMEA placement auto-reply communications.",
+  },
+  "so-how-did-we-do-feedback-sync": {
+    label: "How Did We Do Feedback",
+    description: "Requests candidate feedback after placement milestones.",
+  },
+  "start-date-approval-reminder-sync": {
+    label: "Start Date Approval Reminder",
+    description: "Requests approval or confirmation for placement start dates.",
+  },
+  "placement-benefits-reminder-sync": {
+    label: "Placement Benefits Reminder",
+    description: "Sends US benefits enrollment reminders at configured placement milestones.",
+  },
+  "payroll-new-hire-greeting-sync": {
+    label: "Payroll New Hire Greeting",
+    description: "Sends payroll setup guidance to US contract candidates on their start date.",
+  },
+  "placement-end-date-reminder-sync": {
+    label: "Placement End Date Reminder",
+    description: "Reminds sales owners 90 and 60 days before contract placement end dates.",
+  },
+  "us-contract-performance-checkin-sync": {
+    label: "US Contract Performance Check-in",
+    description: "Sends performance check-in surveys for US contract placements.",
+  },
+  "harassment-training-sync": {
+    label: "Harassment Training",
+    description: "Sends state-specific harassment training notices and confirmations.",
+  },
+  "placement-yearly-fee-increase-sync": {
+    label: "Placement Yearly Fee Increase",
+    description: "Notifies stakeholders about yearly contract fee increases.",
+  },
+  "client-contact-dnc-sync": {
+    label: "Client Contact DNC Sync",
+    description: "Updates client contact do-not-contact status from Bullhorn changes.",
+  },
+  "client-corporation-360-sync": {
+    label: "Client Corporation 360 Sync",
+    description: "Maintains client corporation 360 classification data.",
+  },
+  "client-corporation-key-account-sync": {
+    label: "Client Corporation Key Account Sync",
+    description: "Maintains key account classification data for client corporations.",
+  },
+};
+
+function titleCaseWorkflowName(workflowName) {
+  return String(workflowName || "")
+    .replace(/-sync$/, "")
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getWorkflowMetadata(workflowName) {
+  return {
+    label: WORKFLOW_METADATA[workflowName]?.label || titleCaseWorkflowName(workflowName),
+    description: WORKFLOW_METADATA[workflowName]?.description || "Workflow automation.",
+  };
+}
+
 function formatDateOnly(value) {
   return String(value || "").slice(0, 10);
 }
@@ -161,6 +299,7 @@ function getWorkflowCategory(workflowName) {
 function buildWorkflowCatalog() {
   return DASHBOARD_WORKFLOWS.map((workflowName) => ({
     workflowName,
+    ...getWorkflowMetadata(workflowName),
     category: getWorkflowCategory(workflowName),
     sendsEmail: DASHBOARD_EMAIL_WORKFLOWS.includes(workflowName),
   }));
@@ -250,6 +389,7 @@ function buildWorkflowSummary(records) {
 
       return {
         workflowName,
+        ...getWorkflowMetadata(workflowName),
         category: getWorkflowCategory(workflowName),
         sendsEmail: DASHBOARD_EMAIL_WORKFLOWS.includes(workflowName),
         totals,
@@ -367,6 +507,8 @@ function buildAiMetricsContext({ summary }) {
     totals: summary.totals,
     workflows: summary.workflows.map((workflow) => ({
       workflowName: workflow.workflowName,
+      label: workflow.label,
+      description: workflow.description,
       category: workflow.category,
       sendsEmail: workflow.sendsEmail,
       totals: workflow.totals,
@@ -383,6 +525,7 @@ function buildAiMetricsContext({ summary }) {
 module.exports = {
   MAX_DASHBOARD_RANGE_DAYS,
   WORKFLOW_CATEGORIES,
+  WORKFLOW_METADATA,
   buildAiMetricsContext,
   buildDashboardSummary,
   buildEmailSummary,

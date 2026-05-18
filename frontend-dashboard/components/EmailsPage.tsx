@@ -6,6 +6,7 @@ import { fetchEmailTransmissions, fetchWorkflowCatalog, type DashboardQuery } fr
 import { EmailTransmissionRecord, EmailTransmissionsResponse, WorkflowCatalogItem } from "@/lib/types";
 import { formatDateTime, formatNumber, getDefaultDateRange } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 function buildDefaultQuery(): DashboardQuery & Record<string, string> {
   return {
@@ -41,7 +42,7 @@ export function EmailsPage() {
         fetchWorkflowCatalog(),
         fetchEmailTransmissions(nextQuery),
       ]);
-      setCatalog(workflowCatalog.filter((workflow) => workflow.sendsEmail));
+      setCatalog(sortWorkflowsByLabel(workflowCatalog.filter((workflow) => workflow.sendsEmail)));
       setData(result);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Email transmissions failed to load");
@@ -93,7 +94,7 @@ export function EmailsPage() {
             <option value="">All</option>
             {catalog.map((workflow) => (
               <option key={workflow.workflowName} value={workflow.workflowName}>
-                {workflow.workflowName}
+                {workflow.label}
               </option>
             ))}
           </select>
@@ -191,7 +192,7 @@ export function EmailsPage() {
                   </td>
                   <td>{formatDateTime(record.sentAt)}</td>
                   <td>
-                    <strong>{record.workflowName}</strong>
+                    <strong>{workflowLabel(record.workflowName, catalog)}</strong>
                     <span>{record.ruleKey || record.businessDate || record.runDate}</span>
                   </td>
                   <td>
@@ -225,7 +226,7 @@ export function EmailsPage() {
       </section>
 
       {selectedEmail ? (
-        <EmailInspectModal email={selectedEmail} onClose={() => setSelectedEmail(null)} />
+        <EmailInspectModal email={selectedEmail} catalog={catalog} onClose={() => setSelectedEmail(null)} />
       ) : null}
     </main>
   );
@@ -233,13 +234,15 @@ export function EmailsPage() {
 
 function EmailInspectModal({
   email,
+  catalog,
   onClose,
 }: {
   email: EmailTransmissionRecord;
+  catalog: WorkflowCatalogItem[];
   onClose: () => void;
 }) {
   const importantFields = [
-    ["Workflow", email.workflowName || "-"],
+    ["Workflow", workflowLabel(email.workflowName, catalog) || "-"],
     ["Subject", email.subject || "-"],
     ["Template ID", email.templateId || "-"],
     ["Send type", email.sendType || "-"],

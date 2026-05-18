@@ -38,12 +38,16 @@ export type DashboardFilters = {
 
 export type WorkflowCatalogItem = {
   workflowName: string;
+  label: string;
+  description: string;
   category: string;
   sendsEmail: boolean;
 };
 
 export type WorkflowSummary = {
   workflowName: string;
+  label: string;
+  description: string;
   category: string;
   sendsEmail: boolean;
   totals: DashboardTotals;
@@ -119,6 +123,8 @@ export type AiMetricsContext = {
   totals: DashboardTotals;
   workflows: Array<{
     workflowName: string;
+    label: string;
+    description: string;
     category: string;
     sendsEmail: boolean;
     totals: DashboardTotals;

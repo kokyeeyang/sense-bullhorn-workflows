@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { DatabaseZap, RefreshCcw, Search } from "lucide-react";
-import { fetchDataMutations, type DashboardQuery } from "@/lib/dashboardApi";
-import { DataMutationsResponse } from "@/lib/types";
+import { fetchDataMutations, fetchWorkflowCatalog, type DashboardQuery } from "@/lib/dashboardApi";
+import { DataMutationsResponse, WorkflowCatalogItem } from "@/lib/types";
 import { formatDateTime, formatNumber, getDefaultDateRange, stringifyValue } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 const DATA_WORKFLOWS = [
   "placement-database-enrichment-sync",
@@ -44,6 +45,7 @@ function actionClass(action: string) {
 
 export function DataEnrichmentPage() {
   const [query, setQuery] = useState(buildDefaultQuery);
+  const [catalog, setCatalog] = useState<WorkflowCatalogItem[]>([]);
   const [data, setData] = useState<DataMutationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +57,11 @@ export function DataEnrichmentPage() {
     setError(null);
 
     try {
-      const result = await fetchDataMutations(nextQuery);
+      const [workflowCatalog, result] = await Promise.all([
+        fetchWorkflowCatalog(),
+        fetchDataMutations(nextQuery),
+      ]);
+      setCatalog(sortWorkflowsByLabel(workflowCatalog.filter((workflow) => DATA_WORKFLOWS.includes(workflow.workflowName))));
       setData(result);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Data enrichment records failed to load");
@@ -104,9 +110,9 @@ export function DataEnrichmentPage() {
           Workflow
           <select value={query.workflowName} onChange={(event) => updateQuery("workflowName", event.target.value)}>
             <option value="">All</option>
-            {DATA_WORKFLOWS.map((workflow) => (
-              <option key={workflow} value={workflow}>
-                {workflow}
+            {catalog.map((workflow) => (
+              <option key={workflow.workflowName} value={workflow.workflowName}>
+                {workflow.label}
               </option>
             ))}
           </select>
@@ -190,7 +196,7 @@ export function DataEnrichmentPage() {
               {pagination.items.map((record) => (
                 <tr key={record.id}>
                   <td>
-                    <strong>{record.workflowName}</strong>
+                    <strong>{workflowLabel(record.workflowName, catalog)}</strong>
                     <span>{record.runDate}</span>
                   </td>
                   <td>

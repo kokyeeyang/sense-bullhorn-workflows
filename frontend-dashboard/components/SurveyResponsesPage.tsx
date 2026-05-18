@@ -2,17 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { ClipboardCheck, RefreshCcw, Search } from "lucide-react";
-import { fetchSurveyResponses, type DashboardQuery } from "@/lib/dashboardApi";
-import { SurveyResponsesResponse } from "@/lib/types";
+import { fetchSurveyResponses, fetchWorkflowCatalog, type DashboardQuery } from "@/lib/dashboardApi";
+import { SurveyResponsesResponse, WorkflowCatalogItem } from "@/lib/types";
 import { formatDateTime, formatNumber, getDefaultDateRange } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 const SURVEY_WORKFLOWS = [
   "so-how-did-we-do-feedback-sync",
   "perm-checkin-sync",
   "start-date-approval-reminder-sync",
   "us-contract-performance-checkin-sync",
-  "vestas-po-sync",
 ];
 
 function buildDefaultQuery(): DashboardQuery & Record<string, string> {
@@ -31,6 +31,7 @@ function buildDefaultQuery(): DashboardQuery & Record<string, string> {
 
 export function SurveyResponsesPage() {
   const [query, setQuery] = useState(buildDefaultQuery);
+  const [catalog, setCatalog] = useState<WorkflowCatalogItem[]>([]);
   const [data, setData] = useState<SurveyResponsesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +43,11 @@ export function SurveyResponsesPage() {
     setError(null);
 
     try {
-      const result = await fetchSurveyResponses(nextQuery);
+      const [workflowCatalog, result] = await Promise.all([
+        fetchWorkflowCatalog(),
+        fetchSurveyResponses(nextQuery),
+      ]);
+      setCatalog(sortWorkflowsByLabel(workflowCatalog.filter((workflow) => SURVEY_WORKFLOWS.includes(workflow.workflowName))));
       setData(result);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Survey responses failed to load");
@@ -92,9 +97,9 @@ export function SurveyResponsesPage() {
           Workflow
           <select value={query.workflowName} onChange={(event) => updateQuery("workflowName", event.target.value)}>
             <option value="">All</option>
-            {SURVEY_WORKFLOWS.map((workflow) => (
-              <option key={workflow} value={workflow}>
-                {workflow}
+            {catalog.map((workflow) => (
+              <option key={workflow.workflowName} value={workflow.workflowName}>
+                {workflow.label}
               </option>
             ))}
           </select>
@@ -172,7 +177,7 @@ export function SurveyResponsesPage() {
                 <tr key={`${record.partitionKey}:${record.rowKey}`}>
                   <td>{formatDateTime(record.submittedAt)}</td>
                   <td>
-                    <strong>{record.workflowName}</strong>
+                    <strong>{workflowLabel(record.workflowName, catalog)}</strong>
                     <span>{record.createdAt ? `created ${formatDateTime(record.createdAt)}` : "-"}</span>
                   </td>
                   <td>

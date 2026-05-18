@@ -105,3 +105,16 @@ az acr repository delete \
 ```
 
 Do not commit Function keys, registry passwords, or `.env.local` values.
+
+
+
+
+cd frontend-dashboard
+
+docker build -t workflow-dashboard-local .
+
+docker tag workflow-dashboard-local sosenseworkflowacr-fhdxbrc8hdc7fgbv.azurecr.io/workflow-dashboard-local:latest
+
+docker login sosenseworkflowacr-fhdxbrc8hdc7fgbv.azurecr.io
+
+docker push sosenseworkflowacr-fhdxbrc8hdc7fgbv.azurecr.io/workflow-dashboard-local:latest
