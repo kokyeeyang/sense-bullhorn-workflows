@@ -128,6 +128,79 @@ function buildCandidateCurrentNpsPatch(answer) {
   return { customFloat1: score };
 }
 
+function buildCandidateNpsNoteComments(answer) {
+  const score = parseNpsScore(answer);
+  if (score === null) {
+    return "";
+  }
+
+  return `NPS Feedback : ${score}`;
+}
+
+function didPersistToPostgres(result) {
+  return Array.isArray(result?.results) &&
+    result.results.some((item) => item.target === "postgres" && !item.skipped);
+}
+
+function parseJsonObject(value) {
+  if (!value) {
+    return {};
+  }
+
+  if (typeof value === "object") {
+    return value;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function buildRespondedTrackingRecord({ entity = null, payload, answer, respondedAt }) {
+  const metadata = entity ? parseJsonObject(entity.metadataJson) : parseJsonObject(payload.metadata);
+  const context = entity ? parseJsonObject(entity.contextJson) : {};
+  const reminderDueDate =
+    entity?.reminderDueDate ||
+    String(payload.trackingRowKey || "").split("|")[0] ||
+    "";
+  const issuedDate = String(payload.issuedAt || respondedAt || "").slice(0, 10);
+
+  return {
+    partitionKey: entity?.partitionKey || payload.trackingPartitionKey,
+    rowKey: entity?.rowKey || payload.trackingRowKey,
+    workflowName: WORKFLOW_NAME,
+    surveyKey: entity?.surveyKey || payload.surveyKey || "",
+    ruleKey: entity?.ruleKey || metadata.ruleKey || "",
+    recipientType: entity?.recipientType || metadata.recipientType || "",
+    recipientEmail: entity?.recipientEmail || payload.recipientEmail || "",
+    recipientFirstName: entity?.recipientFirstName || "",
+    candidateId: entity?.candidateId ?? payload.candidateId ?? null,
+    candidateName: entity?.candidateName || "",
+    clientContactId: entity?.clientContactId ?? null,
+    clientContactName: entity?.clientContactName || "",
+    placementId: entity?.placementId ?? payload.placementId ?? null,
+    clientCorporationId: entity?.clientCorporationId ?? null,
+    clientCorporationName: entity?.clientCorporationName || "",
+    employmentType: entity?.employmentType || "",
+    currentPlacementStatus: entity?.currentPlacementStatus || "",
+    businessDate: entity?.businessDate || entity?.initialSentDate || issuedDate,
+    initialSentAt: entity?.initialSentAt || payload.issuedAt || "",
+    initialSentDate: entity?.initialSentDate || issuedDate,
+    reminderDueDate,
+    reminderSentAt: entity?.reminderSentAt || "",
+    respondedAt,
+    responseAnswer: answer,
+    trackingStatus: "responded",
+    tokenIssuedAt: entity?.tokenIssuedAt || payload.issuedAt || "",
+    context,
+    metadata,
+    runDate: entity?.initialSentDate || entity?.businessDate || issuedDate,
+  };
+}
+
 async function updateCandidateCurrentNps({ config, candidateId, answer, log = logger }) {
   const patch = buildCandidateCurrentNpsPatch(answer);
   const score = patch?.customFloat1 ?? null;
@@ -152,7 +225,39 @@ async function updateCandidateCurrentNps({ config, candidateId, answer, log = lo
       patch,
     });
 
-    return { updated: true, candidateId, score };
+    const noteComments = buildCandidateNpsNoteComments(answer);
+    let noteResult = { created: false, reason: "missing-note-comments" };
+    if (noteComments) {
+      try {
+        const createdNote = await bullhorn.createCandidateNote({
+          ...session,
+          candidateId,
+          comments: noteComments,
+        });
+        noteResult = {
+          created: true,
+          noteId: createdNote.noteId || null,
+          comments: noteComments,
+        };
+      } catch (error) {
+        log.warn(
+          {
+            candidateId,
+            score,
+            comments: noteComments,
+            error: serializeError(error),
+          },
+          "Failed to create Bullhorn candidate NPS note",
+        );
+        noteResult = {
+          created: false,
+          reason: "bullhorn-note-create-failed",
+          comments: noteComments,
+        };
+      }
+    }
+
+    return { updated: true, candidateId, score, noteResult };
   } catch (error) {
     log.warn(
       {
@@ -226,7 +331,7 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
       request.headers.get("x-client-ip") ||
       "";
 
-    await saveWorkflowSurveyResponse({
+    const responseSaveResult = await saveWorkflowSurveyResponse({
       config,
       response: {
         ...payload,
@@ -236,6 +341,28 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
         remoteAddress,
       },
     });
+    if (responseSaveResult.skipped) {
+      logger.warn(
+        {
+          workflowName: WORKFLOW_NAME,
+          candidateId: payload.candidateId,
+          surveyKey: payload.surveyKey || null,
+          responseSaveResult,
+        },
+        "SO How Did We Do feedback response was not persisted to any response store",
+      );
+    }
+    if (!didPersistToPostgres(responseSaveResult)) {
+      logger.warn(
+        {
+          workflowName: WORKFLOW_NAME,
+          candidateId: payload.candidateId,
+          surveyKey: payload.surveyKey || null,
+          responseSaveResult,
+        },
+        "SO How Did We Do feedback response was not persisted to Postgres workflow_survey_responses",
+      );
+    }
 
     const currentNpsUpdate = await updateCandidateCurrentNps({
       config,
@@ -243,49 +370,37 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
       answer,
     });
 
+    let trackingUpdateResult = { skipped: true, reason: "missing-tracking-key" };
     if (payload.trackingPartitionKey && payload.trackingRowKey) {
-      const entity = await getWorkflowSurveyTracking({
-        config,
-        partitionKey: payload.trackingPartitionKey,
-        rowKey: payload.trackingRowKey,
-      });
-
-      if (entity) {
-        await upsertWorkflowSurveyTracking({
+      let entity = null;
+      try {
+        entity = await getWorkflowSurveyTracking({
           config,
-          tracking: {
-            partitionKey: entity.partitionKey,
-            rowKey: entity.rowKey,
-            workflowName: WORKFLOW_NAME,
-            surveyKey: entity.surveyKey,
-            ruleKey: entity.ruleKey,
-            recipientType: entity.recipientType,
-            recipientEmail: entity.recipientEmail,
-            recipientFirstName: entity.recipientFirstName || "",
-            candidateId: entity.candidateId ?? null,
-            candidateName: entity.candidateName || "",
-            clientContactId: entity.clientContactId ?? null,
-            clientContactName: entity.clientContactName || "",
-            placementId: entity.placementId ?? null,
-            clientCorporationId: entity.clientCorporationId ?? null,
-            clientCorporationName: entity.clientCorporationName || "",
-            employmentType: entity.employmentType || "",
-            currentPlacementStatus: entity.currentPlacementStatus || "",
-            businessDate: entity.businessDate || entity.initialSentDate || "",
-            initialSentAt: entity.initialSentAt || "",
-            initialSentDate: entity.initialSentDate || "",
-            reminderDueDate: entity.reminderDueDate || "",
-            reminderSentAt: entity.reminderSentAt || "",
-            respondedAt: new Date().toISOString(),
-            responseAnswer: answer,
-            trackingStatus: "responded",
-            tokenIssuedAt: entity.tokenIssuedAt || "",
-            context: JSON.parse(entity.contextJson || "{}"),
-            metadata: JSON.parse(entity.metadataJson || "{}"),
-            runDate: entity.initialSentDate || entity.businessDate || "",
-          },
+          partitionKey: payload.trackingPartitionKey,
+          rowKey: payload.trackingRowKey,
         });
+      } catch (error) {
+        logger.warn(
+          {
+            workflowName: WORKFLOW_NAME,
+            candidateId: payload.candidateId,
+            surveyKey: payload.surveyKey || null,
+            error: serializeError(error),
+          },
+          "Could not read existing SO How Did We Do survey tracking row; using token fallback",
+        );
       }
+
+      const respondedAt = new Date().toISOString();
+      trackingUpdateResult = await upsertWorkflowSurveyTracking({
+        config,
+        tracking: buildRespondedTrackingRecord({
+          entity,
+          payload,
+          answer,
+          respondedAt,
+        }),
+      });
     }
 
     logger.info(
@@ -294,6 +409,8 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
         placementId: payload.placementId,
         answer,
         surveyKey: payload.surveyKey || null,
+        responseSaveResult,
+        trackingUpdateResult,
         currentNpsUpdate,
       },
       "SO How Did We Do feedback response captured",
@@ -322,7 +439,10 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
 }
 
 module.exports = {
+  buildCandidateNpsNoteComments,
   buildCandidateCurrentNpsPatch,
+  buildRespondedTrackingRecord,
+  didPersistToPostgres,
   handleSoHowDidWeDoFeedbackResponse,
   parseNpsScore,
   updateCandidateCurrentNps,

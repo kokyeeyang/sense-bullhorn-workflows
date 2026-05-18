@@ -185,6 +185,7 @@ async function run(options = {}) {
       placementId: report.placementId,
       reportPath,
       transmission,
+      trackingResult,
     },
     "SO How Did We Do feedback candidate test send complete",
   );

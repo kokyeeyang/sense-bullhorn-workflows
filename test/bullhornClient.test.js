@@ -98,4 +98,44 @@ describe("BullhornClient", () => {
     );
   });
 
+  test("createCandidateNote creates a note and associates it to a candidate via NoteEntity", async () => {
+    axios.put
+      .mockResolvedValueOnce({
+        data: { changedEntityId: 789 },
+        headers: {},
+      })
+      .mockResolvedValueOnce({
+        data: { changedEntityId: 790 },
+      });
+
+    const client = new BullhornClient({ config, logger });
+    const result = await client.createCandidateNote({
+      restUrl: "https://example-rest.bullhornstaffing.com/rest-services/123",
+      bhRestToken: "token",
+      candidateId: 2923234,
+      comments: "NPS Feedback : 9",
+    });
+
+    expect(result.noteId).toBe(789);
+    expect(axios.put).toHaveBeenNthCalledWith(
+      1,
+      "https://example-rest.bullhornstaffing.com/rest-services/123/entity/Note",
+      {
+        comments: "NPS Feedback : 9",
+        personReference: { id: 2923234, _subtype: "Candidate" },
+      },
+      { params: { BhRestToken: "token" } },
+    );
+    expect(axios.put).toHaveBeenNthCalledWith(
+      2,
+      "https://example-rest.bullhornstaffing.com/rest-services/123/entity/NoteEntity",
+      {
+        note: { id: 789 },
+        targetEntityID: 2923234,
+        targetEntityName: "User",
+      },
+      { params: { BhRestToken: "token" } },
+    );
+  });
+
 });

@@ -1358,6 +1358,53 @@ class BullhornClient {
     });
   }
 
+  async createCandidateNote({ restUrl, bhRestToken, candidateId, comments }) {
+    const createUrl = `${restUrl}/entity/Note`;
+
+    const response = await this.requestWithRetry({
+      label: "create_candidate_note",
+      fn: () =>
+        axios.put(
+          createUrl,
+          {
+            comments,
+            personReference: { id: Number(candidateId), _subtype: "Candidate" },
+          },
+          { params: { BhRestToken: bhRestToken } },
+        ),
+    });
+
+    const locationNoteId = String(response.headers?.location || "").match(/\/Note\/(\d+)/)?.[1];
+    const noteId =
+      response.data?.changedEntityId ||
+      response.data?.data?.changedEntityId ||
+      response.data?.id ||
+      response.data?.data?.id ||
+      (locationNoteId ? Number(locationNoteId) : null) ||
+      null;
+
+    if (noteId) {
+      await this.requestWithRetry({
+        label: "create_candidate_note_entity",
+        fn: () =>
+          axios.put(
+            `${restUrl}/entity/NoteEntity`,
+            {
+              note: { id: Number(noteId) },
+              targetEntityID: Number(candidateId),
+              targetEntityName: "User",
+            },
+            { params: { BhRestToken: bhRestToken } },
+          ),
+      });
+    }
+
+    return {
+      noteId,
+      response: response.data,
+    };
+  }
+
   async updateClientContact({ restUrl, bhRestToken, clientContactId, patch }) {
     const url = `${restUrl}/entity/ClientContact/${clientContactId}`;
 
