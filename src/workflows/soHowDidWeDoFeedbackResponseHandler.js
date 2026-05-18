@@ -1,5 +1,6 @@
 const { loadConfig } = require("../helpers/config");
 const { logger } = require("../helpers/logger");
+const { BullhornClient } = require("../clients/bullhornClient");
 const { saveWorkflowSurveyResponse } = require("../stores/workflowSurveyResponseStore");
 const {
   getWorkflowSurveyTracking,
@@ -109,6 +110,63 @@ function isValidScoreAnswer(answer) {
   return SCORE_OPTIONS.includes(String(answer || ""));
 }
 
+function parseNpsScore(answer) {
+  const score = Number(String(answer ?? "").trim());
+  if (!Number.isInteger(score) || score < 1 || score > 10) {
+    return null;
+  }
+
+  return score;
+}
+
+function buildCandidateCurrentNpsPatch(answer) {
+  const score = parseNpsScore(answer);
+  if (score === null) {
+    return null;
+  }
+
+  return { customFloat1: score };
+}
+
+async function updateCandidateCurrentNps({ config, candidateId, answer, log = logger }) {
+  const patch = buildCandidateCurrentNpsPatch(answer);
+  const score = patch?.customFloat1 ?? null;
+
+  if (!patch) {
+    return { updated: false, reason: "invalid-score", candidateId: candidateId ?? null, score };
+  }
+
+  if (!candidateId) {
+    return { updated: false, reason: "missing-candidate-id", candidateId: null, score };
+  }
+
+  try {
+    const bullhorn = new BullhornClient({ config, logger: log });
+    const code = await bullhorn.getAuthorizationCode();
+    const accessToken = await bullhorn.getAccessToken(code);
+    const session = await bullhorn.login(accessToken);
+
+    await bullhorn.updateCandidate({
+      ...session,
+      candidateId,
+      patch,
+    });
+
+    return { updated: true, candidateId, score };
+  } catch (error) {
+    log.warn(
+      {
+        candidateId,
+        score,
+        error: serializeError(error),
+      },
+      "Failed to update Bullhorn candidate Current NPS",
+    );
+
+    return { updated: false, reason: "bullhorn-update-failed", candidateId, score };
+  }
+}
+
 async function handleSoHowDidWeDoFeedbackResponse(request, context) {
   const config = loadConfig();
 
@@ -179,6 +237,12 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
       },
     });
 
+    const currentNpsUpdate = await updateCandidateCurrentNps({
+      config,
+      candidateId: payload.candidateId,
+      answer,
+    });
+
     if (payload.trackingPartitionKey && payload.trackingRowKey) {
       const entity = await getWorkflowSurveyTracking({
         config,
@@ -230,6 +294,7 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
         placementId: payload.placementId,
         answer,
         surveyKey: payload.surveyKey || null,
+        currentNpsUpdate,
       },
       "SO How Did We Do feedback response captured",
     );
@@ -257,5 +322,8 @@ async function handleSoHowDidWeDoFeedbackResponse(request, context) {
 }
 
 module.exports = {
+  buildCandidateCurrentNpsPatch,
   handleSoHowDidWeDoFeedbackResponse,
+  parseNpsScore,
+  updateCandidateCurrentNps,
 };

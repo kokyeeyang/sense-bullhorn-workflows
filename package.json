@@ -32,6 +32,7 @@
     "run:perm-checkin-sync": "node src/workflows/permCheckinSync.js",
     "run:emea-placement-auto-reply-sync": "node src/workflows/emeaPlacementAutoReplySync.js",
     "run:so-how-did-we-do-feedback-sync": "node src/workflows/soHowDidWeDoFeedbackSync.js",
+    "run:so-how-did-we-do-feedback-test-send": "node src/workflows/soHowDidWeDoFeedbackTestSend.js",
     "run:start-date-approval-reminder-sync": "node src/workflows/startDateApprovalReminderSync.js",
     "run:placement-benefits-reminder-sync": "node src/workflows/placementBenefitsReminderSync.js",
     "run:placement-benefits-reminder-test-send": "node src/workflows/placementBenefitsReminderTestSend.js",
