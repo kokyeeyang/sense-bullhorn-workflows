@@ -220,3 +220,33 @@ export type EmailTransmissionsResponse = {
   records: EmailTransmissionRecord[];
   storage: string;
 };
+
+export type SurveyResponseRecord = {
+  partitionKey: string;
+  rowKey: string;
+  submittedAt: string | null;
+  workflowName: string;
+  placementId: number | null;
+  candidateId: number | null;
+  ownerId: number | null;
+  ownerEmail: string;
+  recipientEmail: string;
+  questionId: string;
+  questionText: string;
+  answer: string;
+  issuedAt: string | null;
+  surveyKey: string;
+  metadata: Record<string, unknown>;
+  userAgent: string;
+  remoteAddress: string;
+  createdAt: string | null;
+};
+
+export type SurveyResponsesResponse = {
+  generatedAt: string;
+  environment: string;
+  filters: DashboardFilters;
+  count: number;
+  records: SurveyResponseRecord[];
+  storage: string;
+};

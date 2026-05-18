@@ -6,6 +6,7 @@ import {
   EmailSummary,
   EmailTransmissionsResponse,
   RunsResponse,
+  SurveyResponsesResponse,
   WorkflowCatalogItem,
 } from "./types";
 
@@ -78,4 +79,8 @@ export async function fetchDataMutations(query: DashboardQuery & Record<string, 
 
 export async function fetchEmailTransmissions(query: DashboardQuery & Record<string, string>) {
   return fetchDashboard<EmailTransmissionsResponse>("email-transmissions", query);
+}
+
+export async function fetchSurveyResponses(query: DashboardQuery & Record<string, string>) {
+  return fetchDashboard<SurveyResponsesResponse>("survey-responses", query);
 }

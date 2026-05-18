@@ -325,6 +325,8 @@ npm run run:so-how-did-we-do-feedback-sync
 npm run run:start-date-approval-reminder-sync
 npm run run:placement-benefits-reminder-sync
 npm run run:placement-benefits-reminder-test-send
+npm run run:payroll-new-hire-greeting-sync
+npm run run:placement-end-date-reminder-sync
 npm run run:placement-yearly-fee-increase-sync
 npm run run:placement-yearly-fee-increase-test-send
 npm run run:client-corporation-360-sync
@@ -345,6 +347,8 @@ SO How Did We Do feedback runs write both `reports/YYYY-MM-DD/so-how-did-we-do-f
 Start date approval reminder runs write both `reports/YYYY-MM-DD/start-date-approval-reminder-report-<timestamp>.json` and `reports/YYYY-MM-DD/start-date-approval-reminder-sparkpost-payload-<timestamp>.json`.
 Placement benefits reminder runs write both `reports/YYYY-MM-DD/placement-benefits-reminder-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-benefits-reminder-sparkpost-payload-<timestamp>.json`.
 Placement benefits reminder test sends write `reports/YYYY-MM-DD/placement-benefits-reminder-sparkpost-test-payload-<timestamp>.json`.
+Payroll new hire greeting runs write both `reports/YYYY-MM-DD/payroll-new-hire-greeting-report-<timestamp>.json` and `reports/YYYY-MM-DD/payroll-new-hire-greeting-sparkpost-payload-<timestamp>.json`.
+Placement end date reminder runs write both `reports/YYYY-MM-DD/placement-end-date-reminder-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-end-date-reminder-sparkpost-payload-<timestamp>.json`.
 Placement yearly fee increase runs write both `reports/YYYY-MM-DD/placement-yearly-fee-increase-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-yearly-fee-increase-sparkpost-payload-<timestamp>.json`.
 Placement yearly fee increase test sends write `reports/YYYY-MM-DD/placement-yearly-fee-increase-sparkpost-test-payload-<timestamp>.json`.
 Placement termination email runs write both `reports/YYYY-MM-DD/placement-termination-email-report-<timestamp>.json` and `reports/YYYY-MM-DD/placement-termination-email-sparkpost-payload-<timestamp>.json`.
@@ -503,6 +507,10 @@ Optional:
 - `PLACEMENT_BENEFITS_REMINDER_DAY10_SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
 - `PLACEMENT_BENEFITS_REMINDER_DAY21_SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
 - `PLACEMENT_BENEFITS_REMINDER_DAY26_SPARKPOST_TEMPLATE_ID` (required when `DRY_RUN=false`)
+- `PAYROLL_NEW_HIRE_GREETING_QUERY_COUNT` (default: `200`)
+- `PAYROLL_NEW_HIRE_GREETING_TARGET_DATE` (optional `YYYY-MM-DD` override)
+- `PLACEMENT_END_DATE_REMINDER_QUERY_COUNT` (default: `200`)
+- `PLACEMENT_END_DATE_REMINDER_TARGET_DATE` (optional `YYYY-MM-DD` override)
 - `PLACEMENT_YEARLY_FEE_INCREASE_MONTH_OFFSET` (default: `11`)
 - `PLACEMENT_YEARLY_FEE_INCREASE_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_YEARLY_FEE_INCREASE_WINDOW_BEFORE_DAYS` (default: `0`)
@@ -663,6 +671,8 @@ Azure schedules:
 - `AZURE_VESTAS_PO_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_PLACEMENT_START_REMINDER_SCHEDULE` default: `0 0 0 * * *`
 - `AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE` default: `0 0 17 * * *`
+- `AZURE_PAYROLL_NEW_HIRE_GREETING_SCHEDULE` default: `0 0 * * * *`
+- `AZURE_PLACEMENT_END_DATE_REMINDER_SCHEDULE` default: `0 0 * * * *`
 - `AZURE_PLACEMENT_YEARLY_FEE_INCREASE_SCHEDULE` default: `0 0 0 * * *`
 - `AZURE_CLIENT_CORPORATION_360_SYNC_SCHEDULE` default: `0 */5 * * * *`
 - `AZURE_CLIENT_CORPORATION_KEY_ACCOUNT_SYNC_SCHEDULE` default: `0 */5 * * * *`
@@ -727,6 +737,8 @@ Routes:
 - `POST /api/workflows/start-date-approval-reminder-sync`
 - `POST /api/workflows/placement-benefits-reminder-sync`
 - `POST /api/workflows/placement-benefits-reminder-test-send`
+- `POST /api/workflows/payroll-new-hire-greeting-sync`
+- `POST /api/workflows/placement-end-date-reminder-sync`
 - `POST /api/workflows/placement-yearly-fee-increase-sync`
 - `POST /api/workflows/client-corporation-360-sync`
 - `POST /api/workflows/client-corporation-key-account-sync`
@@ -809,10 +821,45 @@ Error example:
 Azure local/dev setup:
 
 1. Copy `local.settings.example.json` to `local.settings.json`
-2. Fill in Bullhorn settings
+2. Fill in Bullhorn, SparkPost, storage, and PostgreSQL settings as needed
 3. Install Azure Functions Core Tools locally
 4. Run `npm ci`
-5. Run `npm run start:azure`
+5. Run the Function App locally:
+
+```bash
+npm run start:azure
+```
+
+That script runs:
+
+```bash
+func start
+```
+
+You can also run it directly from the repo root:
+
+```bash
+func start
+```
+
+By default the local Functions host listens at:
+
+```text
+http://localhost:7071/api
+```
+
+The Next.js dashboard can point to it with:
+
+```text
+WORKFLOW_API_BASE_URL=http://localhost:7071/api
+WORKFLOW_API_CODE=
+```
+
+Example local HTTP workflow call:
+
+```bash
+curl -X POST "http://localhost:7071/api/workflows/payroll-new-hire-greeting-sync?targetDate=2026-05-18"
+```
 
 Notes:
 

@@ -4,6 +4,103 @@ function toTimestamp(value) {
   return value ? new Date(value) : null;
 }
 
+function normalizeLimit(value, defaultLimit = 100, maxLimit = 500) {
+  const parsed = Number(value || defaultLimit);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return defaultLimit;
+  }
+  return Math.min(Math.floor(parsed), maxLimit);
+}
+
+function mapSurveyResponseRow(row) {
+  return {
+    partitionKey: row.partition_key || "",
+    rowKey: row.row_key || "",
+    submittedAt: row.submitted_at ? row.submitted_at.toISOString() : null,
+    workflowName: row.workflow_name || "",
+    placementId:
+      row.placement_id === null || row.placement_id === undefined ? null : Number(row.placement_id),
+    candidateId:
+      row.candidate_id === null || row.candidate_id === undefined ? null : Number(row.candidate_id),
+    ownerId: row.owner_id === null || row.owner_id === undefined ? null : Number(row.owner_id),
+    ownerEmail: row.owner_email || "",
+    recipientEmail: row.recipient_email || "",
+    questionId: row.question_id || "",
+    questionText: row.question_text || "",
+    answer: row.answer || "",
+    issuedAt: row.issued_at ? row.issued_at.toISOString() : null,
+    surveyKey: row.survey_key || "",
+    metadata: row.metadata_json || {},
+    userAgent: row.user_agent || "",
+    remoteAddress: row.remote_address || "",
+    createdAt: row.created_at ? row.created_at.toISOString() : null,
+  };
+}
+
+async function listWorkflowSurveyResponsesPostgres({
+  config,
+  dateFrom,
+  dateTo,
+  workflowName = null,
+  surveyKey = null,
+  recipientEmail = null,
+  answer = null,
+  limit = 100,
+}) {
+  if (!config.POSTGRES_CONNECTION_STRING) {
+    return [];
+  }
+
+  const effectiveDateExpression = "COALESCE(submitted_at::date::text, created_at::date::text)::date";
+  const clauses = [
+    `${effectiveDateExpression} >= $1::date`,
+    `${effectiveDateExpression} <= $2::date`,
+  ];
+  const values = [
+    String(dateFrom).slice(0, 10),
+    String(dateTo).slice(0, 10),
+  ];
+
+  function addClause(sql, value) {
+    values.push(value);
+    clauses.push(sql.replace("?", `$${values.length}`));
+  }
+
+  if (workflowName) {
+    const workflowNames = String(workflowName)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (workflowNames.length > 0) {
+      addClause("workflow_name = ANY(?::text[])", workflowNames);
+    }
+  }
+  if (surveyKey) {
+    addClause("survey_key ILIKE ?", `%${String(surveyKey).trim()}%`);
+  }
+  if (recipientEmail) {
+    addClause("recipient_email ILIKE ?", `%${String(recipientEmail).trim()}%`);
+  }
+  if (answer) {
+    addClause("answer ILIKE ?", `%${String(answer).trim()}%`);
+  }
+
+  values.push(normalizeLimit(limit));
+  const result = await query({
+    config,
+    text: `
+      SELECT *
+      FROM workflow_survey_responses
+      WHERE ${clauses.join(" AND ")}
+      ORDER BY submitted_at DESC NULLS LAST, created_at DESC
+      LIMIT $${values.length}
+    `,
+    values,
+  });
+
+  return result.rows.map(mapSurveyResponseRow);
+}
+
 async function upsertWorkflowSurveyTrackingPostgres({ config, tracking }) {
   if (!config.POSTGRES_CONNECTION_STRING) {
     return { skipped: true, reason: "postgres-not-configured" };
@@ -196,6 +293,7 @@ async function saveWorkflowSurveyResponsePostgres({ config, response, entity }) 
 }
 
 module.exports = {
+  listWorkflowSurveyResponsesPostgres,
   saveWorkflowSurveyResponsePostgres,
   upsertWorkflowSurveyTrackingPostgres,
 };

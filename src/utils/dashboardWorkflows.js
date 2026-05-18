@@ -22,6 +22,8 @@ const DASHBOARD_WORKFLOWS = [
   "so-how-did-we-do-feedback-sync",
   "start-date-approval-reminder-sync",
   "placement-benefits-reminder-sync",
+  "payroll-new-hire-greeting-sync",
+  "placement-end-date-reminder-sync",
   "us-contract-performance-checkin-sync",
   "harassment-training-sync",
   "placement-yearly-fee-increase-sync",
@@ -52,6 +54,8 @@ const DASHBOARD_EMAIL_WORKFLOWS = [
   "start-date-approval-reminder-sync",
   "placement-yearly-fee-increase-sync",
   "placement-benefits-reminder-sync",
+  "payroll-new-hire-greeting-sync",
+  "placement-end-date-reminder-sync",
   "us-contract-performance-checkin-sync",
   "harassment-training-sync",
 ];

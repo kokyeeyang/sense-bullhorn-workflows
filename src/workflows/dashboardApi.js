@@ -9,6 +9,9 @@ const {
   listWorkflowEmailTransmissionsPostgres,
 } = require("../stores/postgresWorkflowEmailTransmissionStore");
 const {
+  listWorkflowSurveyResponsesPostgres,
+} = require("../stores/postgresWorkflowSurveyStore");
+const {
   buildAiMetricsContext,
   buildDashboardSummary,
   buildEmailSummary,
@@ -358,6 +361,44 @@ async function handleDashboardEmailTransmissions(request, context) {
   }
 }
 
+async function handleDashboardSurveyResponses(request, context) {
+  context.log("Dashboard survey responses detail request received");
+
+  try {
+    const config = loadConfig();
+    const filters = buildFiltersFromRequest(request);
+    const records = await listWorkflowSurveyResponsesPostgres({
+      config,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      workflowName:
+        filters.workflowNames.length > 0 ? filters.workflowNames.join(",") : getQueryValue(request, "workflowName"),
+      surveyKey: getQueryValue(request, "surveyKey"),
+      recipientEmail: getQueryValue(request, "recipientEmail"),
+      answer: getQueryValue(request, "answer"),
+      limit: getPositiveIntegerQueryValue(request, "limit", 100),
+    });
+
+    return buildJsonResponse(200, {
+      success: true,
+      data: {
+        generatedAt: new Date().toISOString(),
+        environment: getEnvironmentLabel(config),
+        filters,
+        count: records.length,
+        records,
+        storage: config.POSTGRES_CONNECTION_STRING ? "postgres" : "none",
+      },
+    });
+  } catch (error) {
+    context.error(serializeError(error), "Dashboard survey responses detail request failed");
+    return buildErrorResponse({
+      error,
+      status: error.message?.startsWith("Invalid") || error.message?.includes("Unsupported") ? 400 : 500,
+    });
+  }
+}
+
 module.exports = {
   handleDashboardAiContext,
   handleDashboardDataMutations,
@@ -366,6 +407,7 @@ module.exports = {
   handleDashboardRuns,
   handleDashboardSkips,
   handleDashboardSummary,
+  handleDashboardSurveyResponses,
   handleDashboardTrends,
   handleDashboardWorkflows,
 };

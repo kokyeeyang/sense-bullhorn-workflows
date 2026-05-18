@@ -27,6 +27,8 @@ const { run: runSoHowDidWeDoFeedbackSync } = require("./src/workflows/soHowDidWe
 const { run: runStartDateApprovalReminderSync } = require("./src/workflows/startDateApprovalReminderSync");
 const { run: runPlacementBenefitsReminderSync } = require("./src/workflows/placementBenefitsReminderSync");
 const { run: runPlacementBenefitsReminderTestSend } = require("./src/workflows/placementBenefitsReminderTestSend");
+const { run: runPayrollNewHireGreetingSync } = require("./src/workflows/payrollNewHireGreetingSync");
+const { run: runPlacementEndDateReminderSync } = require("./src/workflows/placementEndDateReminderSync");
 const { run: runUsContractPerformanceCheckinSync } = require("./src/workflows/usContractPerformanceCheckinSync");
 const { run: runHarassmentTrainingSync } = require("./src/workflows/harassmentTrainingSync");
 const { handleHarassmentTrainingResponse } = require("./src/workflows/harassmentTrainingResponseHandler");
@@ -58,6 +60,7 @@ const {
   handleDashboardRuns,
   handleDashboardSkips,
   handleDashboardSummary,
+  handleDashboardSurveyResponses,
   handleDashboardTrends,
   handleDashboardWorkflows,
 } = require("./src/workflows/dashboardApi");
@@ -217,6 +220,24 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 * * * *",
     logLabel: "placement benefits reminder sync",
     run: ({ targetDate } = {}) => runPlacementBenefitsReminderSync({ targetDate }),
+  },
+  {
+    functionName: "payrollNewHireGreetingSync",
+    workflowName: "payroll-new-hire-greeting-sync",
+    route: "workflows/payroll-new-hire-greeting-sync",
+    scheduleEnv: "AZURE_PAYROLL_NEW_HIRE_GREETING_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "payroll new hire greeting sync",
+    run: ({ targetDate } = {}) => runPayrollNewHireGreetingSync({ targetDate }),
+  },
+  {
+    functionName: "placementEndDateReminderSync",
+    workflowName: "placement-end-date-reminder-sync",
+    route: "workflows/placement-end-date-reminder-sync",
+    scheduleEnv: "AZURE_PLACEMENT_END_DATE_REMINDER_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+    logLabel: "placement end date reminder sync",
+    run: ({ targetDate } = {}) => runPlacementEndDateReminderSync({ targetDate }),
   },
   {
     functionName: "placementBenefitsReminderTestSend",
@@ -679,4 +700,11 @@ app.http("dashboardEmailTransmissions", {
   authLevel: "function",
   route: "dashboard/email-transmissions",
   handler: handleDashboardEmailTransmissions,
+});
+
+app.http("dashboardSurveyResponses", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/survey-responses",
+  handler: handleDashboardSurveyResponses,
 });

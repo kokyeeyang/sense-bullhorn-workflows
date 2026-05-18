@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Placement End Date Reminder</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; color:#202124;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f6f8; margin:0; padding:24px 0;">
+    <tr>
+      <td align="center" style="padding:0 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px; background-color:#ffffff; border:1px solid #d9dee7; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="background-color:#2f3542; padding:22px 28px;">
+              <p style="margin:0; color:#ffffff; font-size:18px; line-height:24px; font-weight:700;">Spencer Ogden</p>
+              <p style="margin:6px 0 0; color:#dfe4ea; font-size:14px; line-height:20px;">Sales Operations</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px 28px;">
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Hi {{owner.firstname}},</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Your candidate {{candidate.name}} who is currently working at {{clientContact.companyname}} is coming to the end of their contract which is due to end on {{dateend}}.</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">This is a reminder to contact your client contact {{clientContact.name}} to discuss an extension or further opportunities for redeployment.</p>
+              <p style="margin:0; font-size:16px; line-height:24px;">With regards,<br>Sales Operations Team</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
