@@ -51,6 +51,9 @@ const { run: runClientCorporation360Sync } = require("./src/workflows/clientCorp
 const { run: runClientCorporationKeyAccountSync } = require("./src/workflows/clientCorporationKeyAccountSync");
 const { run: runWorkflowDashboardRetentionCleanup } = require("./src/workflows/workflowDashboardRetentionCleanup");
 const {
+  handleCandidateAssignmentStatusReport,
+} = require("./src/workflows/candidateAssignmentStatusReport");
+const {
   handleDashboardAiContext,
   handleDashboardDataMutations,
   handleDashboardEmails,
@@ -689,4 +692,11 @@ app.http("dashboardSurveyResponses", {
   authLevel: "function",
   route: "dashboard/survey-responses",
   handler: handleDashboardSurveyResponses,
+});
+
+app.http("candidateAssignmentStatusReport", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "reports/candidate-assignment-status",
+  handler: handleCandidateAssignmentStatusReport,
 });

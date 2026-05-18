@@ -268,6 +268,71 @@ textarea:disabled {
   grid-template-columns: auto repeat(7, minmax(118px, 1fr)) auto;
 }
 
+.reportFilters {
+  grid-template-columns: auto repeat(7, minmax(118px, 1fr)) auto;
+}
+
+.caseTypeToggles {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filterHelpText {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.caseTypeToggles label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid #e2a15d;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a4f00;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.caseTypeToggles label:hover {
+  border-color: #d87916;
+  background: #ffedd5;
+  color: #7c3f00;
+}
+
+.caseTypeToggles label:has(input:checked) {
+  border-color: #d87916;
+  background: #f97316;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.22);
+}
+
+.caseTypeToggles input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+}
+
+.caseTypeToggles label:has(input:focus-visible) {
+  outline: 2px solid #fdba74;
+  outline-offset: 2px;
+}
+
 .filterTitle {
   display: inline-flex;
   align-items: center;

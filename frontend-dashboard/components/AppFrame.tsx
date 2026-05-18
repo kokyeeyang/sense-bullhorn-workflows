@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ClipboardCheck, DatabaseZap, Mail, Workflow } from "lucide-react";
+import { BarChart3, ClipboardCheck, DatabaseZap, FileSearch, Mail, Workflow } from "lucide-react";
 
 const NAV_ITEMS = [
   {
@@ -28,6 +28,12 @@ const NAV_ITEMS = [
     label: "Survey Responses",
     description: "Workflow feedback",
     icon: ClipboardCheck,
+  },
+  {
+    href: "/candidate-reports",
+    label: "Candidate Reports",
+    description: "Assignment searches",
+    icon: FileSearch,
   },
 ];
 

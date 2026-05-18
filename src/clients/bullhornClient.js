@@ -471,6 +471,7 @@ class BullhornClient {
     startMs,
     endMs,
     count = 200,
+    maxCount = Infinity,
   }) {
     const fields = [
       "id",
@@ -483,6 +484,11 @@ class BullhornClient {
     let start = 0;
 
     while (true) {
+      const remaining = Math.max(maxCount - all.length, 0);
+      if (remaining === 0) {
+        break;
+      }
+      const pageSize = Math.min(count, remaining);
       const response = await this.requestWithRetry({
         label: "query_placement_edit_history_by_date_added_range",
         fn: () =>
@@ -491,7 +497,7 @@ class BullhornClient {
               BhRestToken: bhRestToken,
               where: `dateAdded>=${startMs} AND dateAdded<${endMs}`,
               fields,
-              count,
+              count: pageSize,
               start,
             },
           }),
@@ -500,7 +506,7 @@ class BullhornClient {
       const { data = [] } = response.data;
       all.push(...data);
 
-      if (data.length < count) {
+      if (data.length < pageSize) {
         break;
       }
 
@@ -1035,6 +1041,7 @@ class BullhornClient {
     startMs,
     endMs,
     count = 200,
+    maxCount = Infinity,
     fieldsOverride,
   }) {
     const fields = fieldsOverride || [
@@ -1051,6 +1058,11 @@ class BullhornClient {
     let start = 0;
 
     while (true) {
+      const remaining = Math.max(maxCount - all.length, 0);
+      if (remaining === 0) {
+        break;
+      }
+      const pageSize = Math.min(count, remaining);
       const response = await this.requestWithRetry({
         label: "query_placements_by_date_end_range",
         fn: () =>
@@ -1059,7 +1071,7 @@ class BullhornClient {
               BhRestToken: bhRestToken,
               where: `dateEnd>=${startMs} AND dateEnd<${endMs}`,
               fields,
-              count,
+              count: pageSize,
               start,
             },
           }),
@@ -1068,7 +1080,62 @@ class BullhornClient {
       const { data = [] } = response.data;
       all.push(...data);
 
-      if (data.length < count) {
+      if (data.length < pageSize) {
+        break;
+      }
+
+      start += data.length;
+    }
+
+    return all;
+  }
+
+  async queryPlacementsWhere({
+    restUrl,
+    bhRestToken,
+    where,
+    count = 200,
+    maxCount = count,
+    fieldsOverride,
+  }) {
+    const fields = fieldsOverride || [
+      "id",
+      "status",
+      "dateBegin",
+      "dateEnd",
+      "dateLastModified",
+      "employmentType",
+      "candidate(id,firstName,lastName,name,email,status,address(countryName,state),dateLastComment)",
+      "clientCorporation(id,name,address(countryName))",
+      "jobOrder(id,title,employmentType,address(countryName,state),owner(id,firstName,lastName,email,pager))",
+    ].join(",");
+    const all = [];
+    let start = 0;
+
+    while (true) {
+      const remaining = Math.max(maxCount - all.length, 0);
+      if (remaining === 0) {
+        break;
+      }
+      const pageSize = Math.min(count, remaining);
+      const response = await this.requestWithRetry({
+        label: "query_placements_where",
+        fn: () =>
+          axios.get(`${restUrl}/query/Placement`, {
+            params: {
+              BhRestToken: bhRestToken,
+              where,
+              fields,
+              count: pageSize,
+              start,
+            },
+          }),
+      });
+
+      const { data = [] } = response.data;
+      all.push(...data);
+
+      if (data.length < pageSize) {
         break;
       }
 

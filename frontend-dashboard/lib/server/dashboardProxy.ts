@@ -17,7 +17,7 @@ function getWorkflowApiBaseUrl() {
 }
 
 function buildTargetUrl(request: NextRequest, path: string[]) {
-  const target = new URL(`${getWorkflowApiBaseUrl()}/dashboard/${path.join("/")}`);
+  const target = new URL(`${getWorkflowApiBaseUrl()}/${path.join("/")}`);
   const source = new URL(request.url);
 
   source.searchParams.forEach((value, key) => {
@@ -32,6 +32,10 @@ function buildTargetUrl(request: NextRequest, path: string[]) {
 }
 
 export async function proxyDashboardPath(request: NextRequest, path: string[]) {
+  return proxyApiPath(request, ["dashboard", ...path]);
+}
+
+export async function proxyApiPath(request: NextRequest, path: string[]) {
   const targetUrl = buildTargetUrl(request, path);
   const headers = new Headers();
 

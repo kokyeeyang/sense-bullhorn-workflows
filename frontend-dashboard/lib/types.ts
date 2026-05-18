@@ -256,3 +256,65 @@ export type SurveyResponsesResponse = {
   records: SurveyResponseRecord[];
   storage: string;
 };
+
+export type CandidateAssignmentCaseType =
+  | "terminated-placement"
+  | "completed-contract-assignment"
+  | "contractor-last-contact-overdue";
+
+export type CandidateAssignmentStatusRecord = {
+  caseType: CandidateAssignmentCaseType;
+  caseLabel: string;
+  candidate: {
+    id: number | null;
+    name: string;
+    email: string;
+    status: string;
+    country: string;
+    state: string;
+    dateLastComment: string | null;
+  };
+  placement: {
+    id: number | null;
+    status: string;
+    employmentType: string;
+    dateBegin: string | number | null;
+    dateEnd: string | number | null;
+    dateLastModified: string | number | null;
+    assignmentCountry: string;
+    assignmentState: string;
+    clientCorporationId: number | null;
+    clientCorporationName: string;
+    jobOrderId: number | null;
+    jobTitle: string;
+    ownerId: number | null;
+    ownerName: string;
+    ownerEmail: string;
+  };
+  lastContact: {
+    field: string;
+    value: string | null;
+    daysSinceContact: number | null;
+    thresholdDays: number;
+  };
+  statusChange: {
+    oldValue: string | null;
+    newValue: string | null;
+  } | null;
+};
+
+export type CandidateAssignmentStatusResponse = {
+  generatedAt: string;
+  filters: {
+    dateFrom: string;
+    dateTo: string;
+    caseTypes: CandidateAssignmentCaseType[];
+    assignmentCountry: string;
+    candidateCountry: string;
+    employmentType: string;
+    notContactedDays: number;
+    limit: number;
+  };
+  count: number;
+  records: CandidateAssignmentStatusRecord[];
+};

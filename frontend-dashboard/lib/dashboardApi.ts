@@ -2,6 +2,7 @@ import {
   AiMetricsContext,
   ApiEnvelope,
   DashboardSummary,
+  CandidateAssignmentStatusResponse,
   DataMutationsResponse,
   EmailSummary,
   EmailTransmissionsResponse,
@@ -83,4 +84,18 @@ export async function fetchEmailTransmissions(query: DashboardQuery & Record<str
 
 export async function fetchSurveyResponses(query: DashboardQuery & Record<string, string>) {
   return fetchDashboard<SurveyResponsesResponse>("survey-responses", query);
+}
+
+export async function fetchCandidateAssignmentStatusReport(query: Record<string, string>) {
+  const search = buildSearchParams(query);
+  const response = await fetch(`/api/reports/candidate-assignment-status${search ? `?${search}` : ""}`, {
+    cache: "no-store",
+  });
+  const payload = (await response.json()) as ApiEnvelope<CandidateAssignmentStatusResponse>;
+
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(payload.error?.message || "Candidate assignment status report failed");
+  }
+
+  return payload.data;
 }
