@@ -98,15 +98,14 @@ describe("BullhornClient", () => {
     );
   });
 
-  test("createCandidateNote creates a note and associates it to a candidate via NoteEntity", async () => {
-    axios.put
-      .mockResolvedValueOnce({
-        data: { changedEntityId: 789 },
-        headers: {},
-      })
-      .mockResolvedValueOnce({
-        data: { changedEntityId: 790 },
-      });
+  test("createCandidateNote creates a note and explicitly updates the action", async () => {
+    axios.put.mockResolvedValueOnce({
+      data: { changedEntityId: 789 },
+      headers: {},
+    });
+    axios.post.mockResolvedValueOnce({
+      data: { changedEntityId: 789 },
+    });
 
     const client = new BullhornClient({ config, logger });
     const result = await client.createCandidateNote({
@@ -121,19 +120,16 @@ describe("BullhornClient", () => {
       1,
       "https://example-rest.bullhornstaffing.com/rest-services/123/entity/Note",
       {
+        action: "NPS Feedback",
         comments: "NPS Feedback : 9",
         personReference: { id: 2923234, _subtype: "Candidate" },
       },
       { params: { BhRestToken: "token" } },
     );
-    expect(axios.put).toHaveBeenNthCalledWith(
-      2,
-      "https://example-rest.bullhornstaffing.com/rest-services/123/entity/NoteEntity",
-      {
-        note: { id: 789 },
-        targetEntityID: 2923234,
-        targetEntityName: "User",
-      },
+    expect(axios.put).toHaveBeenCalledTimes(1);
+    expect(axios.post).toHaveBeenCalledWith(
+      "https://example-rest.bullhornstaffing.com/rest-services/123/entity/Note/789",
+      { action: "NPS Feedback" },
       { params: { BhRestToken: "token" } },
     );
   });

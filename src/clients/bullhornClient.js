@@ -1367,6 +1367,7 @@ class BullhornClient {
         axios.put(
           createUrl,
           {
+            action: "NPS Feedback",
             comments,
             personReference: { id: Number(candidateId), _subtype: "Candidate" },
           },
@@ -1385,18 +1386,15 @@ class BullhornClient {
 
     if (noteId) {
       await this.requestWithRetry({
-        label: "create_candidate_note_entity",
+        label: "update_candidate_note_action",
         fn: () =>
-          axios.put(
-            `${restUrl}/entity/NoteEntity`,
-            {
-              note: { id: Number(noteId) },
-              targetEntityID: Number(candidateId),
-              targetEntityName: "User",
-            },
+          axios.post(
+            `${restUrl}/entity/Note/${noteId}`,
+            { action: "NPS Feedback" },
             { params: { BhRestToken: bhRestToken } },
           ),
       });
+
     }
 
     return {
