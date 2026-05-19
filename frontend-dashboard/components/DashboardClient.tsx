@@ -38,6 +38,7 @@ import {
   WorkflowSummary,
 } from "@/lib/types";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { getDashboardGlossaryEntry } from "@/lib/dashboardGlossary";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 const STATUS_OPTIONS = ["", "success", "failed"];
@@ -164,7 +165,15 @@ function MiniTrend({ points, metric }: { points: TrendPoint[]; metric: keyof Das
   );
 }
 
-function CountList({ items }: { items: CountItem[] }) {
+function InfoHint({ label, description }: { label: string; description: string }) {
+  return (
+    <span className="infoHint" tabIndex={0} aria-label={`${label}: ${description}`} data-tooltip={description}>
+      i
+    </span>
+  );
+}
+
+function CountList({ items, kind }: { items: CountItem[]; kind: "skipReason" | "actionDecision" }) {
   if (items.length === 0) {
     return <p className="emptyText">No records</p>;
   }
@@ -173,17 +182,23 @@ function CountList({ items }: { items: CountItem[] }) {
 
   return (
     <div className="countList">
-      {items.map((item) => (
-        <div className="countRow" key={item.key}>
-          <div>
-            <span>{item.key}</span>
-            <strong>{formatNumber(item.count)}</strong>
+      {items.map((item) => {
+        const glossaryEntry = getDashboardGlossaryEntry(kind, item.key);
+        return (
+          <div className="countRow" key={item.key}>
+            <div>
+              <span className="countLabel">
+                <span>{glossaryEntry.label}</span>
+                <InfoHint label={glossaryEntry.label} description={glossaryEntry.description} />
+              </span>
+              <strong>{formatNumber(item.count)}</strong>
+            </div>
+            <div className="countTrack" title={item.key}>
+              <span style={{ width: `${Math.max(4, (item.count / max) * 100)}%` }} />
+            </div>
           </div>
-          <div className="countTrack">
-            <span style={{ width: `${Math.max(4, (item.count / max) * 100)}%` }} />
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -550,22 +565,34 @@ export function DashboardClient() {
             <div className="panelHeader">
               <div>
                 <span className="eyebrow">Skipped</span>
-                <h2>Top Reasons</h2>
+                <h2>
+                  Top Reasons
+                  <InfoHint
+                    label="Skipped, Top Reasons"
+                    description="Shows the most common reasons records were not processed during workflow runs."
+                  />
+                </h2>
               </div>
               <AlertTriangle size={20} />
             </div>
-            <CountList items={summary?.topSkipReasons || []} />
+            <CountList items={summary?.topSkipReasons || []} kind="skipReason" />
           </section>
 
           <section className="panel">
             <div className="panelHeader">
               <div>
                 <span className="eyebrow">Actions</span>
-                <h2>Decisions</h2>
+                <h2>
+                  Decisions
+                  <InfoHint
+                    label="Actions, Decisions"
+                    description="Shows the outcome decisions recorded by workflows, including updates, email sends, dry-run actions, skips, and failures."
+                  />
+                </h2>
               </div>
               <SlidersHorizontal size={20} />
             </div>
-            <CountList items={summary?.topActionDecisions || []} />
+            <CountList items={summary?.topActionDecisions || []} kind="actionDecision" />
           </section>
 
           <section className="panel wide">

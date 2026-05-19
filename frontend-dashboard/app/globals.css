@@ -496,6 +496,68 @@ textarea:disabled {
   color: var(--muted);
 }
 
+.panelHeader h2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.infoHint {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: help;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  outline: none;
+}
+
+.infoHint:hover,
+.infoHint:focus-visible {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.infoHint::after {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  width: min(260px, 72vw);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--text);
+  box-shadow: var(--shadow);
+  color: #ffffff;
+  content: attr(data-tooltip);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+  white-space: normal;
+}
+
+.infoHint:hover::after,
+.infoHint:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .miniTrend {
   display: grid;
   grid-auto-flow: column;
@@ -573,16 +635,33 @@ textarea:disabled {
 
 .countRow span {
   min-width: 0;
-  overflow: hidden;
   color: var(--muted);
   font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .countRow strong {
   color: var(--text);
   font-size: 13px;
+}
+
+.countLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.countLabel > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.countLabel .infoHint {
+  width: 15px;
+  height: 15px;
+  font-size: 10px;
 }
 
 .countTrack {
