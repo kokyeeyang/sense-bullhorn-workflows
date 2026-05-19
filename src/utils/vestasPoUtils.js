@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { buildFullName, normalizeString } = require("./placementStartReminderUtils");
+const { buildSurveyGeoFields } = require("./surveyGeoUtils");
 const { buildWorkflowSurveyToken, normalizeLower } = require("./workflowSurveyUtils");
 
 const WORKFLOW_NAME = "vestas-po-sync";
@@ -203,6 +204,7 @@ function buildSurveyUrl({ placement, option, config }) {
 
   const owner = getOwner(placement);
   const clientContact = getClientContact(placement);
+  const geo = buildSurveyGeoFields(placement);
   const token = buildWorkflowSurveyToken({
     secret: config.WORKFLOW_SURVEY_RESPONSE_SIGNING_SECRET,
     payload: {
@@ -222,6 +224,7 @@ function buildSurveyUrl({ placement, option, config }) {
         clientContactId: clientContact?.id ?? null,
         clientContactEmail: normalizeLower(clientContact?.email),
         clientCorporationId: placement?.clientCorporation?.id ?? null,
+        ...geo,
       },
     },
   });

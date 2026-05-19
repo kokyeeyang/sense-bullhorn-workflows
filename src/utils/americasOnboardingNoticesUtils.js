@@ -3,6 +3,7 @@ const path = require("node:path");
 
 const { getPlacementCountry, getPlacementWorkState } = require("./harassmentTrainingUtils");
 const { buildFullName, normalizeString } = require("./placementStartReminderUtils");
+const { buildSurveyGeoFields } = require("./surveyGeoUtils");
 const { buildWorkflowSurveyToken, normalizeLower } = require("./workflowSurveyUtils");
 
 const WORKFLOW_NAME = "americas-onboarding-notices-sync";
@@ -388,6 +389,7 @@ function buildSurveyUrl({ placement, answer, config }) {
     return "";
   }
 
+  const geo = buildSurveyGeoFields(placement, { assignmentRegion: "Americas" });
   const token = buildWorkflowSurveyToken({
     secret: config.WORKFLOW_SURVEY_RESPONSE_SIGNING_SECRET,
     payload: {
@@ -402,6 +404,7 @@ function buildSurveyUrl({ placement, answer, config }) {
       issuedAt: new Date().toISOString(),
       metadata: {
         ruleKey: "new-york-city-hero-act",
+        ...geo,
       },
     },
   });

@@ -4,6 +4,7 @@ const {
 } = require("../stores/workflowSurveyTrackingStore");
 const { getPlacementCountry } = require("./harassmentTrainingUtils");
 const { buildFullName, normalizeString } = require("./placementStartReminderUtils");
+const { buildSurveyGeoFields } = require("./surveyGeoUtils");
 const { buildWorkflowSurveyToken, normalizeLower } = require("./workflowSurveyUtils");
 
 const WORKFLOW_NAME = "perm-checkin-sync";
@@ -397,6 +398,10 @@ function buildSurveyUrl({ placement, rule, config, surveyKey, answer, tracking }
         ruleKey: rule.key,
         region: rule.region,
         recipientType: rule.recipientType,
+        candidateRegion: tracking.candidateRegion,
+        candidateCountry: tracking.candidateCountry,
+        assignmentRegion: tracking.assignmentRegion,
+        assignmentCountry: tracking.assignmentCountry,
       },
     },
   });
@@ -463,6 +468,7 @@ function buildTrackingRecord({ placement, rule, businessDateKey, surveyKey, toke
   const clientContact = placement?.clientContact || placement?.billingClientContact || {};
   const candidateName = buildFullName(placement?.candidate || {});
   const clientContactName = buildFullName(clientContact);
+  const geo = buildSurveyGeoFields(placement, { assignmentRegion: rule.region });
   const partitionKey = buildTrackingPartitionKey({
     workflowName: WORKFLOW_NAME,
     reminderDueDate: businessDateKey,
@@ -494,6 +500,10 @@ function buildTrackingRecord({ placement, rule, businessDateKey, surveyKey, toke
     clientCorporationName: normalizeString(placement?.clientCorporation?.name),
     employmentType: placement?.employmentType || placement?.jobOrder?.employmentType || "",
     currentPlacementStatus: placement?.status || "",
+    candidateRegion: geo.candidateRegion,
+    candidateCountry: geo.candidateCountry,
+    assignmentRegion: geo.assignmentRegion,
+    assignmentCountry: geo.assignmentCountry,
     businessDate: businessDateKey,
     initialSentAt: new Date().toISOString(),
     initialSentDate: businessDateKey,
@@ -505,6 +515,10 @@ function buildTrackingRecord({ placement, rule, businessDateKey, surveyKey, toke
     tokenIssuedAt,
     context: {
       dateBegin: placement?.dateBegin ?? null,
+      candidateRegion: geo.candidateRegion,
+      candidateCountry: geo.candidateCountry,
+      assignmentRegion: geo.assignmentRegion,
+      assignmentCountry: geo.assignmentCountry,
       country: getPlacementCountry(placement) || null,
       searchType: placement?.searchType || placement?.jobOrder?.searchType || null,
       ownerDepartment: getOwner(placement)?.primaryDepartment?.name || null,
@@ -512,6 +526,10 @@ function buildTrackingRecord({ placement, rule, businessDateKey, surveyKey, toke
     metadata: {
       region: rule.region,
       recipientType: rule.recipientType,
+      candidateRegion: geo.candidateRegion,
+      candidateCountry: geo.candidateCountry,
+      assignmentRegion: geo.assignmentRegion,
+      assignmentCountry: geo.assignmentCountry,
     },
     runDate: businessDateKey,
   };

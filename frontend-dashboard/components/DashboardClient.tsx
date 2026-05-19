@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  askDashboardAi,
   fetchAiContext,
   fetchDashboardSummary,
   fetchEmailSummary,
@@ -39,6 +40,7 @@ import {
 } from "@/lib/types";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { getDashboardGlossaryEntry } from "@/lib/dashboardGlossary";
+import { formatDateTime, formatNumber, getDefaultDateRange, toDateInput } from "@/lib/format";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 const STATUS_OPTIONS = ["", "success", "failed"];
@@ -62,45 +64,20 @@ const ACTION_OPTIONS = [
   "skipped-rule-filter-mismatch",
 ];
 
-function toDateInput(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
+const SUGGESTED_AI_QUESTIONS = [
+  "Summarise workflow health for this period.",
+  "Why are records being skipped?",
+  "Which workflows need attention?",
+];
 
 function getDefaultQuery(): DashboardQuery {
-  const end = new Date();
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 6);
-
   return {
-    dateFrom: toDateInput(start),
-    dateTo: toDateInput(end),
+    ...getDefaultDateRange(7),
     workflowName: "",
     category: "",
     status: "",
     actionDecision: "",
   };
-}
-
-function formatNumber(value: number | undefined) {
-  return new Intl.NumberFormat("en-GB").format(Number(value || 0));
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return "Never";
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(parsed);
 }
 
 function statusClass(status: string | null) {
@@ -281,10 +258,46 @@ function RunsTable({ runs, catalog }: { runs: RunLog[]; catalog: WorkflowCatalog
   );
 }
 
-function AiPanel({ context, loading }: { context: AiMetricsContext | null; loading: boolean }) {
+function AiPanel({
+  context,
+  loading,
+  query,
+}: {
+  context: AiMetricsContext | null;
+  loading: boolean;
+  query: DashboardQuery;
+}) {
   const largestSkip = context?.topSkipReasons?.[0];
   const failedWorkflows =
     context?.workflows.filter((workflow) => workflow.lastRunStatus === "failed").slice(0, 4) || [];
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [checkedSources, setCheckedSources] = useState<string[]>([]);
+  const [aiError, setAiError] = useState("");
+  const [asking, setAsking] = useState(false);
+
+  async function submitQuestion(nextQuestion = question) {
+    const trimmedQuestion = nextQuestion.trim();
+    if (!trimmedQuestion || asking) {
+      return;
+    }
+
+    setQuestion(trimmedQuestion);
+    setAnswer("");
+    setCheckedSources([]);
+    setAiError("");
+    setAsking(true);
+
+    try {
+      const result = await askDashboardAi(trimmedQuestion, query);
+      setAnswer(result.answer);
+      setCheckedSources(result.checkedSources || []);
+    } catch (caught) {
+      setAiError(caught instanceof Error ? caught.message : "AI assistant failed to answer");
+    } finally {
+      setAsking(false);
+    }
+  }
 
   return (
     <aside className="aiPanel">
@@ -298,14 +311,45 @@ function AiPanel({ context, loading }: { context: AiMetricsContext | null; loadi
 
       <div className="assistantBox">
         <textarea
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
           placeholder="Ask about workflow metrics"
           aria-label="Ask about workflow metrics"
-          disabled
+          disabled={asking}
+          onKeyDown={(event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+              event.preventDefault();
+              void submitQuestion();
+            }
+          }}
         />
-        <button type="button" disabled>
-          Ask
+        <button type="button" disabled={!question.trim() || asking} onClick={() => void submitQuestion()}>
+          {asking ? "Thinking" : "Ask"}
         </button>
       </div>
+
+      <div className="promptChips" aria-label="Suggested questions">
+        {SUGGESTED_AI_QUESTIONS.map((suggestedQuestion) => (
+          <button
+            type="button"
+            key={suggestedQuestion}
+            disabled={asking}
+            onClick={() => void submitQuestion(suggestedQuestion)}
+          >
+            {suggestedQuestion}
+          </button>
+        ))}
+      </div>
+
+      {aiError ? <p className="assistantError">{aiError}</p> : null}
+      {answer ? (
+        <div className="assistantAnswer">
+          {answer}
+          {checkedSources.length > 0 ? (
+            <small>Sources: {checkedSources.join(", ")}</small>
+          ) : null}
+        </div>
+      ) : null}
 
       {loading ? <p className="emptyText">Loading context</p> : null}
 
@@ -640,7 +684,7 @@ export function DashboardClient() {
         </section>
       </section>
 
-      <AiPanel context={aiContext} loading={loading} />
+      <AiPanel context={aiContext} loading={loading} query={query} />
     </main>
   );
 }

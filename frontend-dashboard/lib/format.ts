@@ -2,14 +2,34 @@ export function formatNumber(value: number | undefined | null) {
   return new Intl.NumberFormat("en-GB").format(Number(value || 0));
 }
 
-export function formatDateTime(value: string | null | undefined) {
+export function parseDateLike(value: string | number | null | undefined) {
   if (!value) {
-    return "Never";
+    return null;
+  }
+
+  if (typeof value === "number" || /^\d{10,}$/.test(String(value).trim())) {
+    const numericValue = Number(value);
+    if (Number.isFinite(numericValue)) {
+      const epochMs = numericValue < 10000000000 ? numericValue * 1000 : numericValue;
+      const parsedEpoch = new Date(epochMs);
+      if (!Number.isNaN(parsedEpoch.getTime())) {
+        return parsedEpoch;
+      }
+    }
   }
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return value;
+    return null;
+  }
+
+  return parsed;
+}
+
+export function formatDateTime(value: string | number | null | undefined, fallback = "Never") {
+  const parsed = parseDateLike(value);
+  if (!parsed) {
+    return value ? String(value) : fallback;
   }
 
   return new Intl.DateTimeFormat("en-GB", {
@@ -18,6 +38,19 @@ export function formatDateTime(value: string | null | undefined) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(parsed);
+}
+
+export function formatDateOnly(value: string | number | null | undefined, fallback = "-") {
+  const parsed = parseDateLike(value);
+  if (!parsed) {
+    return value ? String(value) : fallback;
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   }).format(parsed);
 }
 

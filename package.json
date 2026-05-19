@@ -47,6 +47,7 @@
     "run:daily-workflow-comparison-summary": "node src/workflows/dailyWorkflowComparisonSummary.js",
     "run:daily-workflow-email-summary": "node src/workflows/dailyWorkflowEmailSummary.js",
     "seed:dashboard-dummy-data": "node src/workflows/seedDashboardDummyData.js",
+    "backfill:survey-geo-fields": "node src/workflows/backfillSurveyGeoFields.js",
     "run:workflow-dashboard-retention-cleanup": "node src/workflows/workflowDashboardRetentionCleanup.js",
     "run:check-sparkpost-template": "node src/workflows/checkSparkPostTemplate.js",
     "start:azure": "func start",

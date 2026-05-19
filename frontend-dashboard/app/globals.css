@@ -833,7 +833,7 @@ tr:last-child td {
 .assistantBox {
   display: grid;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .assistantBox textarea {
@@ -854,6 +854,69 @@ tr:last-child td {
   background: var(--brand);
   color: #ffffff;
   font-weight: 700;
+}
+
+.assistantBox button:disabled {
+  border-color: var(--line);
+  background: var(--line-soft);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.promptChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.promptChips button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--muted);
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.promptChips button:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.promptChips button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.assistantAnswer,
+.assistantError {
+  margin: 0 0 14px;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.assistantAnswer {
+  border: 1px solid #c7d7fe;
+  background: #eef4ff;
+  color: var(--text);
+}
+
+.assistantAnswer small {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.assistantError {
+  border: 1px solid #f0c4c4;
+  background: #fff5f5;
+  color: var(--red);
 }
 
 .insightStack {

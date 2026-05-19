@@ -28,11 +28,11 @@ const PLACEMENT_FIELDS = [
   "salary",
   "flatFee",
   "owner(id,firstName,lastName,email)",
-  "candidate(id,firstName,lastName,email)",
-  "clientCorporation(id,name)",
+  "candidate(id,firstName,lastName,email,address(countryName))",
+  "clientCorporation(id,name,address(countryName))",
   "clientContact(id,firstName,lastName,email)",
   "billingClientContact(id,firstName,lastName,email)",
-  "jobOrder(id,title,owner(id,firstName,lastName,email))",
+  "jobOrder(id,title,address(countryName),owner(id,firstName,lastName,email))",
 ].join(",");
 
 function validateSparkPostConfig(config) {

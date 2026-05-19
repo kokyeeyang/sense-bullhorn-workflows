@@ -61,6 +61,7 @@ const {
   handleDashboardRuns,
   handleDashboardSkips,
   handleDashboardSummary,
+  handleDashboardSurveyRates,
   handleDashboardSurveyResponses,
   handleDashboardTrends,
   handleDashboardWorkflows,
@@ -692,6 +693,13 @@ app.http("dashboardSurveyResponses", {
   authLevel: "function",
   route: "dashboard/survey-responses",
   handler: handleDashboardSurveyResponses,
+});
+
+app.http("dashboardSurveyRates", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/survey-rates",
+  handler: handleDashboardSurveyRates,
 });
 
 app.http("candidateAssignmentStatusReport", {

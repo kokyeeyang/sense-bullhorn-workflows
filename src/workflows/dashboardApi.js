@@ -9,6 +9,7 @@ const {
   listWorkflowEmailTransmissionsPostgres,
 } = require("../stores/postgresWorkflowEmailTransmissionStore");
 const {
+  listWorkflowSurveyRatesPostgres,
   listWorkflowSurveyResponsesPostgres,
 } = require("../stores/postgresWorkflowSurveyStore");
 const {
@@ -376,6 +377,12 @@ async function handleDashboardSurveyResponses(request, context) {
       surveyKey: getQueryValue(request, "surveyKey"),
       recipientEmail: getQueryValue(request, "recipientEmail"),
       answer: getQueryValue(request, "answer"),
+      region: getQueryValue(request, "region"),
+      country: getQueryValue(request, "country"),
+      candidateRegion: getQueryValue(request, "candidateRegion"),
+      candidateCountry: getQueryValue(request, "candidateCountry"),
+      assignmentRegion: getQueryValue(request, "assignmentRegion"),
+      assignmentCountry: getQueryValue(request, "assignmentCountry"),
       limit: getPositiveIntegerQueryValue(request, "limit", 100),
     });
 
@@ -399,6 +406,74 @@ async function handleDashboardSurveyResponses(request, context) {
   }
 }
 
+function summarizeSurveyRates(records) {
+  const sent = records.reduce((total, record) => total + Number(record.sent || 0), 0);
+  const responded = records.reduce((total, record) => total + Number(record.responded || 0), 0);
+  return {
+    sent,
+    responded,
+    pending: Math.max(0, sent - responded),
+    responseRate: sent > 0 ? Number(((responded / sent) * 100).toFixed(1)) : 0,
+  };
+}
+
+async function handleDashboardSurveyRates(request, context) {
+  context.log("Dashboard survey response-rate request received");
+
+  try {
+    const config = loadConfig();
+    const filters = buildFiltersFromRequest(request);
+    const workflowName =
+      filters.workflowNames.length > 0 ? filters.workflowNames.join(",") : getQueryValue(request, "workflowName");
+    const commonArgs = {
+      config,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      workflowName,
+      region: getQueryValue(request, "region"),
+      country: getQueryValue(request, "country"),
+      candidateRegion: getQueryValue(request, "candidateRegion"),
+      candidateCountry: getQueryValue(request, "candidateCountry"),
+      assignmentRegion: getQueryValue(request, "assignmentRegion"),
+      assignmentCountry: getQueryValue(request, "assignmentCountry"),
+    };
+    const byWorkflow = await listWorkflowSurveyRatesPostgres({ ...commonArgs, groupBy: "workflow" });
+    const byRegion = await listWorkflowSurveyRatesPostgres({ ...commonArgs, groupBy: "region" });
+    const byWorkflowRegion = await listWorkflowSurveyRatesPostgres({
+      ...commonArgs,
+      groupBy: "workflowRegion",
+    });
+
+    return buildJsonResponse(200, {
+      success: true,
+      data: {
+        generatedAt: new Date().toISOString(),
+        environment: getEnvironmentLabel(config),
+        filters: {
+          ...filters,
+          region: getQueryValue(request, "region"),
+          country: getQueryValue(request, "country"),
+          candidateRegion: getQueryValue(request, "candidateRegion"),
+          candidateCountry: getQueryValue(request, "candidateCountry"),
+          assignmentRegion: getQueryValue(request, "assignmentRegion"),
+          assignmentCountry: getQueryValue(request, "assignmentCountry"),
+        },
+        totals: summarizeSurveyRates(byWorkflow),
+        byWorkflow,
+        byRegion,
+        byWorkflowRegion,
+        storage: config.POSTGRES_CONNECTION_STRING ? "postgres" : "none",
+      },
+    });
+  } catch (error) {
+    context.error(serializeError(error), "Dashboard survey response-rate request failed");
+    return buildErrorResponse({
+      error,
+      status: error.message?.startsWith("Invalid") || error.message?.includes("Unsupported") ? 400 : 500,
+    });
+  }
+}
+
 module.exports = {
   handleDashboardAiContext,
   handleDashboardDataMutations,
@@ -407,6 +482,7 @@ module.exports = {
   handleDashboardRuns,
   handleDashboardSkips,
   handleDashboardSummary,
+  handleDashboardSurveyRates,
   handleDashboardSurveyResponses,
   handleDashboardTrends,
   handleDashboardWorkflows,

@@ -8,7 +8,7 @@ import {
   CandidateAssignmentStatusRecord,
   CandidateAssignmentStatusResponse,
 } from "@/lib/types";
-import { formatDateTime, formatNumber, getDefaultDateRange } from "@/lib/format";
+import { formatDateOnly, formatDateTime, formatNumber, getDefaultDateRange, parseDateLike } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 
 const CASE_TYPE_OPTIONS: Array<{ value: CandidateAssignmentCaseType; label: string }> = [
@@ -39,8 +39,8 @@ function escapeCsvValue(value: unknown) {
 
 function toDateValue(value: string | number | null) {
   if (!value) return "";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString().slice(0, 10);
+  const parsed = parseDateLike(value);
+  return parsed ? parsed.toISOString().slice(0, 10) : String(value);
 }
 
 function buildCsv(records: CandidateAssignmentStatusRecord[]) {
@@ -325,8 +325,8 @@ export function CandidateReportsPage() {
                     <strong>{record.placement.ownerName || "-"}</strong>
                     <span>{record.placement.ownerEmail || "-"}</span>
                   </td>
-                  <td>{formatDateTime(toDateValue(record.placement.dateBegin) || null)}</td>
-                  <td>{formatDateTime(toDateValue(record.placement.dateEnd) || null)}</td>
+                  <td>{formatDateOnly(record.placement.dateBegin)}</td>
+                  <td>{formatDateOnly(record.placement.dateEnd)}</td>
                   <td>
                     <strong>{record.lastContact.value ? formatDateTime(record.lastContact.value) : "Never"}</strong>
                     <span>

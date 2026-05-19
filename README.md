@@ -281,9 +281,17 @@ GET /api/dashboard/skips?dateFrom=2026-05-01&dateTo=2026-05-15
 GET /api/dashboard/ai-context?dateFrom=2026-05-01&dateTo=2026-05-15
 GET /api/dashboard/data-mutations?dateFrom=2026-05-01&dateTo=2026-05-15&workflowName=placement-database-enrichment-sync
 GET /api/dashboard/email-transmissions?dateFrom=2026-05-01&dateTo=2026-05-15
+GET /api/dashboard/survey-responses?dateFrom=2026-05-01&dateTo=2026-05-15
+GET /api/dashboard/survey-rates?dateFrom=2026-05-01&dateTo=2026-05-15&region=EMEA
 ```
 
-Supported filters are `dateFrom`, `dateTo`, `month`, `workflowName` (comma-separated), `category`, `status`, `actionDecision`, and `includeRecords=true`. Date ranges default to the last 7 days and are capped at 92 days to keep UI and AI payloads concise.
+Supported filters are `dateFrom`, `dateTo`, `month`, `workflowName` (comma-separated), `category`, `status`, `actionDecision`, and `includeRecords=true`. Survey response and response-rate reads also accept `region` and `country`, matching either assignment or candidate geography, plus specific `candidateRegion`, `candidateCountry`, `assignmentRegion`, and `assignmentCountry` filters. Date ranges default to the last 7 days and are capped at 92 days to keep UI and AI payloads concise.
+
+Survey tracking and response rows include `candidate_region`, `candidate_country`, `assignment_region`, and `assignment_country` when the workflow has enough placement data to infer them. To add those columns to an existing PostgreSQL database and populate blanks with deterministic demo geography, run:
+
+```bash
+npm run backfill:survey-geo-fields
+```
 
 The `workflow_data_mutation_audit` table is the row-level audit trail for workflows that update Bullhorn data. It stores one row per changed field, including workflow name, run date, dry-run/live action, entity type/id, related candidate/placement/client-contact/client-corporation ids, field name, old value, new value, reason, and a JSON copy of the source report record. It is currently wired into:
 

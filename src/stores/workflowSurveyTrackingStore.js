@@ -1,6 +1,7 @@
 const { TableClient } = require("@azure/data-tables");
 
 const { normalizeString } = require("../utils/workflowSurveyUtils");
+const { extractSurveyGeoFields } = require("../utils/surveyGeoUtils");
 const { getEnvironmentLabel } = require("./workflowRunLogStore");
 const { upsertWorkflowSurveyTrackingPostgres } = require("./postgresWorkflowSurveyStore");
 
@@ -68,6 +69,7 @@ async function ensureTable({ client }) {
 
 function buildTrackingEntity({ config, tracking }) {
   const environment = getEnvironmentLabel(config);
+  const geo = extractSurveyGeoFields(tracking);
 
   return {
     partitionKey: tracking.partitionKey,
@@ -89,6 +91,10 @@ function buildTrackingEntity({ config, tracking }) {
     clientCorporationName: normalizeString(tracking.clientCorporationName),
     employmentType: normalizeString(tracking.employmentType),
     currentPlacementStatus: normalizeString(tracking.currentPlacementStatus),
+    candidateRegion: geo.candidateRegion,
+    candidateCountry: geo.candidateCountry,
+    assignmentRegion: geo.assignmentRegion,
+    assignmentCountry: geo.assignmentCountry,
     businessDate: normalizeString(tracking.businessDate),
     initialSentAt: normalizeString(tracking.initialSentAt),
     initialSentDate: normalizeString(tracking.initialSentDate),

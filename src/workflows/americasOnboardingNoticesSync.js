@@ -30,8 +30,8 @@ const PLACEMENT_FIELDS = [
   "status",
   "dateBegin",
   "employmentType",
-  "candidate(id,firstName,lastName,email,owner(id,firstName,lastName,email))",
-  "clientCorporation(id,name)",
+  "candidate(id,firstName,lastName,email,address(countryName),owner(id,firstName,lastName,email))",
+  "clientCorporation(id,name,address(countryName))",
   "jobOrder(id,title,address(state,countryName))",
 ].join(",");
 

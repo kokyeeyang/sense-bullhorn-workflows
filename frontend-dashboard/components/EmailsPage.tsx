@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Binoculars, Mail, RefreshCcw, Search, X } from "lucide-react";
 import { fetchEmailTransmissions, fetchWorkflowCatalog, type DashboardQuery } from "@/lib/dashboardApi";
 import { EmailTransmissionRecord, EmailTransmissionsResponse, WorkflowCatalogItem } from "@/lib/types";
-import { formatDateTime, formatNumber, getDefaultDateRange } from "@/lib/format";
+import { formatDateOnly, formatDateTime, formatNumber, getDefaultDateRange } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
@@ -193,7 +193,7 @@ export function EmailsPage() {
                   <td>{formatDateTime(record.sentAt)}</td>
                   <td>
                     <strong>{workflowLabel(record.workflowName, catalog)}</strong>
-                    <span>{record.ruleKey || record.businessDate || record.runDate}</span>
+                    <span>{record.ruleKey || formatDateOnly(record.businessDate || record.runDate)}</span>
                   </td>
                   <td>
                     <strong>{record.recipientEmail || "-"}</strong>
