@@ -1,6 +1,8 @@
 const {
   addOneDay,
+  buildCandidateOwnerPatchFromPlacement,
   buildCandidatePatchFromPlacementForDatabaseEnrichment,
+  buildClientCorporationPoPatchFromPlacement,
   getPlacementDatabaseEnrichmentMatchReason,
   getStatusChangeFromEditHistory,
   isContractPlacementDatabaseEnrichmentStatusChange,
@@ -325,6 +327,111 @@ test("skips the non-perm patch for excluded placement statuses", () => {
       employmentType: "contract",
       status: "terminated",
       candidate: { id: 123 },
+    }),
+  ).toBeNull();
+});
+
+test("builds candidate owner patch from placement job order owner", () => {
+  expect(
+    buildCandidateOwnerPatchFromPlacement(
+      {
+        dateAdded: "2025-01-02T00:00:00.000Z",
+        employmentType: "Contract Assignment",
+        candidate: {
+          id: 123,
+          owner: { id: 10 },
+        },
+        jobOrder: {
+          owner: { id: 20 },
+        },
+      },
+      { minDateAdded: "2025-01-01" },
+    ),
+  ).toEqual({
+    candidateId: 123,
+    ruleType: "candidate-owner-from-job-order-owner",
+    patch: {
+      owner: { id: 20 },
+    },
+    changes: [
+      {
+        field: "owner.id",
+        oldValue: 10,
+        newValue: 20,
+      },
+    ],
+  });
+});
+
+test("skips candidate owner patch before minimum date or when owner already matches", () => {
+  expect(
+    buildCandidateOwnerPatchFromPlacement(
+      {
+        dateAdded: "2024-12-31T23:59:59.000Z",
+        employmentType: "Contract",
+        candidate: { id: 123, owner: { id: 10 } },
+        jobOrder: { owner: { id: 20 } },
+      },
+      { minDateAdded: "2025-01-01" },
+    ),
+  ).toBeNull();
+
+  expect(
+    buildCandidateOwnerPatchFromPlacement({
+      dateAdded: "2025-01-02T00:00:00.000Z",
+      employmentType: "Contract",
+      candidate: { id: 123, owner: { id: 20 } },
+      jobOrder: { owner: { id: 20 } },
+    }),
+  ).toBeNull();
+});
+
+test("builds client corporation PO patch from PO required placement", () => {
+  expect(
+    buildClientCorporationPoPatchFromPlacement(
+      {
+        customText8: "Yes",
+        clientCorporation: {
+          id: 999,
+          customText16: "No",
+        },
+      },
+      { fieldName: "customText16" },
+    ),
+  ).toEqual({
+    clientCorporationId: 999,
+    ruleType: "po-required-client-corporation-flag",
+    patch: {
+      customText16: "Yes",
+    },
+    changes: [
+      {
+        field: "customText16",
+        oldValue: "No",
+        newValue: "Yes",
+      },
+    ],
+  });
+});
+
+test("skips client corporation PO patch when already yes or target field is missing", () => {
+  expect(
+    buildClientCorporationPoPatchFromPlacement(
+      {
+        customText8: "Yes",
+        clientCorporation: {
+          id: 999,
+          customText16: "Yes",
+        },
+      },
+      { fieldName: "customText16" },
+    ),
+  ).toBeNull();
+
+  expect(
+    buildClientCorporationPoPatchFromPlacement({
+      customText8: "Yes",
+      clientCorporation: { id: 999 },
     }),
   ).toBeNull();
 });

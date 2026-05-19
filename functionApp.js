@@ -29,6 +29,9 @@ const { run: runPlacementBenefitsReminderTestSend } = require("./src/workflows/p
 const { run: runPayrollNewHireGreetingSync } = require("./src/workflows/payrollNewHireGreetingSync");
 const { run: runPlacementEndDateReminderSync } = require("./src/workflows/placementEndDateReminderSync");
 const { run: runUsContractPerformanceCheckinSync } = require("./src/workflows/usContractPerformanceCheckinSync");
+const {
+  run: runUsClientExtensionNotificationSync,
+} = require("./src/workflows/usClientExtensionNotificationSync");
 const { run: runHarassmentTrainingSync } = require("./src/workflows/harassmentTrainingSync");
 const { handleHarassmentTrainingResponse } = require("./src/workflows/harassmentTrainingResponseHandler");
 const {
@@ -41,6 +44,9 @@ const {
   handleSoHowDidWeDoFeedbackResponse,
 } = require("./src/workflows/soHowDidWeDoFeedbackResponseHandler");
 const { handlePermCheckinResponse } = require("./src/workflows/permCheckinResponseHandler");
+const {
+  handleUsClientExtensionNotificationResponse,
+} = require("./src/workflows/usClientExtensionNotificationResponseHandler");
 const { run: runPlacementYearlyFeeIncreaseSync } = require("./src/workflows/placementYearlyFeeIncreaseSync");
 const { run: runPlacementYearlyFeeIncreaseTestSend } = require("./src/workflows/placementYearlyFeeIncreaseTestSend");
 const { run: runDailyWorkflowSummary } = require("./src/workflows/dailyWorkflowSummary");
@@ -257,6 +263,15 @@ const workflowDefinitions = [
     defaultSchedule: "0 0 9 * * *",
     logLabel: "US contract performance check-in sync",
     run: ({ targetDate } = {}) => runUsContractPerformanceCheckinSync({ targetDate }),
+  },
+  {
+    functionName: "usClientExtensionNotificationSync",
+    workflowName: "us-client-extension-notification-sync",
+    route: "workflows/us-client-extension-notification-sync",
+    scheduleEnv: "AZURE_US_CLIENT_EXTENSION_NOTIFICATION_SCHEDULE",
+    defaultSchedule: "0 0 8 * * *",
+    logLabel: "US client extension notification sync",
+    run: ({ targetDate } = {}) => runUsClientExtensionNotificationSync({ targetDate }),
   },
   {
     functionName: "harassmentTrainingSync",
@@ -622,6 +637,13 @@ app.http("permCheckinResponse", {
   authLevel: "anonymous",
   route: "workflows/perm-checkin/respond",
   handler: handlePermCheckinResponse,
+});
+
+app.http("usClientExtensionNotificationResponse", {
+  methods: ["GET", "POST"],
+  authLevel: "anonymous",
+  route: "workflows/us-client-extension-notification/respond",
+  handler: handleUsClientExtensionNotificationResponse,
 });
 
 app.http("dashboardWorkflows", {

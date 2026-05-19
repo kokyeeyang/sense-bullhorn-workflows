@@ -23,7 +23,10 @@ const mockBullhornClient = {
   consumeEvents: jest.fn(),
   getPlacementStatusChange: jest.fn(),
   getPlacement: jest.fn(),
+  getPlacementByIdWithFields: jest.fn(),
+  queryPlacementsByDateAddedRange: jest.fn(),
   updateCandidate: jest.fn(),
+  updateClientCorporation: jest.fn(),
 };
 
 jest.mock("../src/clients/bullhornClient", () => ({
@@ -43,6 +46,9 @@ describe("placementDatabaseEnrichmentSync", () => {
       PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID:
         "sense-placement-database-enrichment-sync",
       PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS: 100,
+      PLACEMENT_DATABASE_ENRICHMENT_DATE_ADDED_QUERY_COUNT: 200,
+      PLACEMENT_DATABASE_ENRICHMENT_CANDIDATE_OWNER_MIN_DATE_ADDED: "2025-01-01",
+      PLACEMENT_DATABASE_ENRICHMENT_PO_CLIENT_FIELD: "customText10",
       RETRY_MAX_ATTEMPTS: 4,
       RETRY_BASE_DELAY_MS: 500,
       UPDATE_DELAY_MS: 0,
@@ -57,6 +63,7 @@ describe("placementDatabaseEnrichmentSync", () => {
     mockBullhornClient.upsertEventSubscription.mockResolvedValue({
       subscriptionId: "sense-placement-database-enrichment-sync",
     });
+    mockBullhornClient.queryPlacementsByDateAddedRange.mockResolvedValue([]);
   });
 
   test("updates candidates for matched placement events using the correct branch rules", async () => {
@@ -99,7 +106,7 @@ describe("placementDatabaseEnrichmentSync", () => {
         newValue: "approved",
       });
 
-    mockBullhornClient.getPlacement
+    mockBullhornClient.getPlacementByIdWithFields
       .mockResolvedValueOnce({
         id: 321,
         status: "approved",
@@ -211,14 +218,23 @@ describe("placementDatabaseEnrichmentSync", () => {
     expect(result.report.totals).toEqual({
       totalEvents: 4,
       matchedPlacements: 4,
+      dateAddedPlacements: 0,
       affectedCandidates: 3,
+      affectedClientCorporations: 0,
       updated: 3,
+      updatedCandidateOwners: 0,
+      updatedClientCorporations: 0,
       skippedMissingPlacementId: 0,
+      skippedPlacementNotFound: 0,
       skippedMissingTransactionId: 0,
       skippedNotEligible: 1,
       skippedDuplicatePlacement: 0,
       skippedNoPatch: 0,
       skippedNoChange: 0,
+      skippedCandidateOwnerNoPatch: 0,
+      skippedCandidateOwnerNoChange: 0,
+      skippedClientCorporationPoFieldNotConfigured: 0,
+      skippedClientCorporationPoNoPatch: 3,
     });
     expect(result.report.skippedPlacements).toEqual([
       {
@@ -293,5 +309,41 @@ describe("placementDatabaseEnrichmentSync", () => {
     expect(fs.writeFile).toHaveBeenCalledTimes(2);
     expect(fs.writeFile.mock.calls[1][1]).toContain("\"comparisonRecords\"");
     expect(fs.writeFile.mock.calls[1][1]).toContain("\"sourceSystem\": \"azure-functions\"");
+  });
+
+  test("skips placement events when Bullhorn no longer returns the placement", async () => {
+    mockBullhornClient.consumeEvents.mockResolvedValue({
+      events: [
+        {
+          entityId: 999,
+          transactionID: "tx-missing",
+          updatedProperties: ["status"],
+        },
+      ],
+    });
+    mockBullhornClient.getPlacementByIdWithFields.mockRejectedValue({
+      response: {
+        status: 404,
+        data: {
+          errorMessage: "Entity not found.",
+          errorMessageKey: "errors.entityNotFound",
+          errorCode: 404,
+        },
+      },
+    });
+
+    const result = await run();
+
+    expect(mockBullhornClient.getPlacementStatusChange).not.toHaveBeenCalled();
+    expect(mockBullhornClient.updateCandidate).not.toHaveBeenCalled();
+    expect(result.report.totals.skippedPlacementNotFound).toBe(1);
+    expect(result.report.skippedPlacements).toEqual([
+      {
+        placementId: 999,
+        transactionId: "tx-missing",
+        updatedProperties: ["status"],
+        reason: "placement-not-found",
+      },
+    ]);
   });
 });

@@ -220,6 +220,104 @@ function isDateOnOrAfterTodayUtc(value, { baseDate = new Date() } = {}) {
   return valueDayStartMs >= todayStartMs;
 }
 
+function dateKeyToUtcMs(dateKey) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ""))) {
+    return null;
+  }
+
+  return new Date(`${dateKey}T00:00:00.000Z`).getTime();
+}
+
+function isDateOnOrAfterDateKey(value, dateKey) {
+  const minMs = dateKeyToUtcMs(dateKey);
+  if (minMs === null || value === null || value === undefined || value === "") {
+    return false;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  return parsed.getTime() >= minMs;
+}
+
+function employmentTypeContainsAny(value, needles) {
+  const employmentType = normalizeValue(value);
+  return needles.some((needle) => employmentType.includes(normalizeValue(needle)));
+}
+
+function buildCandidateOwnerPatchFromPlacement(placement, { minDateAdded = "2025-01-01" } = {}) {
+  const candidateId = placement?.candidate?.id;
+  const jobOwnerId = placement?.jobOrder?.owner?.id;
+  const candidateOwnerId = placement?.candidate?.owner?.id;
+  if (!candidateId || !jobOwnerId) {
+    return null;
+  }
+
+  if (!employmentTypeContainsAny(placement?.employmentType || placement?.jobOrder?.employmentType, [
+    "contract",
+    "assignment",
+  ])) {
+    return null;
+  }
+
+  if (!isDateOnOrAfterDateKey(placement?.dateAdded, minDateAdded)) {
+    return null;
+  }
+
+  if (Number(candidateOwnerId) === Number(jobOwnerId)) {
+    return null;
+  }
+
+  return {
+    candidateId,
+    ruleType: "candidate-owner-from-job-order-owner",
+    patch: {
+      owner: { id: Number(jobOwnerId) },
+    },
+    changes: [
+      {
+        field: "owner.id",
+        oldValue: candidateOwnerId ?? null,
+        newValue: Number(jobOwnerId),
+      },
+    ],
+  };
+}
+
+function isPoRequiredPlacement(placement) {
+  return normalizeValue(placement?.customText8) === "yes";
+}
+
+function buildClientCorporationPoPatchFromPlacement(placement, { fieldName } = {}) {
+  const clientCorporationId = placement?.clientCorporation?.id;
+  const targetField = String(fieldName || "").trim();
+  if (!clientCorporationId || !targetField || !isPoRequiredPlacement(placement)) {
+    return null;
+  }
+
+  const oldValue = placement?.clientCorporation?.[targetField] ?? null;
+  if (normalizeValue(oldValue) === "yes") {
+    return null;
+  }
+
+  return {
+    clientCorporationId,
+    ruleType: "po-required-client-corporation-flag",
+    patch: {
+      [targetField]: "Yes",
+    },
+    changes: [
+      {
+        field: targetField,
+        oldValue,
+        newValue: "Yes",
+      },
+    ],
+  };
+}
+
 function buildCandidatePatchFromPlacementForDatabaseEnrichment(
   placement,
   { baseDate = new Date() } = {},
@@ -298,7 +396,10 @@ function getFieldChanges(currentCandidate, patch) {
 
 module.exports = {
   addOneDay,
+  buildCandidateOwnerPatchFromPlacement,
   buildCandidatePatchFromPlacementForDatabaseEnrichment,
+  buildClientCorporationPoPatchFromPlacement,
+  employmentTypeContainsAny,
   extractFieldChanges,
   getFieldChanges,
   getPlacementDatabaseEnrichmentMatchReason,
@@ -306,7 +407,9 @@ module.exports = {
   isContractPlacementDatabaseEnrichmentStatusChange,
   isContractPlacementFinished,
   isDateBeforeTodayUtc,
+  isDateOnOrAfterDateKey,
   isDateOnOrAfterTodayUtc,
+  isPoRequiredPlacement,
   isPermEmploymentType,
   isPermPlacementDatabaseEnrichmentStatusChange,
   isPlacementDateLastModifiedMatch,

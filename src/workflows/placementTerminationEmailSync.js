@@ -8,6 +8,7 @@ const {
   buildPlacementTerminationRecipient,
   isTerminatedPlacementStatusChange,
 } = require("../utils/placementTerminationEmailUtils");
+const { resolveEventSubscriptionId } = require("../utils/eventSubscriptionConfig");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 const SKIPPED_EVENTS_PREVIEW_LIMIT = 25;
@@ -71,11 +72,20 @@ async function run() {
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });
   const templateId = getTemplateId(config);
+  const eventSubscriptionId = resolveEventSubscriptionId({
+    config,
+    subscriptionIdKey: "PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID",
+    dryRunSubscriptionIdKey: "PLACEMENT_TERMINATION_DRY_RUN_EVENT_SUBSCRIPTION_ID",
+  });
 
   logger.info(
     {
       dryRun: config.DRY_RUN,
-      placementTerminationEventSubscriptionId: config.PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID,
+      placementTerminationEventSubscriptionId: eventSubscriptionId,
+      placementTerminationLiveEventSubscriptionId:
+        config.PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID,
+      placementTerminationDryRunEventSubscriptionId:
+        config.PLACEMENT_TERMINATION_DRY_RUN_EVENT_SUBSCRIPTION_ID || null,
       placementTerminationEventMaxEvents: config.PLACEMENT_TERMINATION_EVENT_MAX_EVENTS,
       sparkPostTemplateId: templateId,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
@@ -91,14 +101,14 @@ async function run() {
   await bullhorn.upsertEventSubscription({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     entityName: "Placement",
   });
 
   const eventResponse = await bullhorn.consumeEvents({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     maxEvents: config.PLACEMENT_TERMINATION_EVENT_MAX_EVENTS,
   });
 
@@ -352,7 +362,7 @@ async function run() {
   const report = {
     generatedAt: new Date().toISOString(),
     dryRun: config.DRY_RUN,
-    subscriptionId: config.PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     totals: {
       totalEvents: events.length,
       matchedPlacements: matchedPlacements.length,

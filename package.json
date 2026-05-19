@@ -38,6 +38,7 @@
     "run:placement-benefits-reminder-test-send": "node src/workflows/placementBenefitsReminderTestSend.js",
     "run:payroll-new-hire-greeting-sync": "node src/workflows/payrollNewHireGreetingSync.js",
     "run:placement-end-date-reminder-sync": "node src/workflows/placementEndDateReminderSync.js",
+    "run:us-client-extension-notification-sync": "node src/workflows/usClientExtensionNotificationSync.js",
     "run:us-contract-performance-checkin-sync": "node src/workflows/usContractPerformanceCheckinSync.js",
     "run:harassment-training-sync": "node src/workflows/harassmentTrainingSync.js",
     "run:placement-yearly-fee-increase-sync": "node src/workflows/placementYearlyFeeIncreaseSync.js",

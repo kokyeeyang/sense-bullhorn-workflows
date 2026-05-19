@@ -151,10 +151,16 @@ function buildWorkflowDataMutationAuditRecords({ workflowName, report }) {
 
   if (
     workflowName === "candidate-state-sync" ||
-    workflowName === "placement-status-sync" ||
-    workflowName === "placement-database-enrichment-sync"
+    workflowName === "placement-status-sync"
   ) {
     return buildCandidateRows({ workflowName, report });
+  }
+
+  if (workflowName === "placement-database-enrichment-sync") {
+    return [
+      ...buildCandidateRows({ workflowName, report }),
+      ...buildClientCorporationRows({ workflowName, report }),
+    ];
   }
 
   if (workflowName === "client-contact-dnc-sync") {

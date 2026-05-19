@@ -27,6 +27,7 @@ const WORKFLOW_CATEGORIES = {
   "so-how-did-we-do-feedback-sync": "survey",
   "start-date-approval-reminder-sync": "survey",
   "placement-benefits-reminder-sync": "email",
+  "us-client-extension-notification-sync": "survey",
   "us-contract-performance-checkin-sync": "survey",
   "harassment-training-sync": "compliance",
   "placement-yearly-fee-increase-sync": "email",
@@ -131,6 +132,10 @@ const WORKFLOW_METADATA = {
   "placement-end-date-reminder-sync": {
     label: "Placement End Date Reminder",
     description: "Reminds sales owners 90 and 60 days before contract placement end dates.",
+  },
+  "us-client-extension-notification-sync": {
+    label: "US Client Extension Notification",
+    description: "Asks US clients whether active contractors should extend six weeks before end date.",
   },
   "us-contract-performance-checkin-sync": {
     label: "US Contract Performance Check-in",

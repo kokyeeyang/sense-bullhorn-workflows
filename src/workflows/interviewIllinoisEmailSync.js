@@ -9,6 +9,7 @@ const {
   getIllinoisInterviewJobOrderMatchDetails,
   isInterviewAppointment,
 } = require("../utils/interviewIllinoisEmailUtils");
+const { resolveEventSubscriptionId } = require("../utils/eventSubscriptionConfig");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 function getTemplateId(config) {
@@ -68,11 +69,19 @@ async function run() {
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });
   const templateId = getTemplateId(config);
+  const eventSubscriptionId = resolveEventSubscriptionId({
+    config,
+    subscriptionIdKey: "INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID",
+    dryRunSubscriptionIdKey: "INTERVIEW_ILLINOIS_DRY_RUN_EVENT_SUBSCRIPTION_ID",
+  });
 
   logger.info(
     {
       dryRun: config.DRY_RUN,
-      interviewIllinoisEventSubscriptionId: config.INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID,
+      interviewIllinoisEventSubscriptionId: eventSubscriptionId,
+      interviewIllinoisLiveEventSubscriptionId: config.INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID,
+      interviewIllinoisDryRunEventSubscriptionId:
+        config.INTERVIEW_ILLINOIS_DRY_RUN_EVENT_SUBSCRIPTION_ID || null,
       interviewIllinoisEventMaxEvents: config.INTERVIEW_ILLINOIS_EVENT_MAX_EVENTS,
       interviewIllinoisJobOrderState: config.INTERVIEW_ILLINOIS_JOB_ORDER_STATE,
       interviewIllinoisJobOrderDateAdded: config.INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED,
@@ -92,7 +101,7 @@ async function run() {
   await bullhorn.upsertEventSubscription({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     entityName: "Appointment",
     eventType: "INSERTED",
   });
@@ -100,7 +109,7 @@ async function run() {
   const eventResponse = await bullhorn.consumeEvents({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     maxEvents: config.INTERVIEW_ILLINOIS_EVENT_MAX_EVENTS,
   });
 
@@ -244,7 +253,7 @@ async function run() {
         sendType: "notification",
         recipientType: "job-owner",
         metadata: {
-          subscriptionId: config.INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID,
+          subscriptionId: eventSubscriptionId,
           appointmentIds: matchedAppointments.map((item) => item.appointmentId),
           recipientCount: sparkPostRecipients.length,
         },
@@ -271,7 +280,7 @@ async function run() {
   const report = {
     generatedAt: new Date().toISOString(),
     dryRun: config.DRY_RUN,
-    subscriptionId: config.INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     filters: {
       jobOrderState: config.INTERVIEW_ILLINOIS_JOB_ORDER_STATE,
       jobOrderDateAdded: config.INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED,

@@ -19,6 +19,7 @@ const {
   isClientCorporationStatusReactivation,
   isContactDoNotContact,
 } = require("../utils/clientContactDncSyncUtils");
+const { resolveEventSubscriptionId } = require("../utils/eventSubscriptionConfig");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 const SKIPPED_CONTACTS_PREVIEW_LIMIT = 25;
@@ -132,6 +133,11 @@ async function run() {
   const startedAtMs = Date.now();
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
+  const eventSubscriptionId = resolveEventSubscriptionId({
+    config,
+    subscriptionIdKey: "CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID",
+    dryRunSubscriptionIdKey: "CLIENT_CONTACT_DNC_DRY_RUN_EVENT_SUBSCRIPTION_ID",
+  });
   const fromEpoch = epochSecondsFromDateString(config.CLIENT_CONTACT_DNC_CUTOFF_DATE);
   const delayedScanWindow = buildDelayedScanWindow({
     fromEpoch,
@@ -146,7 +152,9 @@ async function run() {
       scanWindowHours: config.CLIENT_CONTACT_DNC_SCAN_WINDOW_HOURS,
       delayedScanFromEpoch: delayedScanWindow.fromEpochSeconds,
       delayedScanToEpoch: delayedScanWindow.toEpochSeconds,
-      eventSubscriptionId: config.CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID,
+      eventSubscriptionId,
+      liveEventSubscriptionId: config.CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID,
+      dryRunEventSubscriptionId: config.CLIENT_CONTACT_DNC_DRY_RUN_EVENT_SUBSCRIPTION_ID || null,
       eventMaxEvents: config.CLIENT_CONTACT_DNC_EVENT_MAX_EVENTS,
       dryRun: config.DRY_RUN,
       testClientCorporationId: config.TEST_CLIENT_CORPORATION_ID || null,
@@ -170,7 +178,7 @@ async function run() {
   await bullhorn.upsertEventSubscription({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     entityName: "ClientCorporation",
   });
 
@@ -178,7 +186,7 @@ async function run() {
   const eventResponse = await bullhorn.consumeEvents({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     maxEvents: config.CLIENT_CONTACT_DNC_EVENT_MAX_EVENTS,
   });
 

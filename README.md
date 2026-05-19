@@ -442,6 +442,24 @@ PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE=true node test-yearly-fee-increase.js
 
 Use `DRY_RUN=true` (default) to test without sending actual emails.
 
+## Bullhorn event-based workflows
+
+These workflows use Bullhorn event subscriptions, so each run consumes queued
+events from the configured subscription ID. If you want dry-run testing to avoid
+draining the live queue, set the dry-run subscription ID for the workflow. When
+`DRY_RUN=true`, the workflow uses the dry-run subscription ID if it is configured;
+otherwise it falls back to the normal subscription ID. When `DRY_RUN=false`, the
+workflow always uses the normal subscription ID.
+
+| Workflow | Source file | Bullhorn entity | Event type | Live subscription env var | Dry-run subscription env var | Local script |
+| --- | --- | --- | --- | --- | --- | --- |
+| Placement status sync | `src/workflows/placementStatusSync.js` | `Placement` | `UPDATED` | `PLACEMENT_EVENT_SUBSCRIPTION_ID` | `PLACEMENT_DRY_RUN_EVENT_SUBSCRIPTION_ID` | `npm run run:placement-status-sync` |
+| Placement database enrichment sync | `src/workflows/placementDatabaseEnrichmentSync.js` | `Placement` | `UPDATED` | `PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID` | `PLACEMENT_DATABASE_ENRICHMENT_DRY_RUN_EVENT_SUBSCRIPTION_ID` | `npm run run:placement-database-enrichment-sync` |
+| Placement termination email sync | `src/workflows/placementTerminationEmailSync.js` | `Placement` | `UPDATED` | `PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID` | `PLACEMENT_TERMINATION_DRY_RUN_EVENT_SUBSCRIPTION_ID` | `npm run run:placement-termination-email-sync` |
+| Client contact DNC sync | `src/workflows/clientContactDncSync.js` | `ClientCorporation` | `UPDATED` | `CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID` | `CLIENT_CONTACT_DNC_DRY_RUN_EVENT_SUBSCRIPTION_ID` | `npm run run:client-contact-dnc-sync` |
+| Interview Illinois email sync | `src/workflows/interviewIllinoisEmailSync.js` | `Appointment` | `INSERTED` | `INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID` | `INTERVIEW_ILLINOIS_DRY_RUN_EVENT_SUBSCRIPTION_ID` | `npm run run:interview-illinois-email-sync` |
+| Job application notification sync | `src/workflows/jobApplicationNotificationSync.js` | `JobSubmission` | `INSERTED` | `JOB_APPLICATION_NOTIFICATION_EVENT_SUBSCRIPTION_ID` | `JOB_APPLICATION_NOTIFICATION_DRY_RUN_EVENT_SUBSCRIPTION_ID` | `npm run run:job-application-notification-sync` |
+
 ## Required environment variables
 
 - `BULLHORN_ENV` (`staging` or `production`; default: `production`)
@@ -470,6 +488,7 @@ Optional:
 - `CLIENT_CONTACT_DNC_DELAY_HOURS` (default: `60`)
 - `CLIENT_CONTACT_DNC_SCAN_WINDOW_HOURS` (default: `24`; how wide the rolling `contact.dateAdded` eligibility window is for the delayed scan)
 - `CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID` (default: `sense-client-contact-dnc-sync`)
+- `CLIENT_CONTACT_DNC_DRY_RUN_EVENT_SUBSCRIPTION_ID` (optional; used instead of `CLIENT_CONTACT_DNC_EVENT_SUBSCRIPTION_ID` when `DRY_RUN=true`)
 - `CLIENT_CONTACT_DNC_EVENT_MAX_EVENTS` (default: `100`)
 - `CLIENT_CONTACT_DNC_QUERY_COUNT` (default: `500`)
 - `DRY_RUN` (default: `true`)
@@ -477,8 +496,12 @@ Optional:
 - `TEST_CLIENT_CORPORATION_ID` (optional; when set, query uses `id:<value>` instead of the cutoff date search)
 - `TEST_CLIENT_CONTACT_ID` (optional; when set, query uses `id:<value>` instead of the contact `dateAdded` search)
 - `PLACEMENT_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-status-sync`)
+- `PLACEMENT_DRY_RUN_EVENT_SUBSCRIPTION_ID` (optional; used instead of `PLACEMENT_EVENT_SUBSCRIPTION_ID` when `DRY_RUN=true`)
 - `PLACEMENT_EVENT_MAX_EVENTS` (default: `100`)
+- `PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-database-enrichment-sync`)
+- `PLACEMENT_DATABASE_ENRICHMENT_DRY_RUN_EVENT_SUBSCRIPTION_ID` (optional; used instead of `PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID` when `DRY_RUN=true`)
 - `PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID` (default: `sense-placement-termination-email`)
+- `PLACEMENT_TERMINATION_DRY_RUN_EVENT_SUBSCRIPTION_ID` (optional; used instead of `PLACEMENT_TERMINATION_EVENT_SUBSCRIPTION_ID` when `DRY_RUN=true`)
 - `PLACEMENT_TERMINATION_EVENT_MAX_EVENTS` (default: `100`)
 - `PLACEMENT_TERMINATION_WORKFLOWS_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_TERMINATION_WORKFLOWS_TARGET_DATE` (optional; `YYYY-MM-DD` override for dry-run/backfill testing)
@@ -490,6 +513,7 @@ Optional:
 - `START_DATE_APPROVAL_REMINDER_QUERY_COUNT` (default: `200`)
 - `START_DATE_APPROVAL_REMINDER_TARGET_DATE` (optional; `YYYY-MM-DD` override for dry-run/backfill testing)
 - `INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID` (default: `sense-interview-illinois-email`)
+- `INTERVIEW_ILLINOIS_DRY_RUN_EVENT_SUBSCRIPTION_ID` (optional; used instead of `INTERVIEW_ILLINOIS_EVENT_SUBSCRIPTION_ID` when `DRY_RUN=true`)
 - `INTERVIEW_ILLINOIS_EVENT_MAX_EVENTS` (default: `100`)
 - `INTERVIEW_ILLINOIS_JOB_ORDER_STATE` (default: `Illinois`)
 - `INTERVIEW_ILLINOIS_JOB_ORDER_DATE_ADDED` (default: `2024-05-01`)
@@ -499,6 +523,9 @@ Optional:
 - `NEW_JOB_ILLINOIS_JOB_ORDER_STATE` (default: `Illinois`)
 - `NEW_JOB_ILLINOIS_JOB_ORDER_EMPLOYMENT_TYPE` (default: `contract`)
 - `NEW_JOB_ILLINOIS_SPARKPOST_TEMPLATE_ID` (optional; falls back to `SPARKPOST_TEMPLATE_ID`)
+- `JOB_APPLICATION_NOTIFICATION_EVENT_SUBSCRIPTION_ID` (default: `sense-job-application-notification`)
+- `JOB_APPLICATION_NOTIFICATION_DRY_RUN_EVENT_SUBSCRIPTION_ID` (optional; used instead of `JOB_APPLICATION_NOTIFICATION_EVENT_SUBSCRIPTION_ID` when `DRY_RUN=true`)
+- `JOB_APPLICATION_NOTIFICATION_EVENT_MAX_EVENTS` (default: `100`)
 - `PLACEMENT_START_REMINDER_DAYS_AHEAD` (default: `4`)
 - `PLACEMENT_START_REMINDER_QUERY_COUNT` (default: `200`)
 - `PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS` (default: `0`; expands the query window backward for testing)

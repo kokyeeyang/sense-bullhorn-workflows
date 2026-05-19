@@ -4,10 +4,13 @@ const { loadConfig } = require("../helpers/config");
 const { logger } = require("../helpers/logger");
 const { BullhornClient } = require("../clients/bullhornClient");
 const {
+  buildCandidateOwnerPatchFromPlacement,
   buildCandidatePatchFromPlacementForDatabaseEnrichment,
+  buildClientCorporationPoPatchFromPlacement,
   getFieldChanges,
   getPlacementDatabaseEnrichmentMatchReason,
 } = require("../utils/placementDatabaseEnrichmentUtils");
+const { resolveEventSubscriptionId } = require("../utils/eventSubscriptionConfig");
 const {
   writeComparisonRecordsSafe,
 } = require("../stores/placementDatabaseEnrichmentComparisonStore");
@@ -16,10 +19,29 @@ const {
 } = require("../stores/postgresWorkflowDataMutationAuditStore");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
+const WORKFLOW_NAME = "placement-database-enrichment-sync";
 const SKIPPED_TRANSITIONS_PREVIEW_LIMIT = 25;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const CANDIDATE_OWNER_PLACEMENT_FIELDS = [
+  "id",
+  "dateAdded",
+  "employmentType",
+  "candidate(id,firstName,lastName,email,owner(id,firstName,lastName,email))",
+  "jobOrder(id,title,owner(id,firstName,lastName,email))",
+  "clientCorporation(id,name)",
+].join(",");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isBullhornEntityNotFoundError(error) {
+  return (
+    error?.response?.status === 404 &&
+    (error?.response?.data?.errorMessageKey === "errors.entityNotFound" ||
+      error?.response?.data?.errorMessage === "Entity not found.")
+  );
 }
 
 async function writeChangesReport({ report }) {
@@ -36,6 +58,39 @@ async function writeComparisonReport({ report }) {
   });
 }
 
+function buildPlacementFieldsWithClientCorporationPoField(config) {
+  const poClientField = String(config.PLACEMENT_DATABASE_ENRICHMENT_PO_CLIENT_FIELD || "").trim();
+  const clientCorporationFields = [
+    "id",
+    "name",
+    "customText2",
+    "customText10",
+    "customText11",
+    "customDate1",
+    "billingFrequency",
+  ];
+  if (poClientField && !clientCorporationFields.includes(poClientField)) {
+    clientCorporationFields.push(poClientField);
+  }
+
+  return [
+    "id",
+    "status",
+    "dateLastModified",
+    "payRate",
+    "customText8",
+    "customText18",
+    "customText60",
+    "dateBegin",
+    "dateEnd",
+    "employmentType",
+    "candidate(id,firstName,lastName,email,companyName,occupation,status,dateAvailable,hourlyRateLow)",
+    `clientCorporation(${clientCorporationFields.join(",")})`,
+    "billingClientContact(id,firstName,lastName,customText3,address)",
+    "jobOrder(id,title,employmentType,owner(id,firstName,lastName,email))",
+  ].join(",");
+}
+
 function buildAffectedCandidateRecord({ match, placement, candidateUpdate, changes, mode }) {
   return {
     placementId: match.placementId,
@@ -44,11 +99,12 @@ function buildAffectedCandidateRecord({ match, placement, candidateUpdate, chang
     mappingType: "placement-database-enrichment",
     matchReason: match.matchReason || null,
     ruleType: candidateUpdate.ruleType,
-    transactionId: match.transactionId,
-    statusChange: match.statusChange,
+    transactionId: match.transactionId || null,
+    statusChange: match.statusChange || null,
     placement: {
       status: placement?.status ?? null,
       employmentType: placement?.employmentType || placement?.jobOrder?.employmentType || null,
+      dateAdded: placement?.dateAdded ?? null,
       dateBegin: placement?.dateBegin ?? null,
       dateEnd: placement?.dateEnd ?? null,
       dateLastModified: placement?.dateLastModified ?? null,
@@ -62,8 +118,31 @@ function buildAffectedCandidateRecord({ match, placement, candidateUpdate, chang
       status: placement?.candidate?.status ?? null,
       dateAvailable: placement?.candidate?.dateAvailable ?? null,
       hourlyRateLow: placement?.candidate?.hourlyRateLow ?? null,
+      ownerId: placement?.candidate?.owner?.id ?? null,
     },
     changes,
+  };
+}
+
+function buildAffectedClientCorporationRecord({ match, placement, clientCorporationUpdate, mode }) {
+  return {
+    placementId: match.placementId,
+    clientCorporationId: clientCorporationUpdate.clientCorporationId,
+    mode,
+    mappingType: "placement-database-enrichment",
+    ruleType: clientCorporationUpdate.ruleType,
+    transactionId: match.transactionId || null,
+    statusChange: match.statusChange || null,
+    changes: clientCorporationUpdate.changes,
+    placement: {
+      status: placement?.status ?? null,
+      employmentType: placement?.employmentType || placement?.jobOrder?.employmentType || null,
+      poRequired: placement?.customText8 || null,
+    },
+    clientCorporation: {
+      id: placement?.clientCorporation?.id ?? null,
+      name: placement?.clientCorporation?.name || null,
+    },
   };
 }
 
@@ -112,17 +191,56 @@ function buildComparisonRecordFromSkippedPlacement({ workflowName, generatedAt, 
   };
 }
 
-async function run() {
+function buildBusinessDateWindow(dateKey) {
+  const normalized = String(dateKey || new Date().toISOString()).slice(0, 10);
+  const startMs = new Date(`${normalized}T00:00:00.000Z`).getTime();
+  return {
+    dateKey: normalized,
+    startMs,
+    endMs: startMs + DAY_MS,
+  };
+}
+
+async function applyCandidateUpdate({ bullhorn, session, config, match, placement, candidateUpdate, changes, mode }) {
+  if (!config.DRY_RUN) {
+    await bullhorn.updateCandidate({
+      restUrl: session.restUrl,
+      bhRestToken: session.bhRestToken,
+      candidateId: candidateUpdate.candidateId,
+      patch: candidateUpdate.patch,
+    });
+  }
+
+  return buildAffectedCandidateRecord({
+    match,
+    placement,
+    candidateUpdate,
+    changes,
+    mode,
+  });
+}
+
+async function run({ targetDate } = {}) {
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
+  const eventSubscriptionId = resolveEventSubscriptionId({
+    config,
+    subscriptionIdKey: "PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID",
+    dryRunSubscriptionIdKey: "PLACEMENT_DATABASE_ENRICHMENT_DRY_RUN_EVENT_SUBSCRIPTION_ID",
+  });
+  const poClientField = String(config.PLACEMENT_DATABASE_ENRICHMENT_PO_CLIENT_FIELD || "").trim();
 
   logger.info(
     {
       dryRun: config.DRY_RUN,
-      placementDatabaseEnrichmentEventSubscriptionId:
+      placementDatabaseEnrichmentEventSubscriptionId: eventSubscriptionId,
+      placementDatabaseEnrichmentLiveEventSubscriptionId:
         config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID,
+      placementDatabaseEnrichmentDryRunEventSubscriptionId:
+        config.PLACEMENT_DATABASE_ENRICHMENT_DRY_RUN_EVENT_SUBSCRIPTION_ID || null,
       placementDatabaseEnrichmentEventMaxEvents:
         config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS,
+      poClientField: poClientField || null,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
       retryBaseDelayMs: config.RETRY_BASE_DELAY_MS,
       updateDelayMs: config.UPDATE_DELAY_MS,
@@ -137,14 +255,14 @@ async function run() {
   await bullhorn.upsertEventSubscription({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     entityName: "Placement",
   });
 
   const eventResponse = await bullhorn.consumeEvents({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     maxEvents: config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_MAX_EVENTS,
   });
 
@@ -152,15 +270,24 @@ async function run() {
   logger.info({ eventCount: events.length }, "Fetched placement events for database enrichment");
 
   let skippedMissingPlacementId = 0;
+  let skippedPlacementNotFound = 0;
   let skippedNotEligible = 0;
   let skippedDuplicatePlacement = 0;
   let skippedNoPatch = 0;
   let skippedNoChange = 0;
-  let updated = 0;
   let skippedMissingTransactionId = 0;
+  let skippedCandidateOwnerNoPatch = 0;
+  let skippedCandidateOwnerNoChange = 0;
+  let skippedClientCorporationPoFieldNotConfigured = 0;
+  let skippedClientCorporationPoNoPatch = 0;
+  let updated = 0;
+  let updatedCandidateOwners = 0;
+  let updatedClientCorporations = 0;
   const matchedPlacementsByPlacementId = new Map();
   const affectedCandidates = [];
+  const affectedClientCorporations = [];
   const skippedPlacements = [];
+  const placementFields = buildPlacementFieldsWithClientCorporationPoField(config);
 
   for (const event of events) {
     const placementId = Number(event.entityId || 0);
@@ -182,11 +309,39 @@ async function run() {
   }
 
   for (const match of matchedPlacementsByPlacementId.values()) {
-    const placement = await bullhorn.getPlacement({
-      restUrl: session.restUrl,
-      bhRestToken: session.bhRestToken,
-      placementId: match.placementId,
-    });
+    let placement;
+    try {
+      placement = await bullhorn.getPlacementByIdWithFields({
+        restUrl: session.restUrl,
+        bhRestToken: session.bhRestToken,
+        placementId: match.placementId,
+        fields: placementFields,
+      });
+    } catch (error) {
+      if (!isBullhornEntityNotFoundError(error)) {
+        throw error;
+      }
+
+      skippedPlacementNotFound += 1;
+      if (skippedPlacements.length < SKIPPED_TRANSITIONS_PREVIEW_LIMIT) {
+        skippedPlacements.push({
+          placementId: match.placementId,
+          transactionId: match.transactionId,
+          updatedProperties: match.updatedProperties,
+          reason: "placement-not-found",
+        });
+      }
+      logger.warn(
+        {
+          placementId: match.placementId,
+          transactionId: match.transactionId,
+          responseStatus: error?.response?.status || null,
+          responseData: error?.response?.data || null,
+        },
+        "Skipping placement database enrichment event because placement was not found",
+      );
+      continue;
+    }
 
     let statusChange = null;
     if (match.updatedProperties.includes("status")) {
@@ -227,144 +382,197 @@ async function run() {
           reason: "placement-not-eligible-for-database-enrichment",
         });
       }
-      continue;
+    } else {
+      const candidateUpdate = buildCandidatePatchFromPlacementForDatabaseEnrichment(placement);
+      if (!candidateUpdate) {
+        skippedNoPatch += 1;
+      } else {
+        const changes = getFieldChanges(placement?.candidate, candidateUpdate.patch);
+        if (changes.length === 0) {
+          skippedNoChange += 1;
+        } else {
+          const record = await applyCandidateUpdate({
+            bullhorn,
+            session,
+            config,
+            match: { ...match, statusChange, matchReason },
+            placement,
+            candidateUpdate,
+            changes,
+            mode: config.DRY_RUN ? "dry-run" : "updated",
+          });
+          affectedCandidates.push(record);
+          updated += 1;
+          logger.info(
+            {
+              placementId: match.placementId,
+              candidateId: candidateUpdate.candidateId,
+              transactionId: match.transactionId,
+              statusChange,
+              matchReason,
+              ruleType: candidateUpdate.ruleType,
+              changes,
+            },
+            config.DRY_RUN
+              ? "DRY_RUN: candidate would be updated from placement database enrichment"
+              : "Candidate updated from placement database enrichment",
+          );
+
+          if (!config.DRY_RUN && config.UPDATE_DELAY_MS > 0) {
+            await sleep(config.UPDATE_DELAY_MS);
+          }
+        }
+      }
     }
 
-    const candidateUpdate = buildCandidatePatchFromPlacementForDatabaseEnrichment(placement);
-    if (!candidateUpdate) {
-      skippedNoPatch += 1;
-      continue;
-    }
-
-    const changes = getFieldChanges(placement?.candidate, candidateUpdate.patch);
-    if (changes.length === 0) {
-      skippedNoChange += 1;
-      continue;
-    }
-
-    if (config.DRY_RUN) {
-      affectedCandidates.push(
-        buildAffectedCandidateRecord({
-          match: {
-            ...match,
-            statusChange,
-            matchReason,
-          },
-          placement,
-          candidateUpdate,
-          changes,
-          mode: "dry-run",
-        }),
-      );
-
-      logger.info(
-        {
-          placementId: match.placementId,
-          candidateId: candidateUpdate.candidateId,
-          transactionId: match.transactionId,
-          statusChange,
-          matchReason,
-          ruleType: candidateUpdate.ruleType,
-          changes,
-          patch: candidateUpdate.patch,
-        },
-        "DRY_RUN: candidate would be updated from placement database enrichment",
-      );
-
-      updated += 1;
-      continue;
-    }
-
-    await bullhorn.updateCandidate({
-      restUrl: session.restUrl,
-      bhRestToken: session.bhRestToken,
-      candidateId: candidateUpdate.candidateId,
-      patch: candidateUpdate.patch,
-    });
-
-    affectedCandidates.push(
-      buildAffectedCandidateRecord({
-        match: {
-          ...match,
-          statusChange,
-          matchReason,
-        },
-        placement,
-        candidateUpdate,
-        changes,
-        mode: "updated",
-      }),
-    );
-
-    updated += 1;
-    logger.info(
-      {
-        placementId: match.placementId,
-        candidateId: candidateUpdate.candidateId,
-        transactionId: match.transactionId,
-        statusChange,
-        matchReason,
-        ruleType: candidateUpdate.ruleType,
-        changes,
-      },
-      "Candidate updated from placement database enrichment",
-    );
-
-    if (config.UPDATE_DELAY_MS > 0) {
-      await sleep(config.UPDATE_DELAY_MS);
+    if (statusChange && String(statusChange.newValue || "").trim().toLowerCase() === "approved") {
+      if (!poClientField) {
+        skippedClientCorporationPoFieldNotConfigured += 1;
+      } else {
+        const clientCorporationUpdate = buildClientCorporationPoPatchFromPlacement(placement, {
+          fieldName: poClientField,
+        });
+        if (!clientCorporationUpdate) {
+          skippedClientCorporationPoNoPatch += 1;
+        } else {
+          if (!config.DRY_RUN) {
+            await bullhorn.updateClientCorporation({
+              restUrl: session.restUrl,
+              bhRestToken: session.bhRestToken,
+              clientCorporationId: clientCorporationUpdate.clientCorporationId,
+              patch: clientCorporationUpdate.patch,
+            });
+          }
+          affectedClientCorporations.push(
+            buildAffectedClientCorporationRecord({
+              match: { ...match, statusChange },
+              placement,
+              clientCorporationUpdate,
+              mode: config.DRY_RUN ? "dry-run" : "updated",
+            }),
+          );
+          updatedClientCorporations += 1;
+          logger.info(
+            {
+              placementId: match.placementId,
+              clientCorporationId: clientCorporationUpdate.clientCorporationId,
+              fieldName: poClientField,
+              changes: clientCorporationUpdate.changes,
+            },
+            config.DRY_RUN
+              ? "DRY_RUN: client corporation PO flag would be updated"
+              : "Client corporation PO flag updated from placement database enrichment",
+          );
+        }
+      }
     }
   }
 
-  logger.info(
-    {
-      totalEvents: events.length,
-      matchedPlacements: matchedPlacementsByPlacementId.size,
-      updated,
-      skippedMissingPlacementId,
-      skippedMissingTransactionId,
-      skippedNotEligible,
-      skippedDuplicatePlacement,
-      skippedNoPatch,
-      skippedNoChange,
-    },
-    "Placement database enrichment sync finished",
-  );
+  const dateAddedBusinessDate =
+    targetDate ||
+    config.PLACEMENT_DATABASE_ENRICHMENT_DATE_ADDED_TARGET_DATE ||
+    new Date().toISOString().slice(0, 10);
+  const dateAddedWindow = buildBusinessDateWindow(dateAddedBusinessDate);
+  const dateAddedPlacements = await bullhorn.queryPlacementsByDateAddedRange({
+    restUrl: session.restUrl,
+    bhRestToken: session.bhRestToken,
+    startMs: dateAddedWindow.startMs,
+    endMs: dateAddedWindow.endMs,
+    count: config.PLACEMENT_DATABASE_ENRICHMENT_DATE_ADDED_QUERY_COUNT,
+    fieldsOverride: CANDIDATE_OWNER_PLACEMENT_FIELDS,
+  });
+
+  for (const placement of dateAddedPlacements) {
+    const candidateOwnerUpdate = buildCandidateOwnerPatchFromPlacement(placement, {
+      minDateAdded: config.PLACEMENT_DATABASE_ENRICHMENT_CANDIDATE_OWNER_MIN_DATE_ADDED,
+    });
+    if (!candidateOwnerUpdate) {
+      skippedCandidateOwnerNoPatch += 1;
+      continue;
+    }
+
+    if (candidateOwnerUpdate.changes.length === 0) {
+      skippedCandidateOwnerNoChange += 1;
+      continue;
+    }
+
+    const record = await applyCandidateUpdate({
+      bullhorn,
+      session,
+      config,
+      match: {
+        placementId: placement.id,
+        transactionId: null,
+        statusChange: null,
+        matchReason: "candidate-owner-from-placement-date-added",
+      },
+      placement,
+      candidateUpdate: candidateOwnerUpdate,
+      changes: candidateOwnerUpdate.changes,
+      mode: config.DRY_RUN ? "dry-run" : "updated",
+    });
+    affectedCandidates.push(record);
+    updatedCandidateOwners += 1;
+    logger.info(
+      {
+        placementId: placement.id,
+        candidateId: candidateOwnerUpdate.candidateId,
+        changes: candidateOwnerUpdate.changes,
+      },
+      config.DRY_RUN
+        ? "DRY_RUN: candidate owner would be updated from placement job order owner"
+        : "Candidate owner updated from placement job order owner",
+    );
+  }
 
   const generatedAt = new Date().toISOString();
   const report = {
     generatedAt,
     dryRun: config.DRY_RUN,
-    subscriptionId: config.PLACEMENT_DATABASE_ENRICHMENT_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
+    dateAddedWindow,
+    poClientField: poClientField || null,
     totals: {
       totalEvents: events.length,
       matchedPlacements: matchedPlacementsByPlacementId.size,
+      dateAddedPlacements: dateAddedPlacements.length,
       affectedCandidates: affectedCandidates.length,
+      affectedClientCorporations: affectedClientCorporations.length,
       updated,
+      updatedCandidateOwners,
+      updatedClientCorporations,
       skippedMissingPlacementId,
+      skippedPlacementNotFound,
       skippedMissingTransactionId,
       skippedNotEligible,
       skippedDuplicatePlacement,
       skippedNoPatch,
       skippedNoChange,
+      skippedCandidateOwnerNoPatch,
+      skippedCandidateOwnerNoChange,
+      skippedClientCorporationPoFieldNotConfigured,
+      skippedClientCorporationPoNoPatch,
     },
     skippedPlacements,
     affectedCandidates,
+    affectedClientCorporations,
   };
+
   const comparisonReport = {
     generatedAt,
     dryRun: config.DRY_RUN,
-    workflowName: "placement-database-enrichment-sync",
+    workflowName: WORKFLOW_NAME,
     comparisonRecords: [
       ...affectedCandidates.map((record) =>
         buildComparisonRecordFromAffectedCandidate({
-          workflowName: "placement-database-enrichment-sync",
+          workflowName: WORKFLOW_NAME,
           generatedAt,
           record,
         }),
       ),
       ...skippedPlacements.map((record) =>
         buildComparisonRecordFromSkippedPlacement({
-          workflowName: "placement-database-enrichment-sync",
+          workflowName: WORKFLOW_NAME,
           generatedAt,
           record,
         }),
@@ -375,7 +583,7 @@ async function run() {
   report.dataMutationAudit = await writeWorkflowDataMutationAuditRecordsSafe({
     config,
     logger,
-    workflowName: "placement-database-enrichment-sync",
+    workflowName: WORKFLOW_NAME,
     report,
   });
 
@@ -386,11 +594,17 @@ async function run() {
     logger,
     records: comparisonReport.comparisonRecords,
   });
-  logger.info({ reportPath }, "Placement database enrichment report written");
-  logger.info({ comparisonReportPath }, "Placement database enrichment comparison report written");
+  logger.info(
+    {
+      reportPath,
+      comparisonReportPath,
+      totals: report.totals,
+    },
+    "Placement database enrichment sync finished",
+  );
 
   return buildWorkflowResult({
-    workflowName: "placement-database-enrichment-sync",
+    workflowName: WORKFLOW_NAME,
     report,
     artifacts: {
       reportPath,

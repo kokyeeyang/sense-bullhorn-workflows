@@ -11,6 +11,7 @@ const {
   getFieldChanges,
   isTargetPlacementStatusChange,
 } = require("../utils/placementUtils");
+const { resolveEventSubscriptionId } = require("../utils/eventSubscriptionConfig");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 function sleep(ms) {
@@ -24,11 +25,18 @@ async function writeChangesReport({ report }) {
 async function run() {
   const config = loadConfig();
   const bullhorn = new BullhornClient({ config, logger });
+  const eventSubscriptionId = resolveEventSubscriptionId({
+    config,
+    subscriptionIdKey: "PLACEMENT_EVENT_SUBSCRIPTION_ID",
+    dryRunSubscriptionIdKey: "PLACEMENT_DRY_RUN_EVENT_SUBSCRIPTION_ID",
+  });
 
   logger.info(
     {
       dryRun: config.DRY_RUN,
-      placementEventSubscriptionId: config.PLACEMENT_EVENT_SUBSCRIPTION_ID,
+      placementEventSubscriptionId: eventSubscriptionId,
+      placementLiveEventSubscriptionId: config.PLACEMENT_EVENT_SUBSCRIPTION_ID,
+      placementDryRunEventSubscriptionId: config.PLACEMENT_DRY_RUN_EVENT_SUBSCRIPTION_ID || null,
       placementEventMaxEvents: config.PLACEMENT_EVENT_MAX_EVENTS,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
       retryBaseDelayMs: config.RETRY_BASE_DELAY_MS,
@@ -44,14 +52,14 @@ async function run() {
   await bullhorn.upsertEventSubscription({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.PLACEMENT_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     entityName: "Placement",
   });
 
   const eventResponse = await bullhorn.consumeEvents({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.PLACEMENT_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     maxEvents: config.PLACEMENT_EVENT_MAX_EVENTS,
   });
 
@@ -182,7 +190,7 @@ async function run() {
   const report = {
     generatedAt: new Date().toISOString(),
     dryRun: config.DRY_RUN,
-    subscriptionId: config.PLACEMENT_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     totals: {
       totalEvents: events.length,
       affectedCandidates: affectedCandidates.length,

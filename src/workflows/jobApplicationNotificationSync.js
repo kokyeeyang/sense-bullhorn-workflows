@@ -9,6 +9,7 @@ const {
   buildJobApplicationRecipient,
   getJobApplicationNotificationMatchDetails,
 } = require("../utils/jobApplicationNotificationUtils");
+const { resolveEventSubscriptionId } = require("../utils/eventSubscriptionConfig");
 const { buildWorkflowResult, serializeError, writeJsonArtifact } = require("../utils/workflowRuntime");
 
 function validateSparkPostConfig(config) {
@@ -60,12 +61,20 @@ async function run() {
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });
+  const eventSubscriptionId = resolveEventSubscriptionId({
+    config,
+    subscriptionIdKey: "JOB_APPLICATION_NOTIFICATION_EVENT_SUBSCRIPTION_ID",
+    dryRunSubscriptionIdKey: "JOB_APPLICATION_NOTIFICATION_DRY_RUN_EVENT_SUBSCRIPTION_ID",
+  });
 
   logger.info(
     {
       dryRun: config.DRY_RUN,
-      jobApplicationNotificationEventSubscriptionId:
+      jobApplicationNotificationEventSubscriptionId: eventSubscriptionId,
+      jobApplicationNotificationLiveEventSubscriptionId:
         config.JOB_APPLICATION_NOTIFICATION_EVENT_SUBSCRIPTION_ID,
+      jobApplicationNotificationDryRunEventSubscriptionId:
+        config.JOB_APPLICATION_NOTIFICATION_DRY_RUN_EVENT_SUBSCRIPTION_ID || null,
       jobApplicationNotificationEventMaxEvents:
         config.JOB_APPLICATION_NOTIFICATION_EVENT_MAX_EVENTS,
       retryMaxAttempts: config.RETRY_MAX_ATTEMPTS,
@@ -81,7 +90,7 @@ async function run() {
   await bullhorn.upsertEventSubscription({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.JOB_APPLICATION_NOTIFICATION_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     entityName: "JobSubmission",
     eventType: "INSERTED",
   });
@@ -89,7 +98,7 @@ async function run() {
   const eventResponse = await bullhorn.consumeEvents({
     restUrl: session.restUrl,
     bhRestToken: session.bhRestToken,
-    subscriptionId: config.JOB_APPLICATION_NOTIFICATION_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     maxEvents: config.JOB_APPLICATION_NOTIFICATION_EVENT_MAX_EVENTS,
   });
 
@@ -254,7 +263,7 @@ async function run() {
   const report = {
     generatedAt: new Date().toISOString(),
     dryRun: config.DRY_RUN,
-    subscriptionId: config.JOB_APPLICATION_NOTIFICATION_EVENT_SUBSCRIPTION_ID,
+    subscriptionId: eventSubscriptionId,
     totals: {
       totalEvents: events.length,
       matchedSubmissions: matchedSubmissions.length,
