@@ -137,6 +137,13 @@ export type AiMetricsContext = {
   topActionDecisions: CountItem[];
 };
 
+export type AiChatResponse = {
+  answer: string;
+  model: string;
+  contextGeneratedAt: string;
+  checkedSources: string[];
+};
+
 export type ApiEnvelope<T> = {
   success: boolean;
   data?: T;
@@ -242,6 +249,10 @@ export type SurveyResponseRecord = {
   answer: string;
   issuedAt: string | null;
   surveyKey: string;
+  candidateRegion: string;
+  candidateCountry: string;
+  assignmentRegion: string;
+  assignmentCountry: string;
   metadata: Record<string, unknown>;
   userAgent: string;
   remoteAddress: string;

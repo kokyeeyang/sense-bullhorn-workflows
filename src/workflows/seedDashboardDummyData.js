@@ -11,6 +11,26 @@ const {
 
 const DEMO_DOMAIN = "demo.spencer-ogden.example";
 const DEFAULT_EMAIL_ROWS_PER_WORKFLOW = 2;
+const DEMO_GEO_ROWS = [
+  {
+    candidateRegion: "Americas",
+    candidateCountry: "United States",
+    assignmentRegion: "Americas",
+    assignmentCountry: "United States",
+  },
+  {
+    candidateRegion: "EMEA",
+    candidateCountry: "United Kingdom",
+    assignmentRegion: "EMEA",
+    assignmentCountry: "United Kingdom",
+  },
+  {
+    candidateRegion: "APAC",
+    candidateCountry: "Malaysia",
+    assignmentRegion: "APAC",
+    assignmentCountry: "Singapore",
+  },
+];
 
 function normalizeString(value) {
   if (value === null || value === undefined) {
@@ -138,6 +158,7 @@ function buildSurveyTrackingRows({ baseDate }) {
     const initialSentAt = addDays(baseDate, -index - 2);
     const reminderDueDate = dateKey(addDays(initialSentAt, 3));
     const surveyKey = `dummy-survey-${index + 1}`;
+    const geo = DEMO_GEO_ROWS[index % DEMO_GEO_ROWS.length];
     return {
       partitionKey: buildTrackingPartitionKey({ workflowName, reminderDueDate }),
       rowKey: buildTrackingRowKey({ reminderDueDate, surveyKey }),
@@ -157,6 +178,7 @@ function buildSurveyTrackingRows({ baseDate }) {
       clientCorporationName: "Demo Energy Ltd",
       employmentType: index % 2 === 0 ? "Contract" : "Perm",
       currentPlacementStatus: index % 3 === 0 ? "Approved" : "Active",
+      ...geo,
       businessDate: dateKey(initialSentAt),
       initialSentAt: initialSentAt.toISOString(),
       initialSentDate: dateKey(initialSentAt),
@@ -169,10 +191,12 @@ function buildSurveyTrackingRows({ baseDate }) {
       context: {
         source: "seed-dashboard-dummy-data",
         dummy: true,
+        ...geo,
       },
       metadata: {
         dummy: true,
         demoDataset: "dashboard-showcase",
+        ...geo,
       },
       runDate: dateKey(initialSentAt),
     };
@@ -185,6 +209,7 @@ function buildSurveyResponses({ baseDate }) {
     const workflowName = index % 2 === 0
       ? "so-how-did-we-do-feedback-sync"
       : "perm-checkin-sync";
+    const geo = DEMO_GEO_ROWS[index % DEMO_GEO_ROWS.length];
     return {
       workflowName,
       placementId: 930000 + index,
@@ -200,10 +225,12 @@ function buildSurveyResponses({ baseDate }) {
       issuedAt: addDays(submittedAt, -2).toISOString(),
       submittedAt: submittedAt.toISOString(),
       surveyKey: `dummy-survey-${index + 1}`,
+      ...geo,
       metadata: {
         dummy: true,
         demoDataset: "dashboard-showcase",
         source: "seed-dashboard-dummy-data",
+        ...geo,
       },
       userAgent: "Dummy Dashboard Seeder",
       remoteAddress: "127.0.0.1",

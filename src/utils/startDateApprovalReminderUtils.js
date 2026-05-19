@@ -3,6 +3,7 @@ const path = require("node:path");
 
 const { buildFullName, formatDateBegin, normalizeString } = require("./placementStartReminderUtils");
 const { getPlacementWorkState } = require("./harassmentTrainingUtils");
+const { buildSurveyGeoFields } = require("./surveyGeoUtils");
 const {
   buildWorkflowSurveyToken,
   normalizeLower,
@@ -227,6 +228,8 @@ function buildSurveyUrl({ placement, stage, answer, config }) {
     return "";
   }
 
+  const region = findRegionRule(placement)?.label || "";
+  const geo = buildSurveyGeoFields(placement, { assignmentRegion: region });
   const token = buildWorkflowSurveyToken({
     secret: config.WORKFLOW_SURVEY_RESPONSE_SIGNING_SECRET,
     payload: {
@@ -242,7 +245,11 @@ function buildSurveyUrl({ placement, stage, answer, config }) {
       metadata: {
         stageKey: stage.key,
         stageDaysAfterDateBegin: stage.daysAfterDateBegin,
-        region: findRegionRule(placement)?.label || null,
+        region: region || null,
+        candidateRegion: geo.candidateRegion,
+        candidateCountry: geo.candidateCountry,
+        assignmentRegion: geo.assignmentRegion,
+        assignmentCountry: geo.assignmentCountry,
       },
     },
   });

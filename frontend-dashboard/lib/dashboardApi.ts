@@ -1,5 +1,6 @@
 import {
   AiMetricsContext,
+  AiChatResponse,
   ApiEnvelope,
   DashboardSummary,
   CandidateAssignmentStatusResponse,
@@ -72,6 +73,23 @@ export async function fetchRuns(query: DashboardQuery) {
 
 export async function fetchAiContext(query: DashboardQuery) {
   return fetchDashboard<AiMetricsContext>("ai-context", query);
+}
+
+export async function askDashboardAi(question: string, filters: DashboardQuery) {
+  const response = await fetch("/api/dashboard/ai-chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ question, filters }),
+  });
+  const payload = (await response.json()) as ApiEnvelope<AiChatResponse>;
+
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(payload.error?.message || "AI assistant request failed");
+  }
+
+  return payload.data;
 }
 
 export async function fetchDataMutations(query: DashboardQuery & Record<string, string>) {

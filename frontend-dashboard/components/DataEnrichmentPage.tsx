@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { DatabaseZap, RefreshCcw, Search } from "lucide-react";
 import { fetchDataMutations, fetchWorkflowCatalog, type DashboardQuery } from "@/lib/dashboardApi";
 import { DataMutationsResponse, WorkflowCatalogItem } from "@/lib/types";
-import { formatDateTime, formatNumber, getDefaultDateRange, stringifyValue } from "@/lib/format";
+import { formatDateOnly, formatDateTime, formatNumber, getDefaultDateRange, stringifyValue } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
@@ -41,6 +41,13 @@ function actionClass(action: string) {
     return "statusPill failed";
   }
   return "statusPill neutral";
+}
+
+function formatAuditValue(fieldName: string, value: unknown) {
+  if (/date|time|timestamp/i.test(fieldName)) {
+    return formatDateTime(value as string | number | null, "-");
+  }
+  return stringifyValue(value);
 }
 
 export function DataEnrichmentPage() {
@@ -197,7 +204,7 @@ export function DataEnrichmentPage() {
                 <tr key={record.id}>
                   <td>
                     <strong>{workflowLabel(record.workflowName, catalog)}</strong>
-                    <span>{record.runDate}</span>
+                    <span>{formatDateOnly(record.runDate)}</span>
                   </td>
                   <td>
                     <span className={actionClass(record.action)}>{record.action}</span>
@@ -209,8 +216,8 @@ export function DataEnrichmentPage() {
                   <td>{record.candidateId || "-"}</td>
                   <td>{record.placementId || "-"}</td>
                   <td>{record.fieldName || "-"}</td>
-                  <td className="valueCell">{stringifyValue(record.oldValueText ?? record.oldValue)}</td>
-                  <td className="valueCell">{stringifyValue(record.newValueText ?? record.newValue)}</td>
+                  <td className="valueCell">{formatAuditValue(record.fieldName, record.oldValueText ?? record.oldValue)}</td>
+                  <td className="valueCell">{formatAuditValue(record.fieldName, record.newValueText ?? record.newValue)}</td>
                   <td>{record.reason || "-"}</td>
                   <td>{formatDateTime(record.generatedAt)}</td>
                 </tr>

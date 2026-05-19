@@ -253,6 +253,10 @@ async function ensureSchema({ config }) {
           client_corporation_name TEXT NOT NULL DEFAULT '',
           employment_type TEXT NOT NULL DEFAULT '',
           current_placement_status TEXT NOT NULL DEFAULT '',
+          candidate_region TEXT NOT NULL DEFAULT '',
+          candidate_country TEXT NOT NULL DEFAULT '',
+          assignment_region TEXT NOT NULL DEFAULT '',
+          assignment_country TEXT NOT NULL DEFAULT '',
           business_date TEXT NOT NULL DEFAULT '',
           initial_sent_at TIMESTAMPTZ,
           initial_sent_date TEXT NOT NULL DEFAULT '',
@@ -271,6 +275,14 @@ async function ensureSchema({ config }) {
       `);
 
       await pool.query(`
+        ALTER TABLE workflow_survey_tracking
+        ADD COLUMN IF NOT EXISTS candidate_region TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS candidate_country TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS assignment_region TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS assignment_country TEXT NOT NULL DEFAULT '';
+      `);
+
+      await pool.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_survey_tracking_survey_key
         ON workflow_survey_tracking (survey_key);
       `);
@@ -278,6 +290,11 @@ async function ensureSchema({ config }) {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_workflow_survey_tracking_due
         ON workflow_survey_tracking (workflow_name, reminder_due_date, responded_at, reminder_sent_at);
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_survey_tracking_region
+        ON workflow_survey_tracking (assignment_region, candidate_region, initial_sent_date);
       `);
 
       await pool.query(`
@@ -296,6 +313,10 @@ async function ensureSchema({ config }) {
           answer TEXT NOT NULL DEFAULT '',
           issued_at TIMESTAMPTZ,
           survey_key TEXT NOT NULL DEFAULT '',
+          candidate_region TEXT NOT NULL DEFAULT '',
+          candidate_country TEXT NOT NULL DEFAULT '',
+          assignment_region TEXT NOT NULL DEFAULT '',
+          assignment_country TEXT NOT NULL DEFAULT '',
           metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb,
           user_agent TEXT NOT NULL DEFAULT '',
           remote_address TEXT NOT NULL DEFAULT '',
@@ -305,8 +326,21 @@ async function ensureSchema({ config }) {
       `);
 
       await pool.query(`
+        ALTER TABLE workflow_survey_responses
+        ADD COLUMN IF NOT EXISTS candidate_region TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS candidate_country TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS assignment_region TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS assignment_country TEXT NOT NULL DEFAULT '';
+      `);
+
+      await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_workflow_survey_responses_lookup
         ON workflow_survey_responses (workflow_name, survey_key, submitted_at);
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_workflow_survey_responses_region
+        ON workflow_survey_responses (assignment_region, candidate_region, submitted_at);
       `);
 
       await pool.query(`

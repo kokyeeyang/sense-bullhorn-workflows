@@ -4,6 +4,7 @@ const { TableClient } = require("@azure/data-tables");
 const { saveWorkflowSurveyResponsePostgres } = require("./postgresWorkflowSurveyStore");
 
 const { normalizeString } = require("../utils/workflowSurveyUtils");
+const { extractSurveyGeoFields } = require("../utils/surveyGeoUtils");
 
 function isLikelyConnectionString(value) {
   return (
@@ -71,6 +72,7 @@ async function ensureTable({ client }) {
 
 function buildEntity(response) {
   const submittedAt = response.submittedAt || new Date().toISOString();
+  const geo = extractSurveyGeoFields(response);
   return {
     partitionKey: String(response.workflowName || "unknown-workflow"),
     rowKey: buildRowKey(response),
@@ -86,6 +88,10 @@ function buildEntity(response) {
     answer: normalizeString(response.answer).toLowerCase(),
     issuedAt: response.issuedAt || "",
     surveyKey: normalizeString(response.surveyKey),
+    candidateRegion: geo.candidateRegion,
+    candidateCountry: geo.candidateCountry,
+    assignmentRegion: geo.assignmentRegion,
+    assignmentCountry: geo.assignmentCountry,
     metadataJson: JSON.stringify(response.metadata || {}),
     userAgent: normalizeString(response.userAgent),
     remoteAddress: normalizeString(response.remoteAddress),

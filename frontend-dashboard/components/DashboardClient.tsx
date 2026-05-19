@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  askDashboardAi,
   fetchAiContext,
   fetchDashboardSummary,
   fetchEmailSummary,
@@ -38,6 +39,8 @@ import {
   WorkflowSummary,
 } from "@/lib/types";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { getDashboardGlossaryEntry } from "@/lib/dashboardGlossary";
+import { formatDateTime, formatNumber, getDefaultDateRange, toDateInput } from "@/lib/format";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 const STATUS_OPTIONS = ["", "success", "failed"];
@@ -61,45 +64,20 @@ const ACTION_OPTIONS = [
   "skipped-rule-filter-mismatch",
 ];
 
-function toDateInput(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
+const SUGGESTED_AI_QUESTIONS = [
+  "Summarise workflow health for this period.",
+  "Why are records being skipped?",
+  "Which workflows need attention?",
+];
 
 function getDefaultQuery(): DashboardQuery {
-  const end = new Date();
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 6);
-
   return {
-    dateFrom: toDateInput(start),
-    dateTo: toDateInput(end),
+    ...getDefaultDateRange(7),
     workflowName: "",
     category: "",
     status: "",
     actionDecision: "",
   };
-}
-
-function formatNumber(value: number | undefined) {
-  return new Intl.NumberFormat("en-GB").format(Number(value || 0));
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return "Never";
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(parsed);
 }
 
 function statusClass(status: string | null) {
@@ -164,7 +142,15 @@ function MiniTrend({ points, metric }: { points: TrendPoint[]; metric: keyof Das
   );
 }
 
-function CountList({ items }: { items: CountItem[] }) {
+function InfoHint({ label, description }: { label: string; description: string }) {
+  return (
+    <span className="infoHint" tabIndex={0} aria-label={`${label}: ${description}`} data-tooltip={description}>
+      i
+    </span>
+  );
+}
+
+function CountList({ items, kind }: { items: CountItem[]; kind: "skipReason" | "actionDecision" }) {
   if (items.length === 0) {
     return <p className="emptyText">No records</p>;
   }
@@ -173,17 +159,23 @@ function CountList({ items }: { items: CountItem[] }) {
 
   return (
     <div className="countList">
-      {items.map((item) => (
-        <div className="countRow" key={item.key}>
-          <div>
-            <span>{item.key}</span>
-            <strong>{formatNumber(item.count)}</strong>
+      {items.map((item) => {
+        const glossaryEntry = getDashboardGlossaryEntry(kind, item.key);
+        return (
+          <div className="countRow" key={item.key}>
+            <div>
+              <span className="countLabel">
+                <span>{glossaryEntry.label}</span>
+                <InfoHint label={glossaryEntry.label} description={glossaryEntry.description} />
+              </span>
+              <strong>{formatNumber(item.count)}</strong>
+            </div>
+            <div className="countTrack" title={item.key}>
+              <span style={{ width: `${Math.max(4, (item.count / max) * 100)}%` }} />
+            </div>
           </div>
-          <div className="countTrack">
-            <span style={{ width: `${Math.max(4, (item.count / max) * 100)}%` }} />
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -266,10 +258,46 @@ function RunsTable({ runs, catalog }: { runs: RunLog[]; catalog: WorkflowCatalog
   );
 }
 
-function AiPanel({ context, loading }: { context: AiMetricsContext | null; loading: boolean }) {
+function AiPanel({
+  context,
+  loading,
+  query,
+}: {
+  context: AiMetricsContext | null;
+  loading: boolean;
+  query: DashboardQuery;
+}) {
   const largestSkip = context?.topSkipReasons?.[0];
   const failedWorkflows =
     context?.workflows.filter((workflow) => workflow.lastRunStatus === "failed").slice(0, 4) || [];
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [checkedSources, setCheckedSources] = useState<string[]>([]);
+  const [aiError, setAiError] = useState("");
+  const [asking, setAsking] = useState(false);
+
+  async function submitQuestion(nextQuestion = question) {
+    const trimmedQuestion = nextQuestion.trim();
+    if (!trimmedQuestion || asking) {
+      return;
+    }
+
+    setQuestion(trimmedQuestion);
+    setAnswer("");
+    setCheckedSources([]);
+    setAiError("");
+    setAsking(true);
+
+    try {
+      const result = await askDashboardAi(trimmedQuestion, query);
+      setAnswer(result.answer);
+      setCheckedSources(result.checkedSources || []);
+    } catch (caught) {
+      setAiError(caught instanceof Error ? caught.message : "AI assistant failed to answer");
+    } finally {
+      setAsking(false);
+    }
+  }
 
   return (
     <aside className="aiPanel">
@@ -283,14 +311,45 @@ function AiPanel({ context, loading }: { context: AiMetricsContext | null; loadi
 
       <div className="assistantBox">
         <textarea
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
           placeholder="Ask about workflow metrics"
           aria-label="Ask about workflow metrics"
-          disabled
+          disabled={asking}
+          onKeyDown={(event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+              event.preventDefault();
+              void submitQuestion();
+            }
+          }}
         />
-        <button type="button" disabled>
-          Ask
+        <button type="button" disabled={!question.trim() || asking} onClick={() => void submitQuestion()}>
+          {asking ? "Thinking" : "Ask"}
         </button>
       </div>
+
+      <div className="promptChips" aria-label="Suggested questions">
+        {SUGGESTED_AI_QUESTIONS.map((suggestedQuestion) => (
+          <button
+            type="button"
+            key={suggestedQuestion}
+            disabled={asking}
+            onClick={() => void submitQuestion(suggestedQuestion)}
+          >
+            {suggestedQuestion}
+          </button>
+        ))}
+      </div>
+
+      {aiError ? <p className="assistantError">{aiError}</p> : null}
+      {answer ? (
+        <div className="assistantAnswer">
+          {answer}
+          {checkedSources.length > 0 ? (
+            <small>Sources: {checkedSources.join(", ")}</small>
+          ) : null}
+        </div>
+      ) : null}
 
       {loading ? <p className="emptyText">Loading context</p> : null}
 
@@ -550,22 +609,34 @@ export function DashboardClient() {
             <div className="panelHeader">
               <div>
                 <span className="eyebrow">Skipped</span>
-                <h2>Top Reasons</h2>
+                <h2>
+                  Top Reasons
+                  <InfoHint
+                    label="Skipped, Top Reasons"
+                    description="Shows the most common reasons records were not processed during workflow runs."
+                  />
+                </h2>
               </div>
               <AlertTriangle size={20} />
             </div>
-            <CountList items={summary?.topSkipReasons || []} />
+            <CountList items={summary?.topSkipReasons || []} kind="skipReason" />
           </section>
 
           <section className="panel">
             <div className="panelHeader">
               <div>
                 <span className="eyebrow">Actions</span>
-                <h2>Decisions</h2>
+                <h2>
+                  Decisions
+                  <InfoHint
+                    label="Actions, Decisions"
+                    description="Shows the outcome decisions recorded by workflows, including updates, email sends, dry-run actions, skips, and failures."
+                  />
+                </h2>
               </div>
               <SlidersHorizontal size={20} />
             </div>
-            <CountList items={summary?.topActionDecisions || []} />
+            <CountList items={summary?.topActionDecisions || []} kind="actionDecision" />
           </section>
 
           <section className="panel wide">
@@ -613,7 +684,7 @@ export function DashboardClient() {
         </section>
       </section>
 
-      <AiPanel context={aiContext} loading={loading} />
+      <AiPanel context={aiContext} loading={loading} query={query} />
     </main>
   );
 }

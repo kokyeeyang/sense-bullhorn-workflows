@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const { buildFullName, normalizeString } = require("./placementStartReminderUtils");
 const { buildWorkflowSurveyToken, normalizeLower } = require("./workflowSurveyUtils");
+const { buildSurveyGeoFields } = require("./surveyGeoUtils");
 const {
   buildTrackingPartitionKey,
   buildTrackingRowKey,
@@ -360,6 +361,7 @@ function buildSurveyUrl({ surveyKey, ruleKey, placement, recipientEmail, config,
     reminderDueDate,
     surveyKey,
   });
+  const geo = buildSurveyGeoFields(placement);
 
   const token = buildWorkflowSurveyToken({
     secret: config.WORKFLOW_SURVEY_RESPONSE_SIGNING_SECRET,
@@ -382,6 +384,10 @@ function buildSurveyUrl({ surveyKey, ruleKey, placement, recipientEmail, config,
           placement?.candidate?.email && normalizeLower(placement.candidate.email) === recipientEmail
             ? "candidate"
             : "client-contact",
+        candidateRegion: geo.candidateRegion,
+        candidateCountry: geo.candidateCountry,
+        assignmentRegion: geo.assignmentRegion,
+        assignmentCountry: geo.assignmentCountry,
       },
     },
   });
@@ -694,6 +700,7 @@ function buildTrackingRecord({ placement, rule, businessDateKey, transmissionPay
   const candidateName = buildFullName(placement?.candidate);
   const clientContactName = buildFullName(getClientContact(placement));
   const initialSentAt = new Date().toISOString();
+  const geo = buildSurveyGeoFields(placement);
 
   return {
     partitionKey: buildTrackingPartitionKey({
@@ -719,6 +726,10 @@ function buildTrackingRecord({ placement, rule, businessDateKey, transmissionPay
     clientCorporationName: placement?.clientCorporation?.name || "",
     employmentType: placement?.employmentType || placement?.jobOrder?.employmentType || "",
     currentPlacementStatus: placement?.status || "",
+    candidateRegion: geo.candidateRegion,
+    candidateCountry: geo.candidateCountry,
+    assignmentRegion: geo.assignmentRegion,
+    assignmentCountry: geo.assignmentCountry,
     businessDate: businessDateKey,
     initialSentAt,
     initialSentDate: businessDateKey,
@@ -732,11 +743,19 @@ function buildTrackingRecord({ placement, rule, businessDateKey, transmissionPay
       surveyUrl: tracking.surveyUrl,
       ruleKey: rule.key,
       subject: rule.subject,
+      candidateRegion: geo.candidateRegion,
+      candidateCountry: geo.candidateCountry,
+      assignmentRegion: geo.assignmentRegion,
+      assignmentCountry: geo.assignmentCountry,
     },
     metadata: {
       source: rule.source,
       delayDays: rule.delayDays,
       sendType: "initial",
+      candidateRegion: geo.candidateRegion,
+      candidateCountry: geo.candidateCountry,
+      assignmentRegion: geo.assignmentRegion,
+      assignmentCountry: geo.assignmentCountry,
     },
     runDate: businessDateKey,
   };

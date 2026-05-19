@@ -35,11 +35,11 @@ const PLACEMENT_FIELDS = [
   "dateEnd",
   "employmentType",
   "owner(id,firstName,lastName,email,pager)",
-  "candidate(id,firstName,lastName,email,owner(id,firstName,lastName,email,primaryDepartment(name)))",
+  "candidate(id,firstName,lastName,email,address(countryName),owner(id,firstName,lastName,email,primaryDepartment(name)))",
   "clientContact(id,firstName,lastName,email)",
   "billingClientContact(id,firstName,lastName,email)",
-  "clientCorporation(id,name)",
-  "jobOrder(id,title)",
+  "clientCorporation(id,name,address(countryName))",
+  "jobOrder(id,title,address(countryName))",
 ].join(",");
 
 async function writeChangesReport({ report }) {
