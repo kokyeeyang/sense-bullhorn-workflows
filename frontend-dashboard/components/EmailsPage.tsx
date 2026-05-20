@@ -6,6 +6,7 @@ import { fetchEmailTransmissions, fetchWorkflowCatalog, type DashboardQuery } fr
 import { EmailTransmissionRecord, EmailTransmissionsResponse, WorkflowCatalogItem } from "@/lib/types";
 import { formatDateOnly, formatDateTime, formatNumber, getDefaultDateRange } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 function buildDefaultQuery(): DashboardQuery & Record<string, string> {
@@ -135,20 +136,24 @@ export function EmailsPage() {
         <section className="metricCard">
           <div>
             <p>Email rows</p>
-            <strong>{formatNumber(data?.count)}</strong>
+            {loading && !data ? <LoadingIndicator /> : <strong>{formatNumber(data?.count)}</strong>}
             <span>{data?.storage === "postgres" ? "PostgreSQL transmissions" : "No detail store configured"}</span>
           </div>
         </section>
         <section className="metricCard">
           <div>
             <p>Recipients</p>
-            <strong>{formatNumber(uniqueRecipients)}</strong>
+            {loading && !data ? <LoadingIndicator /> : <strong>{formatNumber(uniqueRecipients)}</strong>}
           </div>
         </section>
         <section className="metricCard">
           <div>
             <p>Workflows</p>
-            <strong>{formatNumber(new Set(records.map((record) => record.workflowName)).size)}</strong>
+            {loading && !data ? (
+              <LoadingIndicator />
+            ) : (
+              <strong>{formatNumber(new Set(records.map((record) => record.workflowName)).size)}</strong>
+            )}
           </div>
         </section>
       </section>
@@ -159,60 +164,64 @@ export function EmailsPage() {
             <span className="eyebrow">Transmissions</span>
             <h2>Sent Emails</h2>
           </div>
-          {loading ? <span className="loadingText">Loading</span> : null}
+          {loading ? <LoadingIndicator /> : null}
         </div>
-        <div className="tableScroller detailTable">
-          <table>
-            <thead>
-              <tr>
-                <th>Inspect</th>
-                <th>Sent</th>
-                <th>Workflow</th>
-                <th>Recipient</th>
-                <th>Sender</th>
-                <th>Subject</th>
-                <th>Type</th>
-                <th>Provider ID</th>
-                <th>Candidate</th>
-                <th>Placement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagination.items.map((record) => (
-                <tr key={record.id}>
-                  <td>
-                    <button
-                      type="button"
-                      className="iconButton small"
-                      title="Inspect email"
-                      onClick={() => setSelectedEmail(record)}
-                    >
-                      <Binoculars size={16} />
-                    </button>
-                  </td>
-                  <td>{formatDateTime(record.sentAt)}</td>
-                  <td>
-                    <strong>{workflowLabel(record.workflowName, catalog)}</strong>
-                    <span>{record.ruleKey || formatDateOnly(record.businessDate || record.runDate)}</span>
-                  </td>
-                  <td>
-                    <strong>{record.recipientEmail || "-"}</strong>
-                    <span>{record.recipientType || "-"}</span>
-                  </td>
-                  <td>
-                    <strong>{record.fromEmail || "-"}</strong>
-                    <span>{record.fromName || "-"}</span>
-                  </td>
-                  <td className="subjectCell">{record.subject || "-"}</td>
-                  <td>{record.sendType || "-"}</td>
-                  <td>{record.providerTransmissionId || record.providerMessageId || "-"}</td>
-                  <td>{record.candidateId || "-"}</td>
-                  <td>{record.placementId || "-"}</td>
+        {loading && !data ? (
+          <LoadingIndicator label="Loading sent emails" />
+        ) : (
+          <div className="tableScroller detailTable">
+            <table>
+              <thead>
+                <tr>
+                  <th>Inspect</th>
+                  <th>Sent</th>
+                  <th>Workflow</th>
+                  <th>Recipient</th>
+                  <th>Sender</th>
+                  <th>Subject</th>
+                  <th>Type</th>
+                  <th>Provider ID</th>
+                  <th>Candidate</th>
+                  <th>Placement</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {pagination.items.map((record) => (
+                  <tr key={record.id}>
+                    <td>
+                      <button
+                        type="button"
+                        className="iconButton small"
+                        title="Inspect email"
+                        onClick={() => setSelectedEmail(record)}
+                      >
+                        <Binoculars size={16} />
+                      </button>
+                    </td>
+                    <td>{formatDateTime(record.sentAt)}</td>
+                    <td>
+                      <strong>{workflowLabel(record.workflowName, catalog)}</strong>
+                      <span>{record.ruleKey || formatDateOnly(record.businessDate || record.runDate)}</span>
+                    </td>
+                    <td>
+                      <strong>{record.recipientEmail || "-"}</strong>
+                      <span>{record.recipientType || "-"}</span>
+                    </td>
+                    <td>
+                      <strong>{record.fromEmail || "-"}</strong>
+                      <span>{record.fromName || "-"}</span>
+                    </td>
+                    <td className="subjectCell">{record.subject || "-"}</td>
+                    <td>{record.sendType || "-"}</td>
+                    <td>{record.providerTransmissionId || record.providerMessageId || "-"}</td>
+                    <td>{record.candidateId || "-"}</td>
+                    <td>{record.placementId || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         <PaginationControls
           page={pagination.page}
           pageSize={pageSize}

@@ -7,6 +7,9 @@ import {
   Bot,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
   Download,
   Filter,
   Mail,
@@ -24,6 +27,7 @@ import {
   fetchEmailSummary,
   fetchRuns,
   fetchWorkflowCatalog,
+  fetchWorkflowSchedules,
   type DashboardQuery,
 } from "@/lib/dashboardApi";
 import {
@@ -36,9 +40,12 @@ import {
   RunsResponse,
   TrendPoint,
   WorkflowCatalogItem,
+  WorkflowScheduleItem,
+  WorkflowSchedulesResponse,
   WorkflowSummary,
 } from "@/lib/types";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { getDashboardGlossaryEntry } from "@/lib/dashboardGlossary";
 import { formatDateTime, formatNumber, getDefaultDateRange, toDateInput } from "@/lib/format";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
@@ -70,6 +77,17 @@ const SUGGESTED_AI_QUESTIONS = [
   "Which workflows need attention?",
 ];
 
+const SCHEDULE_REGIONS = ["Americas", "APAC", "EMEA", "Region agnostic"];
+const OFFICE_TIME_ZONES = [
+  { office: "Denver", region: "Americas", timeZone: "America/Denver" },
+  { office: "Chicago", region: "Americas", timeZone: "America/Chicago" },
+  { office: "New York", region: "Americas", timeZone: "America/New_York" },
+  { office: "London", region: "EMEA", timeZone: "Europe/London" },
+  { office: "Perth", region: "APAC", timeZone: "Australia/Perth" },
+  { office: "Singapore", region: "APAC", timeZone: "Asia/Singapore" },
+  { office: "Kuala Lumpur", region: "APAC", timeZone: "Asia/Kuala_Lumpur" },
+];
+
 function getDefaultQuery(): DashboardQuery {
   return {
     ...getDefaultDateRange(7),
@@ -94,32 +112,137 @@ function total(totals: DashboardTotals | undefined, key: keyof DashboardTotals) 
   return Number(totals?.[key] || 0);
 }
 
+function formatPacificTime(value: string | null) {
+  if (!value) {
+    return "Not scheduled";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatOfficeTime(timestamp: number, timeZone: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
+}
+
+function formatOfficeDate(timestamp: number, timeZone: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(timestamp));
+}
+
+function formatUtcOffset(timestamp: number, timeZone: string) {
+  const date = new Date(timestamp);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    timeZoneName: "shortOffset",
+  }).formatToParts(date);
+  return parts.find((part) => part.type === "timeZoneName")?.value.replace("GMT", "UTC") || "";
+}
+
+function isBusinessHours(timestamp: number, timeZone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      weekday: "short",
+      hour: "numeric",
+      hour12: false,
+    }).formatToParts(new Date(timestamp)).map((part) => [part.type, part.value]),
+  );
+  const hour = Number(parts.hour === "24" ? "0" : parts.hour);
+  return !["Sat", "Sun"].includes(parts.weekday) && hour >= 8 && hour < 18;
+}
+
+function formatCountdown(milliseconds: number | null) {
+  if (milliseconds === null) {
+    return "No countdown";
+  }
+
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
+function OfficeTimeStrip({ now }: { now: number }) {
+  return (
+    <div className="officeTimeStrip" aria-label="Global office local times">
+      {OFFICE_TIME_ZONES.map((office) => {
+        const open = isBusinessHours(now, office.timeZone);
+        return (
+          <article className={`officeTimeCard ${open ? "open" : ""}`} key={office.office}>
+            <div className="officeTimeTop">
+              <strong>{office.office}</strong>
+              <span>{office.region}</span>
+            </div>
+            <div className="officeLocalTime">{formatOfficeTime(now, office.timeZone)}</div>
+            <div className="officeTimeMeta">
+              <span>{formatOfficeDate(now, office.timeZone)}</span>
+              <span>{formatUtcOffset(now, office.timeZone)}</span>
+            </div>
+            <div className="officePtTime">{formatOfficeTime(now, "America/Los_Angeles")} PT</div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 function MetricCard({
   label,
   value,
   icon,
   tone = "default",
   subLabel,
+  loading = false,
 }: {
   label: string;
   value: number;
   icon: React.ReactNode;
   tone?: "default" | "good" | "warn" | "bad";
   subLabel?: string;
+  loading?: boolean;
 }) {
   return (
     <section className={`metricCard ${tone}`}>
       <div className="metricIcon">{icon}</div>
       <div>
         <p>{label}</p>
-        <strong>{formatNumber(value)}</strong>
+        {loading ? <LoadingIndicator /> : <strong>{formatNumber(value)}</strong>}
         {subLabel ? <span>{subLabel}</span> : null}
       </div>
     </section>
   );
 }
 
-function MiniTrend({ points, metric }: { points: TrendPoint[]; metric: keyof DashboardTotals }) {
+function MiniTrend({ points, metric, loading = false }: { points: TrendPoint[]; metric: keyof DashboardTotals; loading?: boolean }) {
+  if (loading && points.length === 0) {
+    return <LoadingIndicator label="Loading trend" />;
+  }
+
   const max = Math.max(...points.map((point) => total(point.totals, metric)), 1);
 
   return (
@@ -150,7 +273,11 @@ function InfoHint({ label, description }: { label: string; description: string }
   );
 }
 
-function CountList({ items, kind }: { items: CountItem[]; kind: "skipReason" | "actionDecision" }) {
+function CountList({ items, kind, loading = false }: { items: CountItem[]; kind: "skipReason" | "actionDecision"; loading?: boolean }) {
+  if (loading && items.length === 0) {
+    return <LoadingIndicator label="Loading records" />;
+  }
+
   if (items.length === 0) {
     return <p className="emptyText">No records</p>;
   }
@@ -180,7 +307,119 @@ function CountList({ items, kind }: { items: CountItem[]; kind: "skipReason" | "
   );
 }
 
-function WorkflowTable({ workflows }: { workflows: WorkflowSummary[] }) {
+function ScheduleBoard({
+  schedules,
+  generatedAt,
+  loading,
+}: {
+  schedules: WorkflowScheduleItem[];
+  generatedAt: string | null;
+  loading: boolean;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const storedValue = window.localStorage.getItem("workflowScheduleBoardCollapsed");
+    if (storedValue) {
+      setCollapsed(storedValue === "true");
+    }
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem("workflowScheduleBoardCollapsed", String(next));
+      return next;
+    });
+  }
+
+  const grouped = useMemo(() => {
+    return SCHEDULE_REGIONS.map((region) => ({
+      region,
+      workflows: schedules
+        .filter((schedule) => schedule.region === region)
+        .sort((left, right) => String(left.nextRunAt || "9999").localeCompare(String(right.nextRunAt || "9999"))),
+    }));
+  }, [schedules]);
+
+  return (
+    <section className="scheduleBoard">
+      <div className="panelHeader">
+        <div>
+          <span className="eyebrow">Schedules</span>
+          <h2>Next Workflow Runs</h2>
+        </div>
+        <div className="scheduleHeaderMeta">
+          <span>Countdowns use Pacific Time (PT)</span>
+          <Clock3 size={20} />
+          <button
+            type="button"
+            className="iconButton small"
+            onClick={toggleCollapsed}
+            title={collapsed ? "Expand schedules" : "Collapse schedules"}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand workflow schedules" : "Collapse workflow schedules"}
+          >
+            {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          </button>
+        </div>
+      </div>
+
+      {collapsed ? (
+        <p className="scheduleCollapsedText">{schedules.length} scheduled workflows hidden</p>
+      ) : (
+        <>
+          {loading && schedules.length === 0 ? <LoadingIndicator label="Loading workflow schedules" /> : null}
+
+          <OfficeTimeStrip now={now} />
+
+          <div className="scheduleGrid">
+            {grouped.map(({ region, workflows }) => (
+              <section className="regionSchedule" key={region}>
+                <div className="regionHeader">
+                  <strong>{region}</strong>
+                  <span>{workflows.length}</span>
+                </div>
+                <div className="scheduleList">
+                  {workflows.length === 0 ? <p className="emptyText">No scheduled workflows</p> : null}
+                  {workflows.map((workflow) => {
+                    const nextRunMs = workflow.nextRunAt ? new Date(workflow.nextRunAt).getTime() - now : null;
+                    return (
+                      <article className="scheduleItem" key={`${workflow.orchestrator}-${workflow.workflowName}`}>
+                        <div>
+                          <strong>{workflow.label}</strong>
+                          <span>{formatPacificTime(workflow.nextRunAt)} PT</span>
+                        </div>
+                        <div className="countdownBlock">
+                          <span className="orchestratorPill">{workflow.orchestrator}</span>
+                          <strong>{formatCountdown(nextRunMs)}</strong>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          {generatedAt ? <p className="scheduleFootnote">Schedule catalog refreshed {formatDateTime(generatedAt)}</p> : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+function WorkflowTable({ workflows, loading = false }: { workflows: WorkflowSummary[]; loading?: boolean }) {
+  if (loading && workflows.length === 0) {
+    return <LoadingIndicator label="Loading workflow health" />;
+  }
+
   return (
     <div className="tableScroller">
       <table>
@@ -220,7 +459,11 @@ function WorkflowTable({ workflows }: { workflows: WorkflowSummary[] }) {
   );
 }
 
-function RunsTable({ runs, catalog }: { runs: RunLog[]; catalog: WorkflowCatalogItem[] }) {
+function RunsTable({ runs, catalog, loading = false }: { runs: RunLog[]; catalog: WorkflowCatalogItem[]; loading?: boolean }) {
+  if (loading && runs.length === 0) {
+    return <LoadingIndicator label="Loading recent activity" />;
+  }
+
   return (
     <div className="tableScroller compact">
       <table>
@@ -351,7 +594,7 @@ function AiPanel({
         </div>
       ) : null}
 
-      {loading ? <p className="emptyText">Loading context</p> : null}
+      {loading ? <LoadingIndicator label="Loading context" /> : null}
 
       <div className="insightStack">
         <div className="insight">
@@ -381,6 +624,7 @@ export function DashboardClient() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [emailSummary, setEmailSummary] = useState<EmailSummary | null>(null);
   const [runs, setRuns] = useState<RunsResponse | null>(null);
+  const [schedules, setSchedules] = useState<WorkflowSchedulesResponse | null>(null);
   const [aiContext, setAiContext] = useState<AiMetricsContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -388,6 +632,14 @@ export function DashboardClient() {
   const [workflowPageSize, setWorkflowPageSize] = useState(10);
   const [runsPage, setRunsPage] = useState(1);
   const [runsPageSize, setRunsPageSize] = useState(10);
+
+  async function loadSchedulesOnly() {
+    try {
+      setSchedules(await fetchWorkflowSchedules());
+    } catch {
+      // Keep the existing schedule catalog visible if a background refresh fails.
+    }
+  }
 
   const workflowOptions = useMemo(
     () => sortWorkflowsByLabel(catalog.filter((workflow) => !query.category || workflow.category === query.category)),
@@ -399,8 +651,9 @@ export function DashboardClient() {
     setError(null);
 
     try {
-      const [catalogData, summaryData, emailData, runsData, aiData] = await Promise.all([
+      const [catalogData, scheduleData, summaryData, emailData, runsData, aiData] = await Promise.all([
         fetchWorkflowCatalog(),
+        fetchWorkflowSchedules(),
         fetchDashboardSummary(nextQuery),
         fetchEmailSummary(nextQuery),
         fetchRuns(nextQuery),
@@ -408,6 +661,7 @@ export function DashboardClient() {
       ]);
 
       setCatalog(catalogData);
+      setSchedules(scheduleData);
       setSummary(summaryData);
       setEmailSummary(emailData);
       setRuns(runsData);
@@ -421,6 +675,14 @@ export function DashboardClient() {
 
   useEffect(() => {
     void loadDashboard();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void loadSchedulesOnly();
+    }, 30000);
+
+    return () => window.clearInterval(timer);
   }, []);
 
   function updateQuery(key: keyof DashboardQuery, value: string) {
@@ -546,28 +808,37 @@ export function DashboardClient() {
         ) : null}
 
         <section className="metricGrid">
-          <MetricCard label="Runs" value={total(totals, "totalRuns")} icon={<Activity size={20} />} />
+          <MetricCard label="Runs" value={total(totals, "totalRuns")} icon={<Activity size={20} />} loading={loading && !summary} />
           <MetricCard
             label="Successful"
             value={total(totals, "successfulRuns")}
             icon={<CheckCircle2 size={20} />}
             tone="good"
+            loading={loading && !summary}
           />
           <MetricCard
             label="Failed"
             value={total(totals, "failedRuns")}
             icon={<XCircle size={20} />}
             tone={total(totals, "failedRuns") > 0 ? "bad" : "default"}
+            loading={loading && !summary}
           />
-          <MetricCard label="Emails" value={total(totals, "totalEmailCount")} icon={<Mail size={20} />} />
-          <MetricCard label="Updates" value={total(totals, "updatedCount")} icon={<SlidersHorizontal size={20} />} />
+          <MetricCard label="Emails" value={total(totals, "totalEmailCount")} icon={<Mail size={20} />} loading={loading && !summary} />
+          <MetricCard label="Updates" value={total(totals, "updatedCount")} icon={<SlidersHorizontal size={20} />} loading={loading && !summary} />
           <MetricCard
             label="Skipped"
             value={total(totals, "skippedCount") + total(totals, "skippedActionCount")}
             icon={<AlertTriangle size={20} />}
             tone="warn"
+            loading={loading && !summary}
           />
         </section>
+
+        <ScheduleBoard
+          schedules={schedules?.schedules || []}
+          generatedAt={schedules?.generatedAt || null}
+          loading={loading}
+        />
 
         <section className="contentGrid">
           <section className="panel wide">
@@ -576,9 +847,9 @@ export function DashboardClient() {
                 <span className="eyebrow">Trend</span>
                 <h2>Daily Volume</h2>
               </div>
-              <BarChart3 size={20} />
+              {loading && !summary ? <LoadingIndicator /> : <BarChart3 size={20} />}
             </div>
-            <MiniTrend points={summary?.trends || []} metric="comparisonRecordCount" />
+            <MiniTrend points={summary?.trends || []} metric="comparisonRecordCount" loading={loading && !summary} />
           </section>
 
           <section className="panel">
@@ -587,20 +858,20 @@ export function DashboardClient() {
                 <span className="eyebrow">Email</span>
                 <h2>Send Activity</h2>
               </div>
-              <Send size={20} />
+              {loading && !emailSummary ? <LoadingIndicator /> : <Send size={20} />}
             </div>
             <div className="stackedStats">
               <div>
                 <span>Sent</span>
-                <strong>{formatNumber(emailSummary?.totals.sentEmail)}</strong>
+                {loading && !emailSummary ? <LoadingIndicator /> : <strong>{formatNumber(emailSummary?.totals.sentEmail)}</strong>}
               </div>
               <div>
                 <span>Would send</span>
-                <strong>{formatNumber(emailSummary?.totals.wouldSendEmail)}</strong>
+                {loading && !emailSummary ? <LoadingIndicator /> : <strong>{formatNumber(emailSummary?.totals.wouldSendEmail)}</strong>}
               </div>
               <div>
                 <span>Email workflows</span>
-                <strong>{formatNumber(emailSummary?.totals.workflowCount)}</strong>
+                {loading && !emailSummary ? <LoadingIndicator /> : <strong>{formatNumber(emailSummary?.totals.workflowCount)}</strong>}
               </div>
             </div>
           </section>
@@ -617,9 +888,9 @@ export function DashboardClient() {
                   />
                 </h2>
               </div>
-              <AlertTriangle size={20} />
+              {loading && !summary ? <LoadingIndicator /> : <AlertTriangle size={20} />}
             </div>
-            <CountList items={summary?.topSkipReasons || []} kind="skipReason" />
+            <CountList items={summary?.topSkipReasons || []} kind="skipReason" loading={loading && !summary} />
           </section>
 
           <section className="panel">
@@ -634,9 +905,9 @@ export function DashboardClient() {
                   />
                 </h2>
               </div>
-              <SlidersHorizontal size={20} />
+              {loading && !summary ? <LoadingIndicator /> : <SlidersHorizontal size={20} />}
             </div>
-            <CountList items={summary?.topActionDecisions || []} kind="actionDecision" />
+            <CountList items={summary?.topActionDecisions || []} kind="actionDecision" loading={loading && !summary} />
           </section>
 
           <section className="panel wide">
@@ -645,10 +916,9 @@ export function DashboardClient() {
                 <span className="eyebrow">Workflows</span>
                 <h2>Health</h2>
               </div>
-              <CalendarDays size={20} />
+              {loading && !summary ? <LoadingIndicator /> : <CalendarDays size={20} />}
             </div>
-            {loading && !summary ? <p className="emptyText">Loading workflows</p> : null}
-            <WorkflowTable workflows={workflowPagination.items} />
+            <WorkflowTable workflows={workflowPagination.items} loading={loading && !summary} />
             <PaginationControls
               page={workflowPagination.page}
               pageSize={workflowPageSize}
@@ -667,9 +937,9 @@ export function DashboardClient() {
                 <span className="eyebrow">Runs</span>
                 <h2>Recent Activity</h2>
               </div>
-              <Activity size={20} />
+              {loading && !runs ? <LoadingIndicator /> : <Activity size={20} />}
             </div>
-            <RunsTable runs={runsPagination.items} catalog={catalog} />
+            <RunsTable runs={runsPagination.items} catalog={catalog} loading={loading && !runs} />
             <PaginationControls
               page={runsPagination.page}
               pageSize={runsPageSize}

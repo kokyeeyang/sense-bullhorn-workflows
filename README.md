@@ -687,6 +687,20 @@ Azure schedules:
 
 For the benefits reminder schedule, set `WEBSITE_TIME_ZONE=Pacific Standard Time` in Azure if you want `AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE` to be interpreted as 5:00 PM Pacific time with daylight-saving handling.
 
+The dashboard schedule section reads Azure Function timer schedules from the same environment variables above and displays next-run countdowns in Pacific Time (PT). For workflows orchestrated outside the Function timer list, add dashboard-only Logic App metadata with `WORKFLOW_LOGIC_APP_SCHEDULES_JSON`:
+
+```json
+[
+  {
+    "workflowName": "logic-app-placement-audit",
+    "label": "Logic App Placement Audit",
+    "region": "EMEA",
+    "schedule": "0 15 10 * * *",
+    "logicAppName": "la-placement-audit"
+  }
+]
+```
+
 ## Azure Functions + Logic Apps
 
 Recommended split for this repo:

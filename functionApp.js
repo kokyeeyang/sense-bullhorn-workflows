@@ -59,6 +59,7 @@ const {
   handleDashboardEmails,
   handleDashboardEmailTransmissions,
   handleDashboardRuns,
+  handleDashboardSchedules,
   handleDashboardSkips,
   handleDashboardSummary,
   handleDashboardSurveyRates,
@@ -651,6 +652,13 @@ app.http("dashboardRuns", {
   authLevel: "function",
   route: "dashboard/runs",
   handler: handleDashboardRuns,
+});
+
+app.http("dashboardSchedules", {
+  methods: ["GET"],
+  authLevel: "function",
+  route: "dashboard/schedules",
+  handler: handleDashboardSchedules,
 });
 
 app.http("dashboardEmails", {
