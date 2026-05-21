@@ -47,6 +47,7 @@ import {
 } from "@/lib/types";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { FreshnessStatus } from "@/components/FreshnessStatus";
 import { getDashboardGlossaryEntry } from "@/lib/dashboardGlossary";
 import { formatDateTime, formatNumber, getDefaultDateRange, toDateInput } from "@/lib/format";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
@@ -188,6 +189,61 @@ function formatCountdown(milliseconds: number | null) {
   return `${seconds}s`;
 }
 
+function parseScheduleParts(schedule: string | null | undefined) {
+  const parts = String(schedule || "").trim().split(/\s+/);
+  return parts.length === 6 ? parts : null;
+}
+
+function getExpectedRunWindowMs(schedule: string | null | undefined) {
+  const parts = parseScheduleParts(schedule);
+  if (!parts) {
+    return null;
+  }
+
+  const [, minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+  const everyMinuteMatch = minute.match(/^\*\/(\d+)$/);
+  if (everyMinuteMatch && hour === "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+    return Math.max(Number(everyMinuteMatch[1]) * 3 * 60000, 10 * 60000);
+  }
+  if (minute !== "*" && hour === "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+    return 2 * 60 * 60000;
+  }
+  if (minute !== "*" && hour !== "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+    return 30 * 60 * 60000;
+  }
+
+  return null;
+}
+
+function getRunFreshness({
+  workflow,
+  schedule,
+  now,
+}: {
+  workflow: WorkflowSummary | null | undefined;
+  schedule: WorkflowScheduleItem | null | undefined;
+  now: number;
+}) {
+  if (!schedule) {
+    return { state: "unknown", label: "No schedule" };
+  }
+  if (!workflow?.lastRunAt) {
+    return { state: "unknown", label: "No run in range" };
+  }
+
+  const expectedWindowMs = getExpectedRunWindowMs(schedule.schedule);
+  if (!expectedWindowMs) {
+    return { state: "unknown", label: "Schedule unchecked" };
+  }
+
+  const ageMs = now - new Date(workflow.lastRunAt).getTime();
+  if (ageMs > expectedWindowMs) {
+    return { state: "missed", label: "Missed run" };
+  }
+
+  return { state: "ok", label: "On schedule" };
+}
+
 function OfficeTimeStrip({ now }: { now: number }) {
   return (
     <div className="officeTimeStrip" aria-label="Global office local times">
@@ -310,10 +366,12 @@ function CountList({ items, kind, loading = false }: { items: CountItem[]; kind:
 
 function ScheduleBoard({
   schedules,
+  workflows,
   generatedAt,
   loading,
 }: {
   schedules: WorkflowScheduleItem[];
+  workflows: WorkflowSummary[];
   generatedAt: string | null;
   loading: boolean;
 }) {
@@ -348,6 +406,10 @@ function ScheduleBoard({
         .sort((left, right) => String(left.nextRunAt || "9999").localeCompare(String(right.nextRunAt || "9999"))),
     }));
   }, [schedules]);
+  const workflowsByName = useMemo(
+    () => new Map(workflows.map((workflow) => [workflow.workflowName, workflow])),
+    [workflows],
+  );
 
   return (
     <section className="scheduleBoard">
@@ -391,6 +453,8 @@ function ScheduleBoard({
                   {workflows.length === 0 ? <p className="emptyText">No scheduled workflows</p> : null}
                   {workflows.map((workflow) => {
                     const nextRunMs = workflow.nextRunAt ? new Date(workflow.nextRunAt).getTime() - now : null;
+                    const summary = workflowsByName.get(workflow.workflowName);
+                    const freshness = getRunFreshness({ workflow: summary, schedule: workflow, now });
                     return (
                       <article className="scheduleItem" key={`${workflow.orchestrator}-${workflow.workflowName}`}>
                         <div>
@@ -399,6 +463,7 @@ function ScheduleBoard({
                         </div>
                         <div className="countdownBlock">
                           <span className="orchestratorPill">{workflow.orchestrator}</span>
+                          <span className={`freshnessPill ${freshness.state}`}>{freshness.label}</span>
                           <strong>{formatCountdown(nextRunMs)}</strong>
                         </div>
                       </article>
@@ -418,10 +483,12 @@ function ScheduleBoard({
 
 function WorkflowTable({
   workflows,
+  schedules,
   loading = false,
   onSelectWorkflow,
 }: {
   workflows: WorkflowSummary[];
+  schedules: WorkflowScheduleItem[];
   loading?: boolean;
   onSelectWorkflow?: (workflowName: string) => void;
 }) {
@@ -445,7 +512,10 @@ function WorkflowTable({
           </tr>
         </thead>
         <tbody>
-          {workflows.map((workflow) => (
+          {workflows.map((workflow) => {
+            const schedule = schedules.find((item) => item.workflowName === workflow.workflowName) || null;
+            const freshness = getRunFreshness({ workflow, schedule, now: Date.now() });
+            return (
             <tr
               className={onSelectWorkflow ? "clickableRow" : ""}
               key={workflow.workflowName}
@@ -465,6 +535,7 @@ function WorkflowTable({
               <td>{workflow.category}</td>
               <td>
                 <span className={statusClass(workflow.lastRunStatus)}>{workflow.lastRunStatus || "none"}</span>
+                {freshness.state === "missed" ? <span className="freshnessPill missed">Missed run</span> : null}
               </td>
               <td>{formatNumber(workflow.totals.totalRuns)}</td>
               <td>{formatNumber(workflow.totals.totalEmailCount)}</td>
@@ -472,7 +543,8 @@ function WorkflowTable({
               <td>{formatNumber(workflow.totals.skippedCount + workflow.totals.skippedActionCount)}</td>
               <td>{formatDateTime(workflow.lastRunAt)}</td>
             </tr>
-          ))}
+          );
+          })}
         </tbody>
       </table>
     </div>
@@ -490,6 +562,7 @@ function WorkflowDetailDrawer({
   recentRuns: RunLog[];
   onClose: () => void;
 }) {
+  const freshness = getRunFreshness({ workflow, schedule, now: Date.now() });
   const relatedLinks = [
     { href: `/emails?workflowName=${encodeURIComponent(workflow.workflowName)}`, label: "Email sends", enabled: workflow.sendsEmail },
     { href: `/data-enrichment?workflowName=${encodeURIComponent(workflow.workflowName)}`, label: "Data changes", enabled: ["candidate", "client", "data-enrichment", "placement"].includes(workflow.category) },
@@ -516,6 +589,7 @@ function WorkflowDetailDrawer({
             <div>
               <span>Status</span>
               <strong className={statusClass(workflow.lastRunStatus)}>{workflow.lastRunStatus || "none"}</strong>
+              <small className={`freshnessPill ${freshness.state}`}>{freshness.label}</small>
             </div>
             <div>
               <span>Runs</span>
@@ -856,6 +930,13 @@ export function DashboardClient() {
   const selectedRuns = selectedWorkflowName
     ? (runs?.runs || []).filter((run) => run.workflowName === selectedWorkflowName)
     : [];
+  const environment =
+    summary?.environment ||
+    schedules?.environment ||
+    emailSummary?.environment ||
+    runs?.environment ||
+    aiContext?.environment ||
+    null;
 
   return (
     <main className="appShell">
@@ -866,6 +947,13 @@ export function DashboardClient() {
             <h1>Workflow Dashboard</h1>
           </div>
           <div className="topActions">
+            <FreshnessStatus
+              environment={environment}
+              primaryGeneratedAt={summary?.generatedAt || null}
+              primaryLabel="data"
+              loading={loading}
+              error={error}
+            />
             <button type="button" className="iconButton" onClick={() => void loadDashboard()} title="Refresh">
               <RefreshCcw size={18} />
             </button>
@@ -983,6 +1071,7 @@ export function DashboardClient() {
 
         <ScheduleBoard
           schedules={schedules?.schedules || []}
+          workflows={summary?.workflows || []}
           generatedAt={schedules?.generatedAt || null}
           loading={loading}
         />
@@ -1067,6 +1156,7 @@ export function DashboardClient() {
             </div>
             <WorkflowTable
               workflows={workflowPagination.items}
+              schedules={schedules?.schedules || []}
               loading={loading && !summary}
               onSelectWorkflow={setSelectedWorkflowName}
             />

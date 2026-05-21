@@ -75,6 +75,14 @@ export type EmailTemplateItem = {
   category: string;
   region: string;
   sparkPostTemplateKey: string | null;
+  usedBy: Array<{
+    workflowName: string;
+    workflowLabel: string;
+    role: string;
+    sendMethod: "inline-html" | "sparkpost-template" | string;
+    configKey: string | null;
+    ruleKey: string | null;
+  }>;
   sizeBytes: number;
   html: string;
 };

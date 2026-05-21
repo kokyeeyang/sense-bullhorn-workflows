@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --bg: #f6f7f9;
   --panel: #ffffff;
   --panel-soft: #f9fafb;
@@ -13,6 +14,56 @@
   --yellow: #b26a00;
   --teal: #167c80;
   --shadow: 0 14px 34px rgba(24, 35, 51, 0.08);
+  --topbar-bg: rgba(246, 247, 249, 0.96);
+  --topbar-border: rgba(217, 222, 231, 0.7);
+  --input-bg: #ffffff;
+  --nav-bg: #101828;
+  --nav-active: #1d2939;
+  --nav-text: #d6deeb;
+  --nav-muted: #98a6ba;
+  --nav-border: #1d2939;
+  --modal-backdrop: rgba(16, 24, 40, 0.55);
+  --drawer-backdrop: rgba(16, 24, 40, 0.36);
+  --blue-soft: #eaf2fb;
+  --green-soft: #e7f6ef;
+  --yellow-soft: #fff3df;
+  --red-soft: #ffeaea;
+  --error-bg: #fff5f5;
+  --error-border: #f0c4c4;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f141b;
+  --panel: #151b24;
+  --panel-soft: #1b2330;
+  --text: #edf2f7;
+  --muted: #9aa8ba;
+  --line: #334155;
+  --line-soft: #253244;
+  --brand: #7db4f0;
+  --brand-strong: #9cc7f6;
+  --green: #54d19c;
+  --red: #ff8b8b;
+  --yellow: #f6c76a;
+  --teal: #54cbd0;
+  --shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  --topbar-bg: rgba(15, 20, 27, 0.94);
+  --topbar-border: rgba(51, 65, 85, 0.75);
+  --input-bg: #111827;
+  --nav-bg: #0b111a;
+  --nav-active: #172033;
+  --nav-text: #d9e2ef;
+  --nav-muted: #8fa0b6;
+  --nav-border: #253244;
+  --modal-backdrop: rgba(3, 7, 18, 0.72);
+  --drawer-backdrop: rgba(3, 7, 18, 0.52);
+  --blue-soft: #172b42;
+  --green-soft: #123225;
+  --yellow-soft: #35270f;
+  --red-soft: #3a1d23;
+  --error-bg: #331a1f;
+  --error-border: #7f2d36;
 }
 
 * {
@@ -31,6 +82,16 @@ body {
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
+}
+
+html,
+body,
+.appFrame,
+.appContent {
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
 }
 
 a {
@@ -67,7 +128,7 @@ textarea:disabled {
   align-self: start;
   min-height: 100vh;
   border-right: 1px solid var(--line);
-  background: #101828;
+  background: var(--nav-bg);
   color: #ffffff;
   padding: 18px 14px;
 }
@@ -87,7 +148,7 @@ textarea:disabled {
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: #2364aa;
+  background: var(--brand);
   color: #ffffff;
 }
 
@@ -102,7 +163,7 @@ textarea:disabled {
 
 .brandBlock span {
   margin-top: 2px;
-  color: #b8c4d8;
+  color: var(--nav-muted);
   font-size: 12px;
 }
 
@@ -117,12 +178,12 @@ textarea:disabled {
   gap: 11px;
   padding: 11px 10px;
   border-radius: 8px;
-  color: #d6deeb;
+  color: var(--nav-text);
 }
 
 .navItem:hover,
 .navItem.active {
-  background: #1d2939;
+  background: var(--nav-active);
   color: #ffffff;
 }
 
@@ -142,8 +203,29 @@ textarea:disabled {
 
 .navItem small {
   margin-top: 2px;
-  color: #98a6ba;
+  color: var(--nav-muted);
   font-size: 11px;
+}
+
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  width: 100%;
+  min-height: 38px;
+  margin-top: 18px;
+  padding: 0 10px;
+  border: 1px solid var(--nav-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--nav-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.themeToggle:hover {
+  background: var(--nav-active);
 }
 
 .appContent {
@@ -168,11 +250,18 @@ textarea:disabled {
 }
 
 .topBar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin: -28px -28px 20px;
+  padding: 28px 28px 14px;
+  border-bottom: 1px solid var(--topbar-border);
+  background: var(--topbar-bg);
+  backdrop-filter: blur(10px);
 }
 
 .topBar h1,
@@ -206,6 +295,13 @@ textarea:disabled {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.freshnessStatus {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .iconButton,
@@ -252,6 +348,9 @@ textarea:disabled {
 }
 
 .filterPanel {
+  position: sticky;
+  top: 96px;
+  z-index: 30;
   display: grid;
   grid-template-columns: auto repeat(6, minmax(128px, 1fr)) auto auto;
   align-items: end;
@@ -273,7 +372,7 @@ textarea:disabled {
 }
 
 .templateFilters {
-  grid-template-columns: auto minmax(220px, 1fr) minmax(160px, 220px) auto;
+  grid-template-columns: auto minmax(220px, 1fr) minmax(140px, 180px) minmax(200px, 260px) minmax(140px, 180px) auto;
 }
 
 .caseTypeToggles {
@@ -361,7 +460,7 @@ textarea:disabled {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--input-bg);
   color: var(--text);
   padding: 0 10px;
 }
@@ -383,9 +482,9 @@ textarea:disabled {
   gap: 10px;
   margin-bottom: 18px;
   padding: 12px 14px;
-  border: 1px solid #f0c4c4;
+  border: 1px solid var(--error-border);
   border-radius: 8px;
-  background: #fff5f5;
+  background: var(--error-bg);
   color: var(--red);
 }
 
@@ -444,23 +543,23 @@ textarea:disabled {
   width: 38px;
   height: 38px;
   border-radius: 6px;
-  background: #eaf2fb;
+  background: var(--blue-soft);
   color: var(--brand);
   flex: 0 0 auto;
 }
 
 .metricCard.good .metricIcon {
-  background: #e7f6ef;
+  background: var(--green-soft);
   color: var(--green);
 }
 
 .metricCard.warn .metricIcon {
-  background: #fff3df;
+  background: var(--yellow-soft);
   color: var(--yellow);
 }
 
 .metricCard.bad .metricIcon {
-  background: #ffeaea;
+  background: var(--red-soft);
   color: var(--red);
 }
 
@@ -506,7 +605,7 @@ textarea:disabled {
   border: 1px solid var(--line-soft);
   border-left: 3px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--panel);
 }
 
 .officeTimeCard.open {
@@ -582,7 +681,7 @@ textarea:disabled {
   min-width: 0;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: #fbfcfd;
+  background: var(--panel-soft);
 }
 
 .regionHeader {
@@ -606,7 +705,7 @@ textarea:disabled {
   min-width: 24px;
   min-height: 24px;
   border-radius: 999px;
-  background: #eaf2fb;
+  background: var(--blue-soft);
   color: var(--brand);
   font-size: 12px;
   font-weight: 800;
@@ -627,7 +726,7 @@ textarea:disabled {
   padding: 10px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--panel);
 }
 
 .scheduleItem strong,
@@ -677,6 +776,35 @@ textarea:disabled {
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.freshnessPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.freshnessPill.ok {
+  background: #e7f6ef;
+  color: var(--green);
+}
+
+.freshnessPill.missed {
+  background: #ffeaea;
+  color: var(--red);
+}
+
+.freshnessPill.unknown {
+  background: #fff3df;
+  color: var(--yellow);
 }
 
 .scheduleFootnote {
@@ -1314,6 +1442,44 @@ tr:last-child td {
   gap: 10px;
 }
 
+.templateWorkflowGroups {
+  display: grid;
+  gap: 18px;
+}
+
+.templateWorkflowGroup {
+  min-width: 0;
+}
+
+.templateWorkflowGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.templateWorkflowGroupHeader strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.templateWorkflowGroupHeader span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eaf2fb;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .templateTile {
   display: grid;
   gap: 8px;
@@ -1380,6 +1546,25 @@ tr:last-child td {
   overflow-wrap: anywhere;
 }
 
+.templateUsageSummary {
+  display: grid;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.templateUsageSummary span,
+.templateUsageSummary small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.templateUsageSummary strong {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
 .templateModalPanel {
   width: min(1120px, 100%);
 }
@@ -1415,7 +1600,59 @@ tr:last-child td {
   width: 100%;
   height: min(680px, calc(100vh - 280px));
   border: 0;
-  background: #ffffff;
+  background: var(--input-bg);
+}
+
+.templateUsageList {
+  display: grid;
+  gap: 8px;
+}
+
+.templateUsageItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+
+.templateUsageItem strong,
+.templateUsageItem span {
+  display: block;
+}
+
+.templateUsageItem strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.templateUsageItem > div:first-child span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.templateUsageMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.templateUsageMeta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--input-bg);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .drawerBackdrop {
@@ -1553,6 +1790,131 @@ tr:last-child td {
   font-weight: 800;
 }
 
+html[data-theme="dark"] .caseTypeToggles label {
+  border-color: #7c4a16;
+  background: #2b2115;
+  color: #f6c76a;
+}
+
+html[data-theme="dark"] .caseTypeToggles label:hover {
+  border-color: #a16207;
+  background: #3a2a14;
+  color: #ffd98c;
+}
+
+html[data-theme="dark"] .caseTypeToggles label:has(input:checked) {
+  border-color: #f59e0b;
+  background: #b45309;
+  color: #fff7ed;
+}
+
+html[data-theme="dark"] .officeTimeCard,
+html[data-theme="dark"] .scheduleItem,
+html[data-theme="dark"] .templateTile,
+html[data-theme="dark"] .assistantBox textarea,
+html[data-theme="dark"] .promptChips button,
+html[data-theme="dark"] .insight,
+html[data-theme="dark"] .modalPanel,
+html[data-theme="dark"] .modalHeader,
+html[data-theme="dark"] .templateModalTabs button,
+html[data-theme="dark"] .drawerRunList div,
+html[data-theme="dark"] .drawerLinkList a,
+html[data-theme="dark"] .paginationControls select,
+html[data-theme="dark"] .paginationControls button,
+html[data-theme="dark"] .secondaryButton,
+html[data-theme="dark"] .iconButton,
+html[data-theme="dark"] .quickRanges button {
+  background: var(--panel);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .regionSchedule,
+html[data-theme="dark"] .aiPanel,
+html[data-theme="dark"] .templateUsageItem,
+html[data-theme="dark"] .drawerMetricGrid div,
+html[data-theme="dark"] .drawerInfoList div,
+html[data-theme="dark"] .detailGrid div {
+  background: var(--panel-soft);
+}
+
+html[data-theme="dark"] th {
+  background: #1b2330;
+}
+
+html[data-theme="dark"] .clickableRow:hover td,
+html[data-theme="dark"] .clickableRow:focus-visible td {
+  background: #123225;
+}
+
+html[data-theme="dark"] .statusPill.success,
+html[data-theme="dark"] .freshnessPill.ok {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+html[data-theme="dark"] .statusPill.failed,
+html[data-theme="dark"] .freshnessPill.missed {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+html[data-theme="dark"] .statusPill.neutral,
+html[data-theme="dark"] .freshnessPill,
+html[data-theme="dark"] .orchestratorPill,
+html[data-theme="dark"] .officeTimeTop span,
+html[data-theme="dark"] .templateTileTop span,
+html[data-theme="dark"] .templateTileMeta span,
+html[data-theme="dark"] .templateUsageMeta span {
+  background: var(--line-soft);
+  color: var(--muted);
+}
+
+html[data-theme="dark"] .freshnessPill.unknown {
+  background: var(--yellow-soft);
+  color: var(--yellow);
+}
+
+html[data-theme="dark"] .templateWorkflowGroupHeader span,
+html[data-theme="dark"] .templateModalTabs button.active,
+html[data-theme="dark"] .regionHeader span {
+  background: var(--blue-soft);
+  color: var(--brand);
+}
+
+html[data-theme="dark"] .assistantAnswer {
+  border-color: #315f96;
+  background: #172b42;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .assistantError {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+  color: var(--red);
+}
+
+html[data-theme="dark"] .modalBackdrop {
+  background: var(--modal-backdrop);
+}
+
+html[data-theme="dark"] .drawerBackdrop {
+  background: var(--drawer-backdrop);
+}
+
+html[data-theme="dark"] .workflowDrawer,
+html[data-theme="dark"] .drawerHeader {
+  background: var(--panel);
+}
+
+html[data-theme="dark"] .templatePreviewFrame {
+  background: #ffffff;
+}
+
+html[data-theme="dark"] .modalSection pre {
+  background: #060b12;
+  color: #e5edf6;
+}
+
 @media (max-width: 1320px) {
   .appFrame {
     grid-template-columns: 1fr;
@@ -1613,6 +1975,12 @@ tr:last-child td {
   .topBar {
     align-items: flex-start;
     flex-direction: column;
+    margin: -18px -18px 16px;
+    padding: 18px 18px 12px;
+  }
+
+  .filterPanel {
+    top: 126px;
   }
 
   .filterPanel,
@@ -1630,6 +1998,14 @@ tr:last-child td {
 
   .templateTileGrid {
     grid-template-columns: 1fr;
+  }
+
+  .templateUsageItem {
+    grid-template-columns: 1fr;
+  }
+
+  .templateUsageMeta {
+    justify-content: flex-start;
   }
 
   .sideNav nav {
