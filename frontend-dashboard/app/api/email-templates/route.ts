@@ -32,9 +32,34 @@ function findSparkPostTemplateKey(html: string) {
   return match?.[1] || null;
 }
 
+async function directoryExists(directory: string) {
+  try {
+    const stat = await fs.stat(directory);
+    return stat.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function resolveTemplateDir() {
+  const candidates = [
+    path.resolve(process.cwd(), "public", "email-templates"),
+    path.resolve(process.cwd(), "..", "templates"),
+    path.resolve(process.cwd(), "templates"),
+  ];
+
+  for (const candidate of candidates) {
+    if (await directoryExists(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Email template directory was not found. Checked: ${candidates.join(", ")}`);
+}
+
 export async function GET() {
   try {
-    const templateDir = path.resolve(process.cwd(), "..", "templates");
+    const templateDir = await resolveTemplateDir();
     const entries = await fs.readdir(templateDir, { withFileTypes: true });
     const htmlFiles = entries
       .filter((entry) => entry.isFile() && entry.name.endsWith(".html"))

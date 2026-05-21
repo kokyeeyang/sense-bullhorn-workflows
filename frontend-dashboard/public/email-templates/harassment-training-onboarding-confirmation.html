@@ -1,0 +1,99 @@
+<!--
+SparkPost template: HARASSMENT_TRAINING_ONBOARDING_SPARKPOST_TEMPLATE_ID
+Suggested subject: {{subject}}
+Used for: Illinois and Maine onboarding anti-harassment document confirmation.
+Required substitutions:
+candidate_first_name, client_company_name, state, confirmation_question_text,
+response_url_yes, response_url_no, candidate_owner_name
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{subject}}</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; color:#202124;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f6f8; margin:0; padding:24px 0;">
+    <tr>
+      <td align="center" style="padding:0 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px; background-color:#ffffff; border:1px solid #d9dee7; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="background-color:#2f3542; padding:22px 28px;">
+              <p style="margin:0; color:#ffffff; font-size:18px; line-height:24px; font-weight:700;">Spencer Ogden</p>
+              <p style="margin:6px 0 0; color:#dfe4ea; font-size:14px; line-height:20px;">{{state}} Anti-Harassment Training</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px 28px 10px;">
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Hi {{candidate_first_name}},</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">
+                Congratulations on starting your new role with <strong>{{client_company_name}}</strong>.
+              </p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">
+                Please review the attached anti-harassment training document.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 28px 24px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #d9dee7; border-radius:8px; background-color:#fbfcfe;">
+                <tr>
+                  <td style="padding:22px;">
+                    <p style="margin:0 0 14px; font-size:16px; line-height:24px; font-weight:700;">{{confirmation_question_text}}</p>
+                    <p style="margin:0 0 20px; font-size:14px; line-height:21px; color:#5f6673;">
+                      Please select one option below. You will be asked to confirm your response in your browser.
+                    </p>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:0 10px 10px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td bgcolor="#5630d3" style="border-radius:6px; text-align:center;">
+                                <a href="{{response_url_yes}}" target="_blank" style="display:inline-block; min-width:96px; color:#ffffff; text-decoration:none; font-size:15px; line-height:20px; font-weight:700; padding:12px 18px; border-radius:6px;">Yes</a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td style="padding:0 0 10px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td bgcolor="#ffffff" style="border:1px solid #b8c0cc; border-radius:6px; text-align:center;">
+                                <a href="{{response_url_no}}" target="_blank" style="display:inline-block; min-width:96px; color:#202124; text-decoration:none; font-size:15px; line-height:20px; font-weight:700; padding:11px 17px; border-radius:6px;">No</a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="margin:8px 0 0; font-size:12px; line-height:18px; color:#6b7280;">
+                      If the buttons do not open, please copy one of these links into your browser:<br>
+                      Yes: <span style="word-break:break-all;">{{response_url_yes}}</span><br>
+                      No: <span style="word-break:break-all;">{{response_url_no}}</span>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 28px 30px;">
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">
+                If you would like to take a more interactive course on this topic, Traliant provides one for free. Please visit the following link, provide your information, select Maine as the state, and it will direct you to a video on preventing harassment in the workplace.
+              </p>
+              <p style="margin:0 0 22px; font-size:16px; line-height:24px;">
+                <a href="https://www.traliant.com/courses/sexual-harassment-training/" style="color:#5630d3; font-weight:700; text-decoration:underline;">Preventing Harassment in the Workplace | Traliant</a>
+              </p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Thanks for choosing to work with Spencer Ogden.</p>
+              <p style="margin:0; font-size:16px; line-height:24px;">
+                Regards,<br>
+                {{candidate_owner_name}}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New York City HERO Act Survey</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; color:#202124;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f6f8; margin:0; padding:24px 0;">
+    <tr>
+      <td align="center" style="padding:0 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px; background-color:#ffffff; border:1px solid #d9dee7; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="padding:30px 28px;">
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Hello {{candidate_first_name}},</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Congratulations on starting your new role with {{client_company_name}}!</p>
+              <p style="margin:0 0 14px; font-size:16px; line-height:24px; font-weight:700;">{{question_text}}</p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 22px;">
+                <tr>
+                  <td style="padding:0 10px 0 0;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td bgcolor="#5630d3" style="border-radius:6px; text-align:center;">
+                          <a href="{{survey_url_yes}}" target="_blank" style="display:inline-block; min-width:96px; color:#ffffff; text-decoration:none; font-size:15px; line-height:20px; font-weight:700; padding:12px 18px; border-radius:6px;">Yes</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td bgcolor="#ffffff" style="border:1px solid #b8c0cc; border-radius:6px; text-align:center;">
+                          <a href="{{survey_url_no}}" target="_blank" style="display:inline-block; min-width:96px; color:#202124; text-decoration:none; font-size:15px; line-height:20px; font-weight:700; padding:11px 17px; border-radius:6px;">No</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Thanks for choosing to work with Spencer Ogden.</p>
+              <p style="margin:0; font-size:16px; line-height:24px;">
+                Regards,<br>
+                {{candidate_owner_name}}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
