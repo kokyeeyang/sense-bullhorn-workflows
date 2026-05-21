@@ -17,6 +17,7 @@ import {
   Search,
   Send,
   SlidersHorizontal,
+  X,
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -415,7 +416,15 @@ function ScheduleBoard({
   );
 }
 
-function WorkflowTable({ workflows, loading = false }: { workflows: WorkflowSummary[]; loading?: boolean }) {
+function WorkflowTable({
+  workflows,
+  loading = false,
+  onSelectWorkflow,
+}: {
+  workflows: WorkflowSummary[];
+  loading?: boolean;
+  onSelectWorkflow?: (workflowName: string) => void;
+}) {
   if (loading && workflows.length === 0) {
     return <LoadingIndicator label="Loading workflow health" />;
   }
@@ -437,7 +446,18 @@ function WorkflowTable({ workflows, loading = false }: { workflows: WorkflowSumm
         </thead>
         <tbody>
           {workflows.map((workflow) => (
-            <tr key={workflow.workflowName}>
+            <tr
+              className={onSelectWorkflow ? "clickableRow" : ""}
+              key={workflow.workflowName}
+              tabIndex={onSelectWorkflow ? 0 : undefined}
+              onClick={() => onSelectWorkflow?.(workflow.workflowName)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelectWorkflow?.(workflow.workflowName);
+                }
+              }}
+            >
               <td>
                 <strong>{workflow.label || workflow.workflowName}</strong>
                 <span>{workflow.description || workflow.workflowName}</span>
@@ -455,6 +475,122 @@ function WorkflowTable({ workflows, loading = false }: { workflows: WorkflowSumm
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function WorkflowDetailDrawer({
+  workflow,
+  schedule,
+  recentRuns,
+  onClose,
+}: {
+  workflow: WorkflowSummary;
+  schedule: WorkflowScheduleItem | null;
+  recentRuns: RunLog[];
+  onClose: () => void;
+}) {
+  const relatedLinks = [
+    { href: `/emails?workflowName=${encodeURIComponent(workflow.workflowName)}`, label: "Email sends", enabled: workflow.sendsEmail },
+    { href: `/data-enrichment?workflowName=${encodeURIComponent(workflow.workflowName)}`, label: "Data changes", enabled: ["candidate", "client", "data-enrichment", "placement"].includes(workflow.category) },
+    { href: `/survey-responses?workflowName=${encodeURIComponent(workflow.workflowName)}`, label: "Survey responses", enabled: workflow.category === "survey" },
+    { href: "/email-templates", label: "Templates", enabled: workflow.sendsEmail },
+  ].filter((link) => link.enabled);
+
+  return (
+    <div className="drawerBackdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="workflowDrawer" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="drawerHeader">
+          <div>
+            <span className="eyebrow">{workflow.category}</span>
+            <h2>{workflow.label || workflow.workflowName}</h2>
+            <p>{workflow.description || workflow.workflowName}</p>
+          </div>
+          <button type="button" className="iconButton" onClick={onClose} title="Close">
+            <X size={18} />
+          </button>
+        </header>
+
+        <section className="drawerSection">
+          <div className="drawerMetricGrid">
+            <div>
+              <span>Status</span>
+              <strong className={statusClass(workflow.lastRunStatus)}>{workflow.lastRunStatus || "none"}</strong>
+            </div>
+            <div>
+              <span>Runs</span>
+              <strong>{formatNumber(workflow.totals.totalRuns)}</strong>
+            </div>
+            <div>
+              <span>Emails</span>
+              <strong>{formatNumber(workflow.totals.totalEmailCount)}</strong>
+            </div>
+            <div>
+              <span>Skipped</span>
+              <strong>{formatNumber(workflow.totals.skippedCount + workflow.totals.skippedActionCount)}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="drawerSection">
+          <h3>Schedule</h3>
+          <div className="drawerInfoList">
+            <div>
+              <span>Orchestrator</span>
+              <strong>{schedule?.orchestrator || "Not scheduled"}</strong>
+            </div>
+            <div>
+              <span>Next run</span>
+              <strong>{schedule?.nextRunAt ? `${formatPacificTime(schedule.nextRunAt)} PT` : "Not scheduled"}</strong>
+            </div>
+            <div>
+              <span>Last run</span>
+              <strong>{formatDateTime(workflow.lastRunAt)}</strong>
+            </div>
+            <div>
+              <span>Schedule source</span>
+              <strong>{schedule?.scheduleSource || "-"}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="drawerSection">
+          <h3>Recent Runs</h3>
+          {recentRuns.length === 0 ? <p className="emptyText">No recent runs in the selected date range.</p> : null}
+          <div className="drawerRunList">
+            {recentRuns.slice(0, 6).map((run, index) => (
+              <div key={`${run.workflowName}-${run.finishedAt}-${index}`}>
+                <span className={statusClass(run.status)}>{run.status}</span>
+                <strong>{formatDateTime(run.finishedAt)}</strong>
+                <small>{formatNumber(run.successCount)} ok / {formatNumber(run.failureCount)} failed / {formatNumber(run.skippedCount)} skipped</small>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="drawerSection">
+          <h3>Top Skip Reasons</h3>
+          <CountList items={workflow.topSkipReasons || []} kind="skipReason" />
+        </section>
+
+        <section className="drawerSection">
+          <h3>Action Decisions</h3>
+          <CountList items={workflow.topActionDecisions || []} kind="actionDecision" />
+        </section>
+
+        {relatedLinks.length > 0 ? (
+          <section className="drawerSection">
+            <h3>Related Views</h3>
+            <div className="drawerLinkList">
+              {relatedLinks.map((link) => (
+                <a href={link.href} key={link.href}>
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </aside>
     </div>
   );
 }
@@ -632,6 +768,7 @@ export function DashboardClient() {
   const [workflowPageSize, setWorkflowPageSize] = useState(10);
   const [runsPage, setRunsPage] = useState(1);
   const [runsPageSize, setRunsPageSize] = useState(10);
+  const [selectedWorkflowName, setSelectedWorkflowName] = useState<string | null>(null);
 
   async function loadSchedulesOnly() {
     try {
@@ -709,6 +846,16 @@ export function DashboardClient() {
   const totals = summary?.totals;
   const workflowPagination = paginate(summary?.workflows || [], workflowPage, workflowPageSize);
   const runsPagination = paginate(runs?.runs || [], runsPage, runsPageSize);
+  const selectedWorkflow = selectedWorkflowName
+    ? summary?.workflows.find((workflow) => workflow.workflowName === selectedWorkflowName) || null
+    : null;
+  const selectedSchedule =
+    selectedWorkflowName && schedules?.schedules
+      ? schedules.schedules.find((schedule) => schedule.workflowName === selectedWorkflowName) || null
+      : null;
+  const selectedRuns = selectedWorkflowName
+    ? (runs?.runs || []).filter((run) => run.workflowName === selectedWorkflowName)
+    : [];
 
   return (
     <main className="appShell">
@@ -918,7 +1065,11 @@ export function DashboardClient() {
               </div>
               {loading && !summary ? <LoadingIndicator /> : <CalendarDays size={20} />}
             </div>
-            <WorkflowTable workflows={workflowPagination.items} loading={loading && !summary} />
+            <WorkflowTable
+              workflows={workflowPagination.items}
+              loading={loading && !summary}
+              onSelectWorkflow={setSelectedWorkflowName}
+            />
             <PaginationControls
               page={workflowPagination.page}
               pageSize={workflowPageSize}
@@ -955,6 +1106,15 @@ export function DashboardClient() {
       </section>
 
       <AiPanel context={aiContext} loading={loading} query={query} />
+
+      {selectedWorkflow ? (
+        <WorkflowDetailDrawer
+          workflow={selectedWorkflow}
+          schedule={selectedSchedule}
+          recentRuns={selectedRuns}
+          onClose={() => setSelectedWorkflowName(null)}
+        />
+      ) : null}
     </main>
   );
 }

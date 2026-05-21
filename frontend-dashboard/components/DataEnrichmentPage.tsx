@@ -19,9 +19,10 @@ const DATA_WORKFLOWS = [
 ];
 
 function buildDefaultQuery(): DashboardQuery & Record<string, string> {
+  const params = typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
   return {
     ...getDefaultDateRange(30),
-    workflowName: "placement-database-enrichment-sync",
+    workflowName: params?.get("workflowName") || "placement-database-enrichment-sync",
     category: "",
     status: "",
     actionDecision: "",

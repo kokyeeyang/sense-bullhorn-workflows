@@ -10,9 +10,10 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 function buildDefaultQuery(): DashboardQuery & Record<string, string> {
+  const params = typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
   return {
     ...getDefaultDateRange(30),
-    workflowName: "",
+    workflowName: params?.get("workflowName") || "",
     category: "",
     status: "",
     actionDecision: "",

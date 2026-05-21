@@ -17,9 +17,10 @@ const SURVEY_WORKFLOWS = [
 ];
 
 function buildDefaultQuery(): DashboardQuery & Record<string, string> {
+  const params = typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
   return {
     ...getDefaultDateRange(30),
-    workflowName: "",
+    workflowName: params?.get("workflowName") || "",
     category: "",
     status: "",
     actionDecision: "",
