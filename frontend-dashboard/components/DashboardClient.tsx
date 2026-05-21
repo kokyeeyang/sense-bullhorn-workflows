@@ -442,9 +442,9 @@ function ScheduleBoard({
 
           <OfficeTimeStrip now={now} />
 
-          <div className="scheduleGrid">
+          <div className="scheduleRows">
             {grouped.map(({ region, workflows }) => (
-              <section className="regionSchedule" key={region}>
+              <section className="regionScheduleRow" key={region}>
                 <div className="regionHeader">
                   <strong>{region}</strong>
                   <span>{workflows.length}</span>

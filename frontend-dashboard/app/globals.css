@@ -671,27 +671,30 @@ textarea:disabled {
   font-weight: 800;
 }
 
-.scheduleGrid {
+.scheduleRows {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
-.regionSchedule {
+.regionScheduleRow {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
   min-width: 0;
+  padding: 10px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   background: var(--panel-soft);
 }
 
 .regionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 42px;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--line-soft);
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 8px;
+  min-height: 74px;
+  padding: 0 4px;
 }
 
 .regionHeader strong {
@@ -713,8 +716,9 @@ textarea:disabled {
 
 .scheduleList {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  padding: 10px;
+  min-width: 0;
 }
 
 .scheduleItem {
@@ -1828,7 +1832,7 @@ html[data-theme="dark"] .quickRanges button {
   color: var(--text);
 }
 
-html[data-theme="dark"] .regionSchedule,
+html[data-theme="dark"] .regionScheduleRow,
 html[data-theme="dark"] .aiPanel,
 html[data-theme="dark"] .templateUsageItem,
 html[data-theme="dark"] .drawerMetricGrid div,
@@ -1953,7 +1957,11 @@ html[data-theme="dark"] .modalSection pre {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .scheduleGrid {
+  .regionScheduleRow {
+    grid-template-columns: 132px minmax(0, 1fr);
+  }
+
+  .scheduleList {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1987,7 +1995,8 @@ html[data-theme="dark"] .modalSection pre {
   .detailFilters,
   .templateFilters,
   .metricGrid,
-  .scheduleGrid,
+  .scheduleRows,
+  .regionScheduleRow,
   .contentGrid {
     grid-template-columns: 1fr;
   }
@@ -1997,6 +2006,10 @@ html[data-theme="dark"] .modalSection pre {
   }
 
   .templateTileGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .scheduleList {
     grid-template-columns: 1fr;
   }
 
