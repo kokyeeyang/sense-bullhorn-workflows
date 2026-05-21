@@ -6,6 +6,7 @@ import { fetchDataMutations, fetchWorkflowCatalog, type DashboardQuery } from "@
 import { DataMutationsResponse, WorkflowCatalogItem } from "@/lib/types";
 import { formatDateOnly, formatDateTime, formatNumber, getDefaultDateRange, stringifyValue } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 const DATA_WORKFLOWS = [
@@ -157,20 +158,28 @@ export function DataEnrichmentPage() {
         <section className="metricCard">
           <div>
             <p>Rows</p>
-            <strong>{formatNumber(data?.count)}</strong>
+            {loading && !data ? <LoadingIndicator /> : <strong>{formatNumber(data?.count)}</strong>}
             <span>{data?.storage === "postgres" ? "PostgreSQL audit" : "No detail store configured"}</span>
           </div>
         </section>
         <section className="metricCard good">
           <div>
             <p>Updated</p>
-            <strong>{formatNumber(records.filter((record) => record.action === "updated").length)}</strong>
+            {loading && !data ? (
+              <LoadingIndicator />
+            ) : (
+              <strong>{formatNumber(records.filter((record) => record.action === "updated").length)}</strong>
+            )}
           </div>
         </section>
         <section className="metricCard">
           <div>
             <p>Would update</p>
-            <strong>{formatNumber(records.filter((record) => record.action === "would-update").length)}</strong>
+            {loading && !data ? (
+              <LoadingIndicator />
+            ) : (
+              <strong>{formatNumber(records.filter((record) => record.action === "would-update").length)}</strong>
+            )}
           </div>
         </section>
       </section>
@@ -181,8 +190,11 @@ export function DataEnrichmentPage() {
             <span className="eyebrow">Changes</span>
             <h2>Old and New Values</h2>
           </div>
-          {loading ? <span className="loadingText">Loading</span> : null}
+          {loading ? <LoadingIndicator /> : null}
         </div>
+        {loading && !data ? (
+          <LoadingIndicator label="Loading audit changes" />
+        ) : (
         <div className="tableScroller detailTable">
           <table>
             <thead>
@@ -225,6 +237,7 @@ export function DataEnrichmentPage() {
             </tbody>
           </table>
         </div>
+        )}
         <PaginationControls
           page={pagination.page}
           pageSize={pageSize}

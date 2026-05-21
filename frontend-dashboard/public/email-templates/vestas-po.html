@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vestas Purchase Order Request</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; color:#202124;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f6f8; margin:0; padding:24px 0;">
+    <tr>
+      <td align="center" style="padding:0 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px; background-color:#ffffff; border:1px solid #d9dee7; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="padding:30px 28px;">
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Hi {{client_contact_first_name}},</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Thank you for choosing to work with Spencer Ogden. We are very excited that our candidate was selected to join your company.</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">We look forward to receiving your purchase order for the following engagement:</p>
+
+              <p style="margin:0 0 10px; font-size:16px; line-height:24px; font-weight:700;">Candidate Information</p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 18px; border-collapse:collapse;">
+                <tr><td style="padding:4px 0; font-size:16px; line-height:24px; width:150px; font-weight:700;">Name:</td><td style="padding:4px 0; font-size:16px; line-height:24px;">{{candidate_name}}</td></tr>
+                <tr><td style="padding:4px 0; font-size:16px; line-height:24px; width:150px; font-weight:700;">Job Title:</td><td style="padding:4px 0; font-size:16px; line-height:24px;">{{job_title}}</td></tr>
+                <tr><td style="padding:4px 0; font-size:16px; line-height:24px; width:150px; font-weight:700;">Manager:</td><td style="padding:4px 0; font-size:16px; line-height:24px;">{{client_contact_name}}</td></tr>
+                <tr><td style="padding:4px 0; font-size:16px; line-height:24px; width:150px; font-weight:700;">Placement ID:</td><td style="padding:4px 0; font-size:16px; line-height:24px;">{{placement_id}}</td></tr>
+                <tr><td style="padding:4px 0; font-size:16px; line-height:24px; width:150px; font-weight:700;">Start Date:</td><td style="padding:4px 0; font-size:16px; line-height:24px;">{{start_date}}</td></tr>
+                <tr><td style="padding:4px 0; font-size:16px; line-height:24px; width:150px; font-weight:700;">Compensation:</td><td style="padding:4px 0; font-size:16px; line-height:24px;">$ {{salary}}</td></tr>
+                <tr><td style="padding:4px 0; font-size:16px; line-height:24px; width:150px; font-weight:700;">Fee:</td><td style="padding:4px 0; font-size:16px; line-height:24px;">$ {{flat_fee}}</td></tr>
+              </table>
+
+              <p style="margin:0 0 10px; font-size:16px; line-height:24px; font-weight:700;">General Terms</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">
+                Fee Structure: 30%<br>
+                Minimum Fee: $20,000<br>
+                Payment Terms: 45 days<br>
+                Refund Scale from Terms: 0-30 days = 100%; 31-60 days = 75%; 61-90 days = 50%
+              </p>
+
+              {{survey_section_html}}
+
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">We look forward to receiving the work order to ensure efficient processing of your invoice. If there is anything else we can provide to make processing easier, please do not hesitate to contact me.</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">We would appreciate a reply to this email confirming when the PR is issued and again when the PO is issued.</p>
+              <p style="margin:18px 0 0; font-size:16px; line-height:24px;">
+                Regards,<br><br>
+                Mindy
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

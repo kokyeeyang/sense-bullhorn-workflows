@@ -3,6 +3,8 @@ const {
   buildDashboardSummary,
   buildEmailSummary,
   buildWorkflowCatalog,
+  buildWorkflowScheduleCatalog,
+  findNextNcrontabRun,
   resolveDashboardFilters,
 } = require("../src/utils/dashboardApiUtils");
 
@@ -161,5 +163,48 @@ describe("dashboardApiUtils", () => {
       sendsEmail: true,
     });
     expect(catalog.find((workflow) => workflow.workflowName === "vestas-po-sync")).toBeUndefined();
+  });
+
+  test("calculates the next Pacific-time run for NCRONTAB schedules", () => {
+    const nextRun = findNextNcrontabRun("0 0 7 * * *", {
+      now: new Date("2026-05-20T12:34:10.000Z"),
+    });
+
+    expect(nextRun.toISOString()).toBe("2026-05-20T14:00:00.000Z");
+  });
+
+  test("builds Function and Logic App schedule catalog entries", () => {
+    const catalog = buildWorkflowScheduleCatalog({
+      now: new Date("2026-05-20T12:34:10.000Z"),
+      env: {
+        AZURE_APPROVED_PLACEMENT_APAC_SCHEDULE: "0 30 8 * * *",
+        WORKFLOW_LOGIC_APP_SCHEDULES_JSON: JSON.stringify([
+          {
+            workflowName: "logic-app-placement-audit",
+            label: "Logic App Placement Audit",
+            region: "EMEA",
+            schedule: "0 15 10 * * *",
+            logicAppName: "la-placement-audit",
+          },
+        ]),
+      },
+    });
+    const apac = catalog.find((workflow) => workflow.workflowName === "approved-placement-apac-sync");
+    const logicApp = catalog.find((workflow) => workflow.workflowName === "logic-app-placement-audit");
+
+    expect(apac).toMatchObject({
+      region: "APAC",
+      orchestrator: "Azure Functions",
+      schedule: "0 30 8 * * *",
+      scheduleSource: "env",
+      nextRunAt: "2026-05-20T15:30:00.000Z",
+    });
+    expect(logicApp).toMatchObject({
+      label: "Logic App Placement Audit",
+      region: "EMEA",
+      orchestrator: "Logic Apps",
+      logicAppName: "la-placement-audit",
+      nextRunAt: "2026-05-20T17:15:00.000Z",
+    });
   });
 });

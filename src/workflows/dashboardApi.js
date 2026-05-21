@@ -18,6 +18,7 @@ const {
   buildEmailSummary,
   buildSkipSummary,
   buildWorkflowCatalog,
+  buildWorkflowScheduleCatalog,
   resolveDashboardFilters,
 } = require("../utils/dashboardApiUtils");
 const { serializeError } = require("../utils/workflowRuntime");
@@ -86,6 +87,29 @@ async function handleDashboardWorkflows(request, context) {
     environment: getEnvironmentLabel(config),
     workflows: buildWorkflowCatalog(),
   });
+}
+
+async function handleDashboardSchedules(request, context) {
+  context.log("Dashboard schedules request received");
+
+  try {
+    const config = loadConfig();
+    return buildJsonResponse(200, {
+      success: true,
+      data: {
+        generatedAt: new Date().toISOString(),
+        environment: getEnvironmentLabel(config),
+        timeZoneLabel: "Pacific Time (PT)",
+        schedules: buildWorkflowScheduleCatalog(),
+      },
+    });
+  } catch (error) {
+    context.error(serializeError(error), "Dashboard schedules request failed");
+    return buildErrorResponse({
+      error,
+      status: error.message?.startsWith("Invalid") ? 400 : 500,
+    });
+  }
 }
 
 async function handleDashboardSummary(request, context) {
@@ -480,6 +504,7 @@ module.exports = {
   handleDashboardEmails,
   handleDashboardEmailTransmissions,
   handleDashboardRuns,
+  handleDashboardSchedules,
   handleDashboardSkips,
   handleDashboardSummary,
   handleDashboardSurveyRates,

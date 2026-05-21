@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Application Notification</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; color:#202124;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f6f8; margin:0; padding:24px 0;">
+    <tr>
+      <td align="center" style="padding:0 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px; background-color:#ffffff; border:1px solid #d9dee7; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="padding:30px 28px;">
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Hi {{owner_first_name}},</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">
+                With regards to your Job ID: {{job_order_id}} - {{job_order_title}} at company:<br>
+                {{client_corporation_name}}, please note that a new application has been received from the following job board:
+              </p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Source: {{source}}</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">The details of the candidate shortlisted is below:</p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">
+                ID: {{candidate_id}}<br>
+                Name: {{candidate_name}}
+              </p>
+              <p style="margin:0 0 18px; font-size:16px; line-height:24px;">Please review this application.</p>
+              <p style="margin:18px 0 0; font-size:16px; line-height:24px;">
+                Kind Regards,<br>
+                Sales Operations Team
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

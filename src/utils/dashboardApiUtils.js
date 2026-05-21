@@ -163,12 +163,400 @@ const WORKFLOW_METADATA = {
   },
 };
 
+const PACIFIC_TIME_ZONE = "America/Los_Angeles";
+const PACIFIC_TIME_ZONE_LABEL = "Pacific Time (PT)";
+
+const WORKFLOW_REGIONS = {
+  "approved-placement-apac-sync": "APAC",
+  "americas-onboarding-notices-sync": "Americas",
+  "americas-internal-placement-notices-sync": "Americas",
+  "americas-welcome-contract-email-sync": "Americas",
+  "emea-placement-auto-reply-sync": "EMEA",
+  "fair-collection-notice-sync": "APAC",
+  "harassment-training-sync": "Americas",
+  "interview-illinois-email-sync": "Americas",
+  "new-job-illinois-email-sync": "Americas",
+  "placement-benefits-reminder-sync": "Americas",
+  "payroll-new-hire-greeting-sync": "Americas",
+  "us-client-extension-notification-sync": "Americas",
+  "us-contract-performance-checkin-sync": "Americas",
+};
+
+const WORKFLOW_TIMER_SCHEDULES = {
+  "placement-termination-workflows-sync": {
+    scheduleEnv: "AZURE_PLACEMENT_TERMINATION_WORKFLOWS_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "americas-onboarding-notices-sync": {
+    scheduleEnv: "AZURE_AMERICAS_ONBOARDING_NOTICES_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "americas-internal-placement-notices-sync": {
+    scheduleEnv: "AZURE_AMERICAS_INTERNAL_PLACEMENT_NOTICES_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "ais-survivex-certification-sync": {
+    scheduleEnv: "AZURE_AIS_SURVIVEX_CERTIFICATION_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "americas-welcome-contract-email-sync": {
+    scheduleEnv: "AZURE_AMERICAS_WELCOME_CONTRACT_EMAIL_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "fair-collection-notice-sync": {
+    scheduleEnv: "AZURE_FAIR_COLLECTION_NOTICE_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "perm-checkin-sync": {
+    scheduleEnv: "AZURE_PERM_CHECKIN_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "emea-placement-auto-reply-sync": {
+    scheduleEnv: "AZURE_EMEA_PLACEMENT_AUTO_REPLY_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "so-how-did-we-do-feedback-sync": {
+    scheduleEnv: "AZURE_SO_HOW_DID_WE_DO_FEEDBACK_SCHEDULE",
+    defaultSchedule: "0 0 11 * * *",
+  },
+  "start-date-approval-reminder-sync": {
+    scheduleEnv: "AZURE_START_DATE_APPROVAL_REMINDER_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "placement-benefits-reminder-sync": {
+    scheduleEnv: "AZURE_PLACEMENT_BENEFITS_REMINDER_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "payroll-new-hire-greeting-sync": {
+    scheduleEnv: "AZURE_PAYROLL_NEW_HIRE_GREETING_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "placement-end-date-reminder-sync": {
+    scheduleEnv: "AZURE_PLACEMENT_END_DATE_REMINDER_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "us-contract-performance-checkin-sync": {
+    scheduleEnv: "AZURE_US_CONTRACT_PERFORMANCE_CHECKIN_SCHEDULE",
+    defaultSchedule: "0 0 9 * * *",
+  },
+  "us-client-extension-notification-sync": {
+    scheduleEnv: "AZURE_US_CLIENT_EXTENSION_NOTIFICATION_SCHEDULE",
+    defaultSchedule: "0 0 8 * * *",
+  },
+  "harassment-training-sync": {
+    scheduleEnv: "AZURE_HARASSMENT_TRAINING_SCHEDULE",
+    defaultSchedule: "0 0 9 * * *",
+  },
+  "job-application-notification-sync": {
+    scheduleEnv: "AZURE_JOB_APPLICATION_NOTIFICATION_SCHEDULE",
+    defaultSchedule: "0 */5 * * * *",
+  },
+  "approved-placement-apac-sync": {
+    scheduleEnv: "AZURE_APPROVED_PLACEMENT_APAC_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "awr-client-request-sync": {
+    scheduleEnv: "AZURE_AWR_CLIENT_REQUEST_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "contractor-not-contacted-reminder-sync": {
+    scheduleEnv: "AZURE_CONTRACTOR_NOT_CONTACTED_REMINDER_SCHEDULE",
+    defaultSchedule: "0 0 * * * *",
+  },
+  "new-job-illinois-email-sync": {
+    scheduleEnv: "AZURE_NEW_JOB_ILLINOIS_EMAIL_SCHEDULE",
+    defaultSchedule: "0 0 7 * * *",
+  },
+  "daily-workflow-summary": {
+    scheduleEnv: "AZURE_DAILY_WORKFLOW_SUMMARY_SCHEDULE",
+    defaultSchedule: "0 55 23 * * *",
+  },
+  "daily-workflow-comparison-summary": {
+    scheduleEnv: "AZURE_DAILY_WORKFLOW_COMPARISON_SUMMARY_SCHEDULE",
+    defaultSchedule: "0 50 23 * * *",
+  },
+  "workflow-dashboard-retention-cleanup": {
+    scheduleEnv: "AZURE_WORKFLOW_RETENTION_CLEANUP_SCHEDULE",
+    defaultSchedule: "0 45 23 * * *",
+  },
+};
+
+const DEFAULT_LOGIC_APP_SCHEDULES = [
+  {
+    workflowName: "candidate-state-sync",
+    label: "Candidate State Sync",
+    region: "Region agnostic",
+    schedule: "0 0 8 * * *",
+    timeZone: "UTC",
+    logicAppName: "Production Daily Logic App",
+  },
+  {
+    workflowName: "client-corporation-360-sync",
+    label: "Client Corporation 360 Sync",
+    region: "Region agnostic",
+    schedule: "0 0 8 * * *",
+    timeZone: "UTC",
+    logicAppName: "Production Daily Logic App",
+  },
+  {
+    workflowName: "client-corporation-key-account-sync",
+    label: "Client Corporation Key Account Sync",
+    region: "Region agnostic",
+    schedule: "0 0 8 * * *",
+    timeZone: "UTC",
+    logicAppName: "Production Daily Logic App",
+  },
+  {
+    workflowName: "placement-yearly-fee-increase-sync",
+    label: "Placement Yearly Fee Increase",
+    region: "Americas",
+    schedule: "0 0 8 * * *",
+    timeZone: "UTC",
+    logicAppName: "Production Daily Logic App",
+  },
+  {
+    workflowName: "placement-database-enrichment-sync",
+    label: "Placement Database Enrichment",
+    region: "Region agnostic",
+    schedule: "0 */5 * * * *",
+    timeZone: "UTC",
+    logicAppName: "Production 5 Min Logic App",
+  },
+  {
+    workflowName: "interview-illinois-email-sync",
+    label: "Illinois Interview Email",
+    region: "Americas",
+    schedule: "0 */5 * * * *",
+    timeZone: "UTC",
+    logicAppName: "Production 5 Min Logic App",
+  },
+  {
+    workflowName: "placement-termination-email-sync",
+    label: "Placement Termination Email",
+    region: "Region agnostic",
+    schedule: "0 */5 * * * *",
+    timeZone: "UTC",
+    logicAppName: "Production 5 Min Logic App",
+  },
+  {
+    workflowName: "client-contact-dnc-sync",
+    label: "Client Contact DNC Sync",
+    region: "Region agnostic",
+    schedule: "0 */5 * * * *",
+    timeZone: "UTC",
+    logicAppName: "Production 5 Min Logic App",
+  },
+];
+
 function titleCaseWorkflowName(workflowName) {
   return String(workflowName || "")
     .replace(/-sync$/, "")
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function getWorkflowRegion(workflowName) {
+  return WORKFLOW_REGIONS[workflowName] || "Region agnostic";
+}
+
+function parseCronField(field, min, max) {
+  const normalized = String(field || "").trim();
+  if (normalized === "*") {
+    return { type: "any", values: null };
+  }
+  if (/^\*\/\d+$/.test(normalized)) {
+    const step = Number(normalized.slice(2));
+    if (!Number.isFinite(step) || step <= 0) {
+      return { type: "invalid", values: [] };
+    }
+    const values = [];
+    for (let value = min; value <= max; value += step) {
+      values.push(value);
+    }
+    return { type: "list", values };
+  }
+
+  const values = normalized
+    .split(",")
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value >= min && value <= max);
+
+  if (values.length === 0) {
+    return { type: "invalid", values: [] };
+  }
+
+  return { type: "list", values };
+}
+
+function fieldMatches(parsed, value) {
+  return parsed.type === "any" || parsed.values.includes(value);
+}
+
+function getTimeZoneParts(date, timeZone = PACIFIC_TIME_ZONE) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
+  const hour = Number(parts.hour === "24" ? "0" : parts.hour);
+  const year = Number(parts.year);
+  const month = Number(parts.month);
+  const day = Number(parts.day);
+
+  return {
+    year,
+    month,
+    day,
+    hour,
+    minute: Number(parts.minute),
+    second: Number(parts.second),
+    dayOfWeek: new Date(Date.UTC(year, month - 1, day)).getUTCDay(),
+  };
+}
+
+function parseNcrontab(schedule) {
+  const parts = String(schedule || "").trim().split(/\s+/);
+  if (parts.length !== 6) {
+    return null;
+  }
+
+  const [second, minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+  const parsed = {
+    second: parseCronField(second, 0, 59),
+    minute: parseCronField(minute, 0, 59),
+    hour: parseCronField(hour, 0, 23),
+    dayOfMonth: parseCronField(dayOfMonth, 1, 31),
+    month: parseCronField(month, 1, 12),
+    dayOfWeek: parseCronField(dayOfWeek, 0, 6),
+  };
+
+  if (Object.values(parsed).some((field) => field.type === "invalid")) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function cronMatches(parsed, parts) {
+  return (
+    parsed &&
+    fieldMatches(parsed.second, parts.second) &&
+    fieldMatches(parsed.minute, parts.minute) &&
+    fieldMatches(parsed.hour, parts.hour) &&
+    fieldMatches(parsed.dayOfMonth, parts.day) &&
+    fieldMatches(parsed.month, parts.month) &&
+    fieldMatches(parsed.dayOfWeek, parts.dayOfWeek)
+  );
+}
+
+function findNextNcrontabRun(schedule, { now = new Date(), timeZone = PACIFIC_TIME_ZONE } = {}) {
+  const parsed = parseNcrontab(schedule);
+  if (!parsed) {
+    return null;
+  }
+
+  const cursor = new Date(now.getTime() + 1000);
+  cursor.setUTCMilliseconds(0);
+  const maxChecks = 60 * 24 * 370;
+
+  for (let index = 0; index < maxChecks; index += 1) {
+    const parts = getTimeZoneParts(cursor, timeZone);
+    if (cronMatches(parsed, parts)) {
+      return cursor;
+    }
+    cursor.setUTCMinutes(cursor.getUTCMinutes() + 1, 0, 0);
+  }
+
+  return null;
+}
+
+function buildFunctionWorkflowSchedule({ workflowName, definition, env = process.env, now = new Date() }) {
+  const schedule = env[definition.scheduleEnv] || definition.defaultSchedule;
+  const nextRun = findNextNcrontabRun(schedule, { now });
+  const metadata = getWorkflowMetadata(workflowName);
+
+  return {
+    workflowName,
+    ...metadata,
+    category: getWorkflowCategory(workflowName),
+    region: getWorkflowRegion(workflowName),
+    orchestrator: "Azure Functions",
+    schedule,
+    scheduleEnv: definition.scheduleEnv,
+    scheduleSource: env[definition.scheduleEnv] ? "env" : "default",
+    timeZone: PACIFIC_TIME_ZONE,
+    timeZoneLabel: PACIFIC_TIME_ZONE_LABEL,
+    nextRunAt: nextRun ? nextRun.toISOString() : null,
+    nextRunInSeconds: nextRun ? Math.max(0, Math.floor((nextRun.getTime() - now.getTime()) / 1000)) : null,
+  };
+}
+
+function normalizeLogicAppScheduleEntry(entry, { now = new Date() } = {}) {
+  const workflowName = String(entry?.workflowName || "").trim();
+  const schedule = String(entry?.schedule || entry?.ncrontab || "").trim();
+  if (!workflowName || !schedule) {
+    return null;
+  }
+
+  const metadata = {
+    ...getWorkflowMetadata(workflowName),
+    ...(entry.label ? { label: String(entry.label) } : {}),
+    ...(entry.description ? { description: String(entry.description) } : {}),
+  };
+  const timeZone = String(entry.timeZone || PACIFIC_TIME_ZONE);
+  const nextRun = findNextNcrontabRun(schedule, { now, timeZone });
+
+  return {
+    workflowName,
+    ...metadata,
+    category: entry.category ? String(entry.category) : getWorkflowCategory(workflowName),
+    region: entry.region ? String(entry.region) : getWorkflowRegion(workflowName),
+    orchestrator: "Logic Apps",
+    logicAppName: entry.logicAppName ? String(entry.logicAppName) : null,
+    schedule,
+    scheduleEnv: null,
+    scheduleSource: "logic-app-env",
+    timeZone,
+    timeZoneLabel: entry.timeZoneLabel ? String(entry.timeZoneLabel) : PACIFIC_TIME_ZONE_LABEL,
+    nextRunAt: nextRun ? nextRun.toISOString() : null,
+    nextRunInSeconds: nextRun ? Math.max(0, Math.floor((nextRun.getTime() - now.getTime()) / 1000)) : null,
+  };
+}
+
+function parseLogicAppSchedules({ env = process.env, now = new Date() } = {}) {
+  const raw = env.WORKFLOW_LOGIC_APP_SCHEDULES_JSON;
+  if (!raw) {
+    return DEFAULT_LOGIC_APP_SCHEDULES.map((entry) => normalizeLogicAppScheduleEntry(entry, { now }));
+  }
+
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) {
+    throw new Error("WORKFLOW_LOGIC_APP_SCHEDULES_JSON must be a JSON array");
+  }
+
+  return [...DEFAULT_LOGIC_APP_SCHEDULES, ...parsed]
+    .map((entry) => normalizeLogicAppScheduleEntry(entry, { now }))
+    .filter(Boolean);
+}
+
+function buildWorkflowScheduleCatalog({ env = process.env, now = new Date() } = {}) {
+  const functionSchedules = Object.entries(WORKFLOW_TIMER_SCHEDULES).map(([workflowName, definition]) =>
+    buildFunctionWorkflowSchedule({ workflowName, definition, env, now }),
+  );
+  const logicAppSchedules = parseLogicAppSchedules({ env, now });
+
+  return [...functionSchedules, ...logicAppSchedules].sort((left, right) => {
+    const leftRun = left.nextRunAt || "9999";
+    const rightRun = right.nextRunAt || "9999";
+    return left.region.localeCompare(right.region) || leftRun.localeCompare(rightRun) || left.label.localeCompare(right.label);
+  });
 }
 
 function getWorkflowMetadata(workflowName) {
@@ -306,6 +694,7 @@ function buildWorkflowCatalog() {
     workflowName,
     ...getWorkflowMetadata(workflowName),
     category: getWorkflowCategory(workflowName),
+    region: getWorkflowRegion(workflowName),
     sendsEmail: DASHBOARD_EMAIL_WORKFLOWS.includes(workflowName),
   }));
 }
@@ -536,7 +925,9 @@ module.exports = {
   buildEmailSummary,
   buildSkipSummary,
   buildWorkflowCatalog,
+  buildWorkflowScheduleCatalog,
   filterMetricRecords,
+  findNextNcrontabRun,
   resolveDashboardFilters,
   sortCountMap,
 };

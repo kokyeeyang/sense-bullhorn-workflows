@@ -272,6 +272,10 @@ textarea:disabled {
   grid-template-columns: auto repeat(7, minmax(118px, 1fr)) auto;
 }
 
+.templateFilters {
+  grid-template-columns: auto minmax(220px, 1fr) minmax(160px, 220px) auto;
+}
+
 .caseTypeToggles {
   grid-column: 1 / -1;
   display: flex;
@@ -458,6 +462,227 @@ textarea:disabled {
 .metricCard.bad .metricIcon {
   background: #ffeaea;
   color: var(--red);
+}
+
+.scheduleBoard {
+  min-width: 0;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.scheduleHeaderMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.scheduleHeaderMeta .iconButton {
+  color: var(--muted);
+}
+
+.scheduleCollapsedText {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.officeTimeStrip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.officeTimeCard {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.officeTimeCard.open {
+  border-left-color: var(--green);
+}
+
+.officeTimeTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 22px;
+}
+
+.officeTimeTop strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.officeTimeTop span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.officeLocalTime {
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.officeTimeMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.officePtTime {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.scheduleGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.regionSchedule {
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.regionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.regionHeader strong {
+  font-size: 13px;
+}
+
+.regionHeader span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 999px;
+  background: #eaf2fb;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.scheduleList {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.scheduleItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 74px;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.scheduleItem strong,
+.scheduleItem span {
+  display: block;
+}
+
+.scheduleItem > div:first-child {
+  min-width: 0;
+}
+
+.scheduleItem > div:first-child strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.scheduleItem > div:first-child span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.countdownBlock {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  min-width: 82px;
+}
+
+.countdownBlock strong {
+  font-size: 17px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.orchestratorPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 118px;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.scheduleFootnote {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .contentGrid {
@@ -816,6 +1041,25 @@ tr:last-child td {
   font-weight: 700;
 }
 
+.loadingIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.loadingIndicator svg {
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .aiPanel {
   position: sticky;
   top: 0;
@@ -1045,6 +1289,116 @@ tr:last-child td {
   overflow-wrap: anywhere;
 }
 
+.templateTileGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.templateTile {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  min-height: 132px;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
+  text-align: left;
+}
+
+.templateTile:hover {
+  border-color: var(--brand);
+  box-shadow: 0 8px 20px rgba(35, 100, 170, 0.1);
+}
+
+.templateTileTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.templateTileTop strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.templateTileTop span,
+.templateTileMeta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.templateTile p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.templateTileMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.templateTile small {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.templateModalPanel {
+  width: min(1120px, 100%);
+}
+
+.templateModalTabs {
+  display: flex;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.templateModalTabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.templateModalTabs button.active {
+  border-color: var(--brand);
+  background: #eaf2fb;
+  color: var(--brand);
+}
+
+.templatePreviewFrame {
+  display: block;
+  width: 100%;
+  height: min(680px, calc(100vh - 280px));
+  border: 0;
+  background: #ffffff;
+}
+
 @media (max-width: 1320px) {
   .appFrame {
     grid-template-columns: 1fr;
@@ -1082,6 +1436,18 @@ tr:last-child td {
   .metricGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .scheduleGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .officeTimeStrip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .templateTileGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 860px) {
@@ -1097,8 +1463,18 @@ tr:last-child td {
 
   .filterPanel,
   .detailFilters,
+  .templateFilters,
   .metricGrid,
+  .scheduleGrid,
   .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .officeTimeStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .templateTileGrid {
     grid-template-columns: 1fr;
   }
 

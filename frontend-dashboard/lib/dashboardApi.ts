@@ -6,10 +6,12 @@ import {
   CandidateAssignmentStatusResponse,
   DataMutationsResponse,
   EmailSummary,
+  EmailTemplatesResponse,
   EmailTransmissionsResponse,
   RunsResponse,
   SurveyResponsesResponse,
   WorkflowCatalogItem,
+  WorkflowSchedulesResponse,
 } from "./types";
 
 export type DashboardQuery = {
@@ -59,6 +61,10 @@ export async function fetchWorkflowCatalog() {
   return fetchDashboard<WorkflowCatalogItem[]>("workflows");
 }
 
+export async function fetchWorkflowSchedules() {
+  return fetchDashboard<WorkflowSchedulesResponse>("schedules");
+}
+
 export async function fetchDashboardSummary(query: DashboardQuery) {
   return fetchDashboard<DashboardSummary>("summary", query);
 }
@@ -98,6 +104,19 @@ export async function fetchDataMutations(query: DashboardQuery & Record<string, 
 
 export async function fetchEmailTransmissions(query: DashboardQuery & Record<string, string>) {
   return fetchDashboard<EmailTransmissionsResponse>("email-transmissions", query);
+}
+
+export async function fetchEmailTemplates() {
+  const response = await fetch("/api/email-templates", {
+    cache: "no-store",
+  });
+  const payload = (await response.json()) as ApiEnvelope<EmailTemplatesResponse>;
+
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(payload.error?.message || "Email templates failed to load");
+  }
+
+  return payload.data;
 }
 
 export async function fetchSurveyResponses(query: DashboardQuery & Record<string, string>) {

@@ -10,6 +10,7 @@ import {
 } from "@/lib/types";
 import { formatDateOnly, formatDateTime, formatNumber, getDefaultDateRange, parseDateLike } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 const CASE_TYPE_OPTIONS: Array<{ value: CandidateAssignmentCaseType; label: string }> = [
   { value: "terminated-placement", label: "Terminated Placements" },
@@ -252,20 +253,28 @@ export function CandidateReportsPage() {
         <section className="metricCard">
           <div>
             <p>Rows</p>
-            <strong>{formatNumber(data?.count)}</strong>
+            {loading && !data ? <LoadingIndicator /> : <strong>{formatNumber(data?.count)}</strong>}
             <span>Live Bullhorn report</span>
           </div>
         </section>
         <section className="metricCard">
           <div>
             <p>Assignment Countries</p>
-            <strong>{formatNumber(new Set(records.map((record) => record.placement.assignmentCountry).filter(Boolean)).size)}</strong>
+            {loading && !data ? (
+              <LoadingIndicator />
+            ) : (
+              <strong>{formatNumber(new Set(records.map((record) => record.placement.assignmentCountry).filter(Boolean)).size)}</strong>
+            )}
           </div>
         </section>
         <section className="metricCard">
           <div>
             <p>Candidate Countries</p>
-            <strong>{formatNumber(new Set(records.map((record) => record.candidate.country).filter(Boolean)).size)}</strong>
+            {loading && !data ? (
+              <LoadingIndicator />
+            ) : (
+              <strong>{formatNumber(new Set(records.map((record) => record.candidate.country).filter(Boolean)).size)}</strong>
+            )}
           </div>
         </section>
       </section>
@@ -276,8 +285,11 @@ export function CandidateReportsPage() {
             <span className="eyebrow">Results</span>
             <h2>Candidate and Placement Details</h2>
           </div>
-          {loading ? <span className="loadingText">Loading</span> : null}
+          {loading ? <LoadingIndicator /> : null}
         </div>
+        {loading && !data ? (
+          <LoadingIndicator label="Loading candidate report" />
+        ) : (
         <div className="tableScroller detailTable">
           <table>
             <thead>
@@ -340,6 +352,7 @@ export function CandidateReportsPage() {
             </tbody>
           </table>
         </div>
+        )}
         <PaginationControls
           page={pagination.page}
           pageSize={pageSize}

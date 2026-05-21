@@ -41,7 +41,48 @@ export type WorkflowCatalogItem = {
   label: string;
   description: string;
   category: string;
+  region?: string;
   sendsEmail: boolean;
+};
+
+export type WorkflowScheduleItem = {
+  workflowName: string;
+  label: string;
+  description: string;
+  category: string;
+  region: string;
+  orchestrator: "Azure Functions" | "Logic Apps" | string;
+  logicAppName?: string | null;
+  schedule: string;
+  scheduleEnv: string | null;
+  scheduleSource: string;
+  timeZone: string;
+  timeZoneLabel: string;
+  nextRunAt: string | null;
+  nextRunInSeconds: number | null;
+};
+
+export type WorkflowSchedulesResponse = {
+  generatedAt: string;
+  environment: string;
+  timeZoneLabel: string;
+  schedules: WorkflowScheduleItem[];
+};
+
+export type EmailTemplateItem = {
+  fileName: string;
+  name: string;
+  category: string;
+  region: string;
+  sparkPostTemplateKey: string | null;
+  sizeBytes: number;
+  html: string;
+};
+
+export type EmailTemplatesResponse = {
+  generatedAt: string;
+  count: number;
+  templates: EmailTemplateItem[];
 };
 
 export type WorkflowSummary = {

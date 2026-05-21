@@ -6,6 +6,7 @@ import { fetchSurveyResponses, fetchWorkflowCatalog, type DashboardQuery } from 
 import { SurveyResponsesResponse, WorkflowCatalogItem } from "@/lib/types";
 import { formatDateTime, formatNumber, getDefaultDateRange } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 const SURVEY_WORKFLOWS = [
@@ -132,20 +133,24 @@ export function SurveyResponsesPage() {
         <section className="metricCard">
           <div>
             <p>Responses</p>
-            <strong>{formatNumber(data?.count)}</strong>
+            {loading && !data ? <LoadingIndicator /> : <strong>{formatNumber(data?.count)}</strong>}
             <span>{data?.storage === "postgres" ? "PostgreSQL survey responses" : "No detail store configured"}</span>
           </div>
         </section>
         <section className="metricCard">
           <div>
             <p>Recipients</p>
-            <strong>{formatNumber(uniqueRecipients)}</strong>
+            {loading && !data ? <LoadingIndicator /> : <strong>{formatNumber(uniqueRecipients)}</strong>}
           </div>
         </section>
         <section className="metricCard">
           <div>
             <p>Workflows</p>
-            <strong>{formatNumber(new Set(records.map((record) => record.workflowName)).size)}</strong>
+            {loading && !data ? (
+              <LoadingIndicator />
+            ) : (
+              <strong>{formatNumber(new Set(records.map((record) => record.workflowName)).size)}</strong>
+            )}
           </div>
         </section>
       </section>
@@ -156,8 +161,11 @@ export function SurveyResponsesPage() {
             <span className="eyebrow">Responses</span>
             <h2>Submitted Feedback</h2>
           </div>
-          {loading ? <span className="loadingText">Loading</span> : null}
+          {loading ? <LoadingIndicator /> : null}
         </div>
+        {loading && !data ? (
+          <LoadingIndicator label="Loading survey responses" />
+        ) : (
         <div className="tableScroller detailTable">
           <table>
             <thead>
@@ -197,6 +205,7 @@ export function SurveyResponsesPage() {
             </tbody>
           </table>
         </div>
+        )}
         <PaginationControls
           page={pagination.page}
           pageSize={pageSize}

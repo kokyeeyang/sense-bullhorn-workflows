@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ClipboardCheck, DatabaseZap, FileSearch, Mail, Workflow } from "lucide-react";
+import { BarChart3, ClipboardCheck, DatabaseZap, FileSearch, Mail, PanelsTopLeft, Workflow } from "lucide-react";
 
 const NAV_ITEMS = [
   {
@@ -22,6 +22,12 @@ const NAV_ITEMS = [
     label: "Email Sends",
     description: "Outbound messages",
     icon: Mail,
+  },
+  {
+    href: "/email-templates",
+    label: "Email Templates",
+    description: "HTML catalog",
+    icon: PanelsTopLeft,
   },
   {
     href: "/survey-responses",
