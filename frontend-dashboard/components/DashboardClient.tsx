@@ -366,12 +366,10 @@ function CountList({ items, kind, loading = false }: { items: CountItem[]; kind:
 
 function ScheduleBoard({
   schedules,
-  workflows,
   generatedAt,
   loading,
 }: {
   schedules: WorkflowScheduleItem[];
-  workflows: WorkflowSummary[];
   generatedAt: string | null;
   loading: boolean;
 }) {
@@ -406,10 +404,6 @@ function ScheduleBoard({
         .sort((left, right) => String(left.nextRunAt || "9999").localeCompare(String(right.nextRunAt || "9999"))),
     }));
   }, [schedules]);
-  const workflowsByName = useMemo(
-    () => new Map(workflows.map((workflow) => [workflow.workflowName, workflow])),
-    [workflows],
-  );
 
   return (
     <section className="scheduleBoard">
@@ -453,8 +447,6 @@ function ScheduleBoard({
                   {workflows.length === 0 ? <p className="emptyText">No scheduled workflows</p> : null}
                   {workflows.map((workflow) => {
                     const nextRunMs = workflow.nextRunAt ? new Date(workflow.nextRunAt).getTime() - now : null;
-                    const summary = workflowsByName.get(workflow.workflowName);
-                    const freshness = getRunFreshness({ workflow: summary, schedule: workflow, now });
                     return (
                       <article className="scheduleItem" key={`${workflow.orchestrator}-${workflow.workflowName}`}>
                         <div>
@@ -463,7 +455,6 @@ function ScheduleBoard({
                         </div>
                         <div className="countdownBlock">
                           <span className="orchestratorPill">{workflow.orchestrator}</span>
-                          <span className={`freshnessPill ${freshness.state}`}>{freshness.label}</span>
                           <strong>{formatCountdown(nextRunMs)}</strong>
                         </div>
                       </article>
@@ -1071,7 +1062,6 @@ export function DashboardClient() {
 
         <ScheduleBoard
           schedules={schedules?.schedules || []}
-          workflows={summary?.workflows || []}
           generatedAt={schedules?.generatedAt || null}
           loading={loading}
         />
