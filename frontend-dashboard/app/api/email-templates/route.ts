@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
+import { getEmailTemplateUsageByFileName } from "@/lib/emailTemplateUsage";
 
 function titleFromFileName(fileName: string) {
   return fileName
@@ -60,6 +61,7 @@ async function resolveTemplateDir() {
 export async function GET() {
   try {
     const templateDir = await resolveTemplateDir();
+    const usageByFileName = getEmailTemplateUsageByFileName();
     const entries = await fs.readdir(templateDir, { withFileTypes: true });
     const htmlFiles = entries
       .filter((entry) => entry.isFile() && entry.name.endsWith(".html"))
@@ -77,6 +79,7 @@ export async function GET() {
           category: inferCategory(fileName),
           region: inferRegion(fileName),
           sparkPostTemplateKey: findSparkPostTemplateKey(html),
+          usedBy: usageByFileName[fileName] || [],
           sizeBytes: stat.size,
           html,
         };

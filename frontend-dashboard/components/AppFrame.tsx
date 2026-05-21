@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ClipboardCheck, DatabaseZap, FileSearch, Mail, PanelsTopLeft, Workflow } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BarChart3, ClipboardCheck, DatabaseZap, FileSearch, Mail, Moon, PanelsTopLeft, Sun, Workflow } from "lucide-react";
 
 const NAV_ITEMS = [
   {
@@ -45,6 +46,23 @@ const NAV_ITEMS = [
 
 export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("dashboard-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const nextTheme = savedTheme === "dark" || savedTheme === "light" ? savedTheme : prefersDark ? "dark" : "light";
+
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+  }, []);
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    window.localStorage.setItem("dashboard-theme", nextTheme);
+  }
 
   return (
     <div className="appFrame">
@@ -74,6 +92,11 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        <button type="button" className="themeToggle" onClick={toggleTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+          <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+        </button>
       </aside>
 
       <div className="appContent">{children}</div>

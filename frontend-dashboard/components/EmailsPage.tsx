@@ -7,12 +7,14 @@ import { EmailTransmissionRecord, EmailTransmissionsResponse, WorkflowCatalogIte
 import { formatDateOnly, formatDateTime, formatNumber, getDefaultDateRange } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { FreshnessStatus } from "@/components/FreshnessStatus";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
 
 function buildDefaultQuery(): DashboardQuery & Record<string, string> {
+  const params = typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
   return {
     ...getDefaultDateRange(30),
-    workflowName: "",
+    workflowName: params?.get("workflowName") || "",
     category: "",
     status: "",
     actionDecision: "",
@@ -71,9 +73,18 @@ export function EmailsPage() {
           <span className="eyebrow">Outbound Mail</span>
           <h1>Email Sends</h1>
         </div>
-        <button type="button" className="iconButton" onClick={() => void load()} title="Refresh">
-          <RefreshCcw size={18} />
-        </button>
+        <div className="topActions">
+          <FreshnessStatus
+            environment={data?.environment || null}
+            primaryGeneratedAt={data?.generatedAt || null}
+            primaryLabel="data"
+            loading={loading}
+            error={error}
+          />
+          <button type="button" className="iconButton" onClick={() => void load()} title="Refresh">
+            <RefreshCcw size={18} />
+          </button>
+        </div>
       </header>
 
       <section className="filterPanel detailFilters">

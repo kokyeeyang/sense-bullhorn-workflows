@@ -11,6 +11,7 @@ import {
 import { formatDateOnly, formatDateTime, formatNumber, getDefaultDateRange, parseDateLike } from "@/lib/format";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { FreshnessStatus } from "@/components/FreshnessStatus";
 
 const CASE_TYPE_OPTIONS: Array<{ value: CandidateAssignmentCaseType; label: string }> = [
   { value: "terminated-placement", label: "Terminated Placements" },
@@ -160,6 +161,12 @@ export function CandidateReportsPage() {
           <h1>Candidate Assignment Status</h1>
         </div>
         <div className="topActions">
+          <FreshnessStatus
+            primaryGeneratedAt={data?.generatedAt || null}
+            primaryLabel="data"
+            loading={loading}
+            error={error}
+          />
           <button type="button" className="iconButton" onClick={() => void load()} title="Refresh">
             <RefreshCcw size={18} />
           </button>
