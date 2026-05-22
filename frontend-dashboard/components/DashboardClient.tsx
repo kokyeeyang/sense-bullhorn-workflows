@@ -48,6 +48,7 @@ import {
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { FreshnessStatus } from "@/components/FreshnessStatus";
+import { ReleaseNotesModal } from "@/components/ReleaseNotesModal";
 import { getDashboardGlossaryEntry } from "@/lib/dashboardGlossary";
 import { formatDateTime, formatNumber, getDefaultDateRange, toDateInput } from "@/lib/format";
 import { sortWorkflowsByLabel, workflowLabel } from "@/lib/workflowDisplay";
@@ -1195,6 +1196,8 @@ export function DashboardClient() {
           onClose={() => setSelectedWorkflowName(null)}
         />
       ) : null}
+
+      <ReleaseNotesModal />
     </main>
   );
 }
