@@ -56,7 +56,7 @@ function buildSkippedSubmissionPreview({ jobSubmissionId, jobSubmission = null, 
 }
 
 async function run() {
-  const config = loadConfig();
+  const config = loadConfig("job-application-notification-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

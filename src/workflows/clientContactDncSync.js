@@ -130,7 +130,7 @@ async function loadContactsForDelayedScan({ bullhorn, session, config, fromEpoch
 
 async function run() {
   const startedAtMs = Date.now();
-  const config = loadConfig();
+  const config = loadConfig("client-contact-dnc-sync");
   const bullhorn = new BullhornClient({ config, logger });
   const fromEpoch = epochSecondsFromDateString(config.CLIENT_CONTACT_DNC_CUTOFF_DATE);
   const delayedScanWindow = buildDelayedScanWindow({

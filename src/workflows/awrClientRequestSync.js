@@ -36,7 +36,7 @@ const PLACEMENT_FIELDS = [
 ].join(",");
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("awr-client-request-sync");
   if (!config.DRY_RUN && !config.SPARKPOST_API_KEY) {
     throw new Error("Missing required SparkPost config: SPARKPOST_API_KEY or BULLHORN_WORKFLOW");
   }

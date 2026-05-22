@@ -28,7 +28,7 @@ async function writeChangesReport({ report }) {
 
 async function run() {
   const nowMs = Date.now();
-  const config = loadConfig();
+  const config = loadConfig("client-corporation-key-account-sync");
   const bullhorn = new BullhornClient({ config, logger });
   const cutoffEpoch = epochSecondsFromDateString(config.CLIENT_CORPORATION_KEY_ACCOUNT_CUTOFF_DATE);
   const fromEpoch = calculateRollingFromEpoch({

@@ -53,7 +53,7 @@ function buildSkippedItem({ certification, reason, matchDetails = null, sendLock
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("ais-survivex-certification-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

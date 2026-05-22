@@ -450,9 +450,22 @@ PLACEMENT_YEARLY_FEE_INCREASE_TEST_MODE=true node test-yearly-fee-increase.js
 
 Use `DRY_RUN=true` (default) to test without sending actual emails.
 
+For staged production rollout, keep `DRY_RUN=true` and add only the approved workflow names to `LIVE_WORKFLOWS`. A listed workflow runs live only when `LIVE_ENVIRONMENT_CONFIRMATION` matches `BULLHORN_ENV`; otherwise it stays in dry-run. Example:
+
+```env
+BULLHORN_ENV=production
+DRY_RUN=true
+LIVE_WORKFLOWS=candidate-state-sync,placement-database-enrichment-sync
+LIVE_ENVIRONMENT_CONFIRMATION=production
+```
+
+The confirmation value is a deliberate safety check against accidentally writing to the wrong Bullhorn environment. If `BULLHORN_ENV` and `LIVE_ENVIRONMENT_CONFIRMATION` differ, the workflow is forced back to `DRY_RUN=true`, even if it is listed in `LIVE_WORKFLOWS`. For example, `BULLHORN_ENV=production` with `LIVE_ENVIRONMENT_CONFIRMATION=staging` will not run live writes or real email sends.
+
+Once every workflow has been proven safe, clear `LIVE_WORKFLOWS` and set `DRY_RUN=false` for the full live cutover.
+
 ## Required environment variables
 
-- `BULLHORN_ENV` (`staging` or `production`; default: `production`)
+- `BULLHORN_ENV` (`dev`, `staging`, or `production`; default: `production`)
 - `BULLHORN_AUTH_BASE_URL`
 - `BULLHORN_REDIRECT_URI`
 - `BULLHORN_<ENV>_CLIENT_ID`
@@ -481,6 +494,8 @@ Optional:
 - `CLIENT_CONTACT_DNC_EVENT_MAX_EVENTS` (default: `100`)
 - `CLIENT_CONTACT_DNC_QUERY_COUNT` (default: `500`)
 - `DRY_RUN` (default: `true`)
+- `LIVE_WORKFLOWS` (optional comma-separated workflow names to run live while `DRY_RUN=true`, for example `candidate-state-sync,placement-database-enrichment-sync`)
+- `LIVE_ENVIRONMENT_CONFIRMATION` (required for `LIVE_WORKFLOWS`; must exactly match `BULLHORN_ENV`, for example `production`)
 - `TEST_CANDIDATE_ID` (optional; when set, query uses `id:<value>` instead of `dateAdded`)
 - `TEST_CLIENT_CORPORATION_ID` (optional; when set, query uses `id:<value>` instead of the cutoff date search)
 - `TEST_CLIENT_CONTACT_ID` (optional; when set, query uses `id:<value>` instead of the contact `dateAdded` search)
@@ -637,13 +652,17 @@ BULLHORN_STAGING_PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS=730
 BULLHORN_STAGING_PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS=730
 BULLHORN_PRODUCTION_PLACEMENT_START_REMINDER_WINDOW_BEFORE_DAYS=0
 BULLHORN_PRODUCTION_PLACEMENT_START_REMINDER_WINDOW_AFTER_DAYS=0
+
+DRY_RUN=true
+LIVE_WORKFLOWS=
+LIVE_ENVIRONMENT_CONFIRMATION=
 ```
 
 `BULLHORN_AUTH_BASE_URL` and `BULLHORN_REDIRECT_URI` can stay shared across environments. If you ever need to override them per environment later, the prefixed fallback keys still work.
 
 The placement start reminder settings can also be overridden per environment. A common setup is broad windows in staging for limited data and `0/0` in production so reminders only send for placements starting exactly the configured number of days ahead.
 
-All workflows call the same `loadConfig()` function, so switching `BULLHORN_ENV` changes the active Bullhorn environment everywhere without further code changes.
+All workflows call the same `loadConfig()` function, so switching `BULLHORN_ENV` changes the active Bullhorn environment everywhere without further code changes. Workflows that pass their workflow name into `loadConfig()` also respect `LIVE_WORKFLOWS` for controlled live rollout.
 
 ## Azure Functions
 

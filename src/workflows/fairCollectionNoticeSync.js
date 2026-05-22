@@ -47,7 +47,7 @@ function buildSkippedItem({ candidate, queryDate, reason, matchDetails = null, s
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("fair-collection-notice-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

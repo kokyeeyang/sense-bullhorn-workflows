@@ -1,4 +1,4 @@
-const { applyBullhornEnvironment } = require("../src/helpers/config");
+const { applyBullhornEnvironment, applyWorkflowRuntimeMode } = require("../src/helpers/config");
 
 describe("config environment selection", () => {
   test("uses production Bullhorn variables when BULLHORN_ENV=production", () => {
@@ -48,6 +48,25 @@ describe("config environment selection", () => {
       BULLHORN_API_BASE_URL: "https://stage-api.example.com",
       BULLHORN_REDIRECT_URI: "https://shared.example.com/callback",
       BULLHORN_API_VERSION: "*",
+    });
+  });
+
+  test("uses dev Bullhorn variables when BULLHORN_ENV=dev", () => {
+    expect(
+      applyBullhornEnvironment({
+        BULLHORN_ENV: "dev",
+        BULLHORN_DEV_CLIENT_ID: "dev-client-id",
+        BULLHORN_DEV_CLIENT_SECRET: "dev-secret",
+        BULLHORN_DEV_USERNAME: "dev-user",
+        BULLHORN_DEV_PASSWORD: "dev-pass",
+        BULLHORN_DEV_API_BASE_URL: "https://dev-api.example.com",
+      }),
+    ).toMatchObject({
+      BULLHORN_CLIENT_ID: "dev-client-id",
+      BULLHORN_CLIENT_SECRET: "dev-secret",
+      BULLHORN_USERNAME: "dev-user",
+      BULLHORN_PASSWORD: "dev-pass",
+      BULLHORN_API_BASE_URL: "https://dev-api.example.com",
     });
   });
 
@@ -127,5 +146,44 @@ describe("config environment selection", () => {
     } finally {
       process.env = originalEnv;
     }
+  });
+
+  test("forces allowlisted workflow live only when the Bullhorn environment is confirmed", () => {
+    const baseConfig = {
+      DRY_RUN: true,
+      BULLHORN_ENV: "production",
+      LIVE_WORKFLOWS: "candidate-state-sync, placement-database-enrichment-sync",
+      LIVE_ENVIRONMENT_CONFIRMATION: "production",
+    };
+
+    expect(applyWorkflowRuntimeMode(baseConfig, "candidate-state-sync")).toMatchObject({
+      DRY_RUN: false,
+      LIVE_WORKFLOW_ENABLED: true,
+      RUNTIME_DRY_RUN_SOURCE: "live-workflow-allowlist",
+    });
+
+    expect(applyWorkflowRuntimeMode(baseConfig, "placement-status-sync")).toMatchObject({
+      DRY_RUN: true,
+      LIVE_WORKFLOW_ENABLED: false,
+      RUNTIME_DRY_RUN_SOURCE: "global-dry-run",
+    });
+  });
+
+  test("keeps allowlisted workflow in dry-run when confirmation does not match", () => {
+    expect(
+      applyWorkflowRuntimeMode(
+        {
+          DRY_RUN: false,
+          BULLHORN_ENV: "production",
+          LIVE_WORKFLOWS: "candidate-state-sync",
+          LIVE_ENVIRONMENT_CONFIRMATION: "staging",
+        },
+        "candidate-state-sync",
+      ),
+    ).toMatchObject({
+      DRY_RUN: true,
+      LIVE_WORKFLOW_ENABLED: false,
+      RUNTIME_DRY_RUN_SOURCE: "live-workflow-environment-not-confirmed",
+    });
   });
 });

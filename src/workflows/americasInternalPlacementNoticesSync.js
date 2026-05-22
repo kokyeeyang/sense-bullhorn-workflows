@@ -117,7 +117,7 @@ async function hydratePlacementOwners({ bullhorn, session, placement, ownerCache
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("americas-internal-placement-notices-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

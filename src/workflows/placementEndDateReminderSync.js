@@ -73,7 +73,7 @@ async function hydrateJobOrderOwner({ bullhorn, session, placement, ownerCache }
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("placement-end-date-reminder-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

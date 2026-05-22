@@ -47,7 +47,7 @@ async function writeSparkPostPayloadReport({ payload }) {
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("payroll-new-hire-greeting-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

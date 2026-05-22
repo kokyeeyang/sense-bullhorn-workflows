@@ -36,7 +36,7 @@ function buildPlacementFields({ dateField, actionTypeField }) {
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("contractor-not-contacted-reminder-sync");
   if (!config.DRY_RUN && !config.SPARKPOST_API_KEY) {
     throw new Error("Missing required SparkPost config: SPARKPOST_API_KEY or BULLHORN_WORKFLOW");
   }

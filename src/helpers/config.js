@@ -42,7 +42,7 @@ const nonNegativeIntWithDefault = (defaultValue) =>
   z.preprocess(emptyStringToUndefined, z.coerce.number().int().min(0).default(defaultValue));
 
 const configSchema = z.object({
-  BULLHORN_ENV: z.enum(["staging", "production"]).default("production"),
+  BULLHORN_ENV: z.enum(["dev", "staging", "production"]).default("production"),
   BULLHORN_CLIENT_ID: z.string().min(1),
   BULLHORN_CLIENT_SECRET: z.string().min(1),
   BULLHORN_USERNAME: z.string().min(1),
@@ -68,6 +68,8 @@ const configSchema = z.object({
   CLIENT_CONTACT_DNC_EVENT_MAX_EVENTS: positiveIntWithDefault(100),
   CLIENT_CONTACT_DNC_QUERY_COUNT: positiveIntWithDefault(500),
   DRY_RUN: envBoolean,
+  LIVE_WORKFLOWS: stringWithDefaultPreserveBlank(""),
+  LIVE_ENVIRONMENT_CONFIRMATION: stringWithDefaultPreserveBlank(""),
   TEST_CANDIDATE_ID: optionalPositiveInt,
   TEST_CLIENT_CORPORATION_ID: optionalPositiveInt,
   TEST_CLIENT_CONTACT_ID: optionalPositiveInt,
@@ -268,7 +270,7 @@ function applyBullhornEnvironment(env) {
   return mappedEnv;
 }
 
-function loadConfig() {
+function loadConfig(workflowName = null) {
   const env = applyBullhornEnvironment({ ...process.env });
   env.SPARKPOST_API_KEY = env.SPARKPOST_API_KEY || env.BULLHORN_WORKFLOW;
 
@@ -279,7 +281,48 @@ function loadConfig() {
     throw new Error(`Invalid environment config:\n${details.join("\n")}`);
   }
 
-  return parsed.data;
+  return workflowName ? applyWorkflowRuntimeMode(parsed.data, workflowName) : parsed.data;
 }
 
-module.exports = { applyBullhornEnvironment, loadConfig };
+function parseCsvSet(value) {
+  return new Set(
+    String(value || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
+}
+
+function applyWorkflowRuntimeMode(config, workflowName) {
+  const normalizedWorkflowName = String(workflowName || "").trim();
+  const liveWorkflows = parseCsvSet(config.LIVE_WORKFLOWS);
+  const isAllowlisted = liveWorkflows.has(normalizedWorkflowName);
+  const confirmation = String(config.LIVE_ENVIRONMENT_CONFIRMATION || "").trim().toLowerCase();
+  const bullhornEnvironment = String(config.BULLHORN_ENV || "").trim().toLowerCase();
+  const environmentConfirmed = Boolean(confirmation) && confirmation === bullhornEnvironment;
+
+  let dryRun = Boolean(config.DRY_RUN);
+  let runtimeModeReason = dryRun ? "global-dry-run" : "global-live";
+
+  if (isAllowlisted) {
+    if (environmentConfirmed) {
+      dryRun = false;
+      runtimeModeReason = "live-workflow-allowlist";
+    } else {
+      dryRun = true;
+      runtimeModeReason = "live-workflow-environment-not-confirmed";
+    }
+  } else if (!dryRun && confirmation && !environmentConfirmed) {
+    dryRun = true;
+    runtimeModeReason = "global-live-environment-not-confirmed";
+  }
+
+  return {
+    ...config,
+    DRY_RUN: dryRun,
+    RUNTIME_DRY_RUN_SOURCE: runtimeModeReason,
+    LIVE_WORKFLOW_ENABLED: isAllowlisted && environmentConfirmed,
+  };
+}
+
+module.exports = { applyBullhornEnvironment, applyWorkflowRuntimeMode, loadConfig };

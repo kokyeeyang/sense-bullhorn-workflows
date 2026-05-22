@@ -113,7 +113,7 @@ function buildComparisonRecordFromSkippedPlacement({ workflowName, generatedAt, 
 }
 
 async function run() {
-  const config = loadConfig();
+  const config = loadConfig("placement-database-enrichment-sync");
   const bullhorn = new BullhornClient({ config, logger });
 
   logger.info(

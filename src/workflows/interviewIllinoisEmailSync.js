@@ -63,7 +63,7 @@ function buildSkippedAppointmentPreview({ appointmentId, appointment = null, rea
 }
 
 async function run() {
-  const config = loadConfig();
+  const config = loadConfig("interview-illinois-email-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

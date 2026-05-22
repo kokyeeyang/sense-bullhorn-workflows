@@ -58,7 +58,7 @@ function validateSparkPostConfig(config) {
 }
 
 async function run() {
-  const config = loadConfig();
+  const config = loadConfig("placement-start-reminder-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

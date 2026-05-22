@@ -97,7 +97,7 @@ async function hydratePlacementOwners({ bullhorn, session, placement, ownerCache
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("emea-placement-auto-reply-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

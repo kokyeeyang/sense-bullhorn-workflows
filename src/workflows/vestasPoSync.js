@@ -127,7 +127,7 @@ async function hydrateOwner({ bullhorn, session, placement, ownerCache }) {
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("vestas-po-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

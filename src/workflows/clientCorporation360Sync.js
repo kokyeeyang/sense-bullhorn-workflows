@@ -49,7 +49,7 @@ async function writeChangesReport({ report }) {
 async function run() {
   const startedAtMs = Date.now();
   const nowMs = Date.now();
-  const config = loadConfig();
+  const config = loadConfig("client-corporation-360-sync");
   const bullhorn = new BullhornClient({ config, logger });
   const cutoffEpoch = epochSecondsFromDateString(config.CLIENT_CORPORATION_360_CUTOFF_DATE);
   const fromEpoch = calculateRollingFromEpoch({

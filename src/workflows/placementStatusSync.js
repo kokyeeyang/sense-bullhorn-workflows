@@ -22,7 +22,7 @@ async function writeChangesReport({ report }) {
 }
 
 async function run() {
-  const config = loadConfig();
+  const config = loadConfig("placement-status-sync");
   const bullhorn = new BullhornClient({ config, logger });
 
   logger.info(

@@ -191,7 +191,7 @@ async function sendReminderIfNeeded({ config, sparkPost, entity }) {
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("so-how-did-we-do-feedback-sync");
   validateConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });

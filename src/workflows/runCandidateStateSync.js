@@ -119,7 +119,7 @@ async function writeChangesReport({ report }) {
 }
 
 async function runCandidateStateSync({ candidateIds = null } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("candidate-state-sync");
   const bullhorn = new BullhornClient({ config, logger });
   const explicitCandidateIds = parseCandidateIds(candidateIds);
 

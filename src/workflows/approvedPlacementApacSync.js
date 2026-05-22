@@ -36,7 +36,7 @@ function findStatusChange(record) {
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("approved-placement-apac-sync");
   if (!config.DRY_RUN && !config.SPARKPOST_API_KEY) {
     throw new Error("Missing required SparkPost config: SPARKPOST_API_KEY or BULLHORN_WORKFLOW");
   }

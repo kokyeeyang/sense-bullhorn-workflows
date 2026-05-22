@@ -123,7 +123,7 @@ async function hydratePlacementOwners({ bullhorn, session, placement, candidateC
 }
 
 async function run({ targetDate } = {}) {
-  const config = loadConfig();
+  const config = loadConfig("placement-benefits-reminder-sync");
   validateSparkPostConfig(config);
   const bullhorn = new BullhornClient({ config, logger });
   const sparkPost = new SparkPostClient({ config, logger });
